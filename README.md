@@ -18,7 +18,7 @@
    This command builds the Docker containers and starts the services in development mode with hot-reloading.
    
    - **Backend API:** [http://localhost:8000/docs](http://localhost:8000/docs)
-   - **Frontend:** [http://localhost:3000](http://localhost:3000)
+   - **Frontend:** [http://localhost:3001](http://localhost:3001)
    - **Database:** `localhost:5432`
 
 2. **Stop the environment:**

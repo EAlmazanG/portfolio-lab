@@ -28,7 +28,7 @@ def main():
     backend_ok = check_service("Backend API", "http://localhost:8000/api/v1/health")
     
     # Check Frontend (Main Page)
-    frontend_ok = check_service("Frontend App", "http://localhost:3000")
+    frontend_ok = check_service("Frontend App", "http://localhost:3001")
     
     if backend_ok and frontend_ok:
         print("\n🎉 All systems operational!")
