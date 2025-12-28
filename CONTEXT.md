@@ -55,13 +55,50 @@ To validate the hypothesis, every simulation must be compared against:
 
 ## 3. System Components & Architecture
 
-### 3.1. Data Ingestion Module
+### 3.1. Directory Structure
+
+```text
+.
+├── backend/                     # Python logic
+│   ├── api/v1/                  # Endpoints (simulations, portfolios, assets)
+│   ├── core/                    # Config, logging, constants
+│   ├── db/                      # Database connection, session
+│   ├── models/                  # SQLAlchemy models (DB tables)
+│   ├── schemas/                 # Pydantic models (API request/response)
+│   ├── engine/                  # Simulation Engine Core
+│   │   ├── baselines/           # Logic for Basic DCA and Standard Portfolio
+│   │   ├── strategies/          # Smart DCA, Rebalancing logic (Strategy Pattern)
+│   │   └── calculator.py        # Vectorized calculations (ROI, Drawdown)
+│   ├── data_ingestion/          # Data download logic (Yahoo/Binance)
+│   ├── cli.py                   # CLI Tool entrypoint for data operations
+│   ├── main.py                  # FastAPI entrypoint
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/                    # Next.js app
+│   ├── src/
+│   │   ├── app/                 # Pages (Asset, Portfolio, Optimizer)
+│   │   ├── components/          # UI Components
+│   │   ├── lib/                 # API client, utils
+│   │   └── types/               # TypeScript interfaces
+│   └── Dockerfile
+├── scripts/                     # Automation scripts
+│   ├── data/                    # Data seeding/management scripts
+│   └── ops/                     # Start/stop dev/prod operations
+├── data/                        # Local data persistence (SQLite/CSVs)
+├── docs/                        # Documentation (PRD, Architecture)
+├── docker-compose.yml           # Production stack
+├── docker-compose.dev.yml       # Development stack
+├── .env.example                 # Environment variables template
+└── .gitignore
+```
+
+### 3.2. Data Ingestion Module
 - **Responsibility:** Fetch and persist historical market data.
 - **Source:** External APIs (e.g., Yahoo Finance).
 - **Storage:** Database (Daily OHLC values).
 - **Interface:** A simple CLI (Command Line Interface) tool to search, select, and download asset history. No frontend required for this module.
 
-### 3.2. Backend (Python)
+### 3.3. Backend (Python)
 - **Framework:** Python (FastAPI/Flask recommended for REST API).
 - **Simulation Engine:**
     - Core logic to process Assets, Parameters, and Selected Features.
@@ -73,7 +110,7 @@ To validate the hypothesis, every simulation must be compared against:
     - Exposes endpoints for the Frontend to configure simulations, trigger runs, and retrieve results.
     - Ensures total decoupling of UI and Business Logic.
 
-### 3.3. Frontend (Next.js)
+### 3.4. Frontend (Next.js)
 - **Architecture:** Next.js Application organized into three main functional tabs.
 - **Tabs:**
     1.  **Asset:**
@@ -96,7 +133,7 @@ To validate the hypothesis, every simulation must be compared against:
     *   Save/Load constructed Portfolios.
     *   Save/Load Simulation Results (Asset & Optimization runs).
 
-### 3.4. DevOps & Infrastructure
+### 3.5. DevOps & Infrastructure
 - **Containerization:** Docker & Docker Compose.
     *   **Development:** Mounts local source code as volumes for hot-reloading.
     *   **Production:** Standalone containers for Backend, Frontend, and DB.
