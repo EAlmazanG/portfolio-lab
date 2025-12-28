@@ -188,5 +188,6 @@ To validate the hypothesis, every simulation must be compared against:
 2.  **Strategy Pattern:** Use the Strategy Design Pattern for Indicators and Buying Logic to ensure modularity and easy extensibility.
 3.  **Strict Decoupling:** The Frontend is a view layer only. All financial calculations, simulations, and data processing happen in the Python Backend.
 4.  **Vectorization:** Use Pandas/NumPy vectorization for simulation loops to ensure high performance, especially for the Optimizer.
-5.  **Type Safety:** Use Pydantic models for all Backend API request/response structures. Use TypeScript interfaces for all Frontend data.
-6.  **Documentation:** Keep this `CONTEXT.md` updated as the "Source of Truth" for the project scope.
+5.  **Security:** NEVER include passwords or API keys in the code. Always use environment variables and the `.env` file.
+6.  **Type Safety:** Use Pydantic models for all Backend API request/response structures. Use TypeScript interfaces for all Frontend data.
+7.  **Documentation:** Keep this `CONTEXT.md` updated as the "Source of Truth" for the project scope.
