@@ -21,10 +21,24 @@
    - **Frontend:** [http://localhost:3001](http://localhost:3001)
    - **Database:** `localhost:5432`
 
-2. **Stop the environment:**
+3. **Manage Data (CLI):**
+   ```bash
+   make cli
+   ```
+   This interactive tool allows you to search, add, and update asset historical data from Yahoo Finance.
+
+4. **Stop the environment:**
    ```bash
    ./scripts/ops/dev_down.sh
    ```
+
+### Command Palette (Makefile)
+The project includes a `Makefile` to simplify common tasks:
+- `make venv`: Create/update the Python virtual environment.
+- `make dev`: Start the development environment.
+- `make dev-down`: Stop the development environment.
+- `make cli`: Open the interactive Data Manager.
+- `make list`: List all available commands.
 
 ### Production Environment
 

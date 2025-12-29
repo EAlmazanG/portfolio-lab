@@ -182,7 +182,28 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 5. Development Rules & Best Practices
+## 6. Current Progress (v0.2 Completed)
+
+### 6.1. Infrastructure & DevOps
+- **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
+- **Database:** PostgreSQL set up with SQLAlchemy ORM and Alembic for migrations.
+- **Backend:** FastAPI foundation with health checks and CORS configuration.
+- **Frontend:** Next.js (App Router) structure with TypeScript and Tailwind CSS.
+- **Automation:** `Makefile` for quick commands (venv, cli, test, up/down) and bash scripts for orchestration.
+
+### 6.2. Data Ingestion & Management (v0.2)
+- **Yahoo Finance Client:** Robust integration for fetching OHLCV data and asset metadata.
+- **Interactive CLI Tool:** A comprehensive data manager (`make cli`) featuring:
+    - **Smart Search:** Semantic search with category suggestions (Crypto, Stocks, Indices, Commodities).
+    - **Detailed View:** Deep-dive into asset descriptions, sectors, and exchanges before adding.
+    - **Intelligent Sync:** Automatic back-filling of missing historical data based on configurable look-back periods.
+    - **Interval Support:** Support for multiple timeframes (1d, 1wk, 1mo).
+    - **Maintenance:** List, delete, and configure ingestion settings (years, interval).
+- **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting` with cascading deletes.
+
+---
+
+## 7. Development Rules & Best Practices
 
 1.  **Capital Constraint:** In *all* comparisons, the total capital deployed in the "Smart" strategy must exactly match the "Baseline" strategy on an annual basis.
 2.  **Strategy Pattern:** Use the Strategy Design Pattern for Indicators and Buying Logic to ensure modularity and easy extensibility.
