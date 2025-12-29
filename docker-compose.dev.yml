@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432" # Expose to host for IDE access
+      - "5433:5432" # Expose to host for IDE access
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     networks:
