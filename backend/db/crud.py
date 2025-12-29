@@ -5,9 +5,30 @@ from datetime import datetime
 import pandas as pd
 from typing import List, Optional
 
+from backend.models.settings import Setting
+
 def get_asset_by_ticker(db: Session, ticker: str) -> Optional[Asset]:
     """Get an asset by its ticker symbol."""
     return db.query(Asset).filter(Asset.ticker == ticker).first()
+
+def get_setting(db: Session, key: str, default: str) -> str:
+    """Get a setting value by key."""
+    setting = db.query(Setting).filter(Setting.key == key).first()
+    return setting.value if setting else default
+
+def update_setting(db: Session, key: str, value: str, description: Optional[str] = None):
+    """Update or create a setting."""
+    setting = db.query(Setting).filter(Setting.key == key).first()
+    if setting:
+        setting.value = value
+        if description:
+            setting.description = description
+    else:
+        setting = Setting(key=key, value=value, description=description)
+        db.add(setting)
+    db.commit()
+    db.refresh(setting)
+    return setting
 
 def create_asset(db: Session, ticker: str, name: str, asset_type: str, sector: Optional[str] = None) -> Asset:
     """Create a new asset."""
@@ -20,6 +41,15 @@ def create_asset(db: Session, ticker: str, name: str, asset_type: str, sector: O
 def get_assets(db: Session) -> List[Asset]:
     """Get all assets."""
     return db.query(Asset).all()
+
+def delete_asset(db: Session, asset_id: int) -> bool:
+    """Delete an asset and its associated data."""
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if asset:
+        db.delete(asset)
+        db.commit()
+        return True
+    return False
 
 def get_latest_market_data_date(db: Session, asset_id: int) -> Optional[datetime]:
     """Get the latest date of market data for a specific asset."""

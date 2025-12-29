@@ -10,6 +10,7 @@ class Asset(Base):
     ticker = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
     asset_type = Column(String, nullable=False)  # crypto, stock, index, commodity
+    interval = Column(String, default="1d") # 1d, 1wk, 1mo
     sector = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)

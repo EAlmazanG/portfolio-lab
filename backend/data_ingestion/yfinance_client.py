@@ -84,3 +84,20 @@ class YahooFinanceClient:
             logger.error(f"Error fetching info for {ticker}: {str(e)}")
             return {}
 
+    def search_assets(self, query: str) -> List[dict]:
+        """
+        Search for assets matching a query.
+        
+        Args:
+            query: Search term (e.g., 'Apple', 'Bitcoin').
+            
+        Returns:
+            List[dict]: List of matching assets with ticker and name.
+        """
+        try:
+            search = yf.Search(query, max_results=10)
+            return search.quotes
+        except Exception as e:
+            logger.error(f"Error searching for {query}: {str(e)}")
+            return []
+

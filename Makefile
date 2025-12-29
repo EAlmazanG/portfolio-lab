@@ -61,11 +61,15 @@ clean:
 
 # CLI Tool
 cli:
-	@export PYTHONPATH=$(PYTHONPATH):$(shell pwd) && $(PYTHON) backend/cli.py
+	@export PYTHONPATH=$(PYTHONPATH):$(shell pwd) && \
+	 export DATABASE_URL=postgresql://postgres:postgres@localhost:5433/portfolio_lab && \
+	 $(PYTHON) backend/cli.py
 
 # Utilities
 logs:
 	@docker-compose -f docker-compose.dev.yml logs -f
 
 test:
-	@$(PYTHON) tests/integration/test_infrastructure.py
+	@export PYTHONPATH=$(PYTHONPATH):$(shell pwd) && \
+	 export DATABASE_URL=postgresql://postgres:postgres@localhost:5433/portfolio_lab && \
+	 $(PYTHON) tests/integration/test_infrastructure.py
