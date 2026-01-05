@@ -122,15 +122,15 @@ class SimulationEngine:
                 "invested": round(total_invested, 2)
             })
 
-        final_value = assets_accumulated * self.market_data.iloc[-1]['close']
-        total_return_percent = ((final_value - total_invested) / total_invested * 100) if total_invested > 0 else 0
-        avg_price = total_invested / assets_accumulated if assets_accumulated > 0 else 0
+        final_value = float(assets_accumulated * self.market_data.iloc[-1]['close'])
+        total_return_percent = float(((final_value - total_invested) / total_invested * 100)) if total_invested > 0 else 0.0
+        avg_price = float(total_invested / assets_accumulated) if assets_accumulated > 0 else 0.0
 
         return DCAResult(
             portfolio_history=portfolio_history,
             final_value=round(final_value, 2),
-            total_invested=round(total_invested, 2),
+            total_invested=round(float(total_invested), 2),
             total_return_percent=round(total_return_percent, 2),
             avg_purchase_price=round(avg_price, 2),
-            total_assets_accumulated=assets_accumulated
+            total_assets_accumulated=float(assets_accumulated)
         )

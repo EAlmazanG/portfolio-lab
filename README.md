@@ -32,6 +32,12 @@
    ./scripts/ops/dev_down.sh
    ```
 
+### Dashboard (Asset Tab)
+The Asset tab is now functional. You can:
+1. Select an asset from your database.
+2. Configure DCA parameters (Amount, Frequency, Dates).
+3. Run simulations and view interactive charts of your portfolio growth.
+
 ### Command Palette (Makefile)
 The project includes a `Makefile` to simplify common tasks:
 - `make venv`: Create/update the Python virtual environment.

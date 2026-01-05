@@ -223,7 +223,16 @@ To validate the hypothesis, every simulation must be compared against:
 - **Features:** Supports custom date ranges, investment amounts, and frequencies (daily, weekly, monthly).
 - **Architecture:** Decoupled simulation logic from persistence using a Service layer.
 
-### 6.4. UI/UX Design Prototypes
+### 6.4. Frontend Implementation (v0.3 Baseline)
+- **Asset Tab:** Fully implemented using the Stitch prototype design.
+- **Components:**
+    - Sidebar with simulation parameters (Asset, Amount, Frequency, Dates, Fees).
+    - Results dashboard with KPI cards (Return, Invested, Accumulated).
+    - Interactive Charting using **Recharts** showing Portfolio Value vs. Invested Capital.
+- **API Integration:** Connects to FastAPI backend for real-time simulation runs.
+- **Tech Stack:** Next.js 14, TypeScript, Tailwind CSS, Recharts, Lucide-React.
+
+### 6.5. UI/UX Design Prototypes
 - **Stitch Prototypes:** Available in `stitch/` folder with detailed designs for key components.
 - **Current Coverage:** Single asset simulation interface with interactive controls and visualization.
 - **Format:** HTML prototypes with CSS/JS and accompanying screenshots for reference.
