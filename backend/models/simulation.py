@@ -1,6 +1,6 @@
 """Models for asset simulations."""
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -27,6 +27,12 @@ class Simulation(Base):
     
     # Simple commission
     commission_fee_percent = Column(Float, default=0.0)
+
+    # Smart Features
+    dynamic_timing_enabled = Column(Boolean, default=False)
+    timing_aggressiveness = Column(Float, default=0.5)
+    dynamic_sizing_enabled = Column(Boolean, default=False)
+    sizing_multiplier = Column(Float, default=1.0)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

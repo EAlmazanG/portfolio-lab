@@ -62,7 +62,11 @@ class SimulationService:
                     end_date=data.end_date,
                     base_amount=data.base_amount,
                     frequency=data.frequency,
-                    commission_fee_percent=data.commission_fee_percent
+                    commission_fee_percent=data.commission_fee_percent,
+                    dynamic_timing_enabled=data.dynamic_timing_enabled,
+                    timing_aggressiveness=data.timing_aggressiveness,
+                    dynamic_sizing_enabled=data.dynamic_sizing_enabled,
+                    sizing_multiplier=data.sizing_multiplier
                 )
                 db.add(sim)
                 db.commit()
