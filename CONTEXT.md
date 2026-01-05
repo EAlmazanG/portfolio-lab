@@ -112,23 +112,40 @@ To validate the hypothesis, every simulation must be compared against:
 
 ### 3.4. Frontend (Next.js)
 - **Architecture:** Next.js Application organized into three main functional tabs.
+- **Prototypes:** Detailed UI designs available in `stitch/` folder:
+  - **Format:** HTML files with embedded CSS/JS and accompanying PNG screenshots.
+  - **Location:** Organized by feature/component (e.g., `stitch/single_asset_simulation/`).
+  - **Current Assets:** Single asset simulation prototype (`code.html` + `screen.png`).
 - **Tabs:**
-    1.  **Asset:**
-        *   Select Asset.
-        *   Toggle Commission/Fees.
-        *   Enable/Disable specific Features (Timing, Sizing).
-        *   Adjust Parameters (limit to 1 parameter per feature for initial version).
-        *   Run Simulation & View Results (Charts: Value vs. Time, ROI vs. Time).
-        *   Compare vs. Baseline.
-    2.  **Portfolio:**
-        *   Build Portfolio (Select multiple assets and weights).
-        *   Configure Portfolio-level features (Rebalancing rules).
-        *   Run Simulation & View Aggregate Results.
-        *   Compare vs. Portfolio Baseline.
-    3.  **Optimizer:**
-        *   Batch simulation runner.
-        *   Iterate through parameter ranges to find optimal settings for a specific asset or portfolio.
-        *   Display best performing configurations.
+
+    1.  **Asset Tab:**
+        *   **Asset Selection:** Dropdown/combobox to select from available assets in database.
+        *   **Commission Toggle:** Checkbox to enable/disable trading fees and commissions.
+        *   **Feature Selection:** Enable/disable specific features per asset (Timing, Sizing, etc.).
+        *   **Parameter Adjustment:** Sliders/inputs for each selected feature (limited to 1 parameter per feature).
+        *   **Simulation Control:** Run button to execute simulation with current configuration.
+        *   **Results Visualization:** Charts showing value and ROI over time.
+        *   **Baseline Comparison:** Side-by-side comparison with standard DCA results.
+        *   **Persistence:** Save/load functionality for asset simulation configurations.
+
+    2.  **Portfolio Tab:**
+        *   **Portfolio Construction:** Multi-select interface to add assets to portfolio with weight allocation (percentage-based).
+        *   **Asset-Level Features:** For each portfolio asset, enable/disable features and adjust parameters (1 parameter per feature).
+        *   **Portfolio-Level Features:** When multiple assets exist, enable portfolio-wide features (Smart Rebalancing, etc.).
+        *   **Simulation Execution:** Launch portfolio simulations with all configured assets and features.
+        *   **Results Display:**
+            - **Baselines:** Standard portfolio performance (fixed allocations, regular rebalancing).
+            - **Results:** Interactive charts showing portfolio value, individual asset performance, and total ROI.
+            - **Comparisons:** Detailed comparisons between smart strategies vs. baselines (both asset-level and portfolio-level).
+        *   **Persistence:** Save/load functionality for complete portfolio configurations.
+
+    3.  **Optimizer Tab:**
+        *   **Scope Selection:** Choose between single asset or existing portfolio for optimization.
+        *   **Feature Configuration:** Select features and define parameter ranges for iteration.
+        *   **Batch Execution:** Run multiple simulations varying parameters across defined ranges.
+        *   **Optimization Results:** Display best-performing parameter combinations with performance metrics.
+        *   **Persistence:** Save/load functionality for optimization configurations and results.
+
 - **Persistence:**
     *   Save/Load constructed Portfolios.
     *   Save/Load Simulation Results (Asset & Optimization runs).
@@ -162,9 +179,10 @@ To validate the hypothesis, every simulation must be compared against:
     *   Implement Commission Logic.
     *   Create API Endpoints for Asset Simulation.
 4.  **Asset Frontend:**
-    *   Build "Asset" Tab.
-    *   Connect to Backend API.
-    *   Visualize charts and comparisons.
+    *   Reference `stitch/single_asset_simulation/` prototypes for UI design.
+    *   Build "Asset" Tab with asset selection, feature toggles, and parameter controls.
+    *   Connect to Backend API for simulation execution.
+    *   Implement charts for value/ROI visualization and baseline comparisons.
 5.  **Portfolio Engine (Backend):**
     *   Implement Portfolio Construction & Weighting.
     *   Implement Rebalancing Logic (Standard & Smart).
@@ -200,6 +218,11 @@ To validate the hypothesis, every simulation must be compared against:
     - **Interval Support:** Support for multiple timeframes (1d, 1wk, 1mo).
     - **Maintenance:** List, delete, and configure ingestion settings (years, interval).
 - **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting` with cascading deletes.
+
+### 6.3. UI/UX Design Prototypes
+- **Stitch Prototypes:** Available in `stitch/` folder with detailed designs for key components.
+- **Current Coverage:** Single asset simulation interface with interactive controls and visualization.
+- **Format:** HTML prototypes with CSS/JS and accompanying screenshots for reference.
 
 ---
 
