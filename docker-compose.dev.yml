@@ -16,11 +16,13 @@ services:
   backend:
     build: ./backend
     container_name: portfolio-lab-backend-dev
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    working_dir: /app
     volumes:
-      - ./backend:/app # Mount code for hot reloading
+      - .:/app # Mount project root
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PYTHONPATH: /app
     ports:
       - "8000:8000"
     depends_on:

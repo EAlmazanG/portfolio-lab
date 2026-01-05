@@ -211,15 +211,19 @@ To validate the hypothesis, every simulation must be compared against:
 
 ### 6.2. Data Ingestion & Management (v0.2)
 - **Yahoo Finance Client:** Robust integration for fetching OHLCV data and asset metadata.
-- **Interactive CLI Tool:** A comprehensive data manager (`make cli`) featuring:
-    - **Smart Search:** Semantic search with category suggestions (Crypto, Stocks, Indices, Commodities).
-    - **Detailed View:** Deep-dive into asset descriptions, sectors, and exchanges before adding.
-    - **Intelligent Sync:** Automatic back-filling of missing historical data based on configurable look-back periods.
-    - **Interval Support:** Support for multiple timeframes (1d, 1wk, 1mo).
-    - **Maintenance:** List, delete, and configure ingestion settings (years, interval).
-- **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting` with cascading deletes.
+- **Interactive CLI Tool:** A comprehensive data manager (`make cli`).
+- **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting`.
 
-### 6.3. UI/UX Design Prototypes
+### 6.3. Asset Simulation Engine (v0.3 Baseline)
+- **Core Engine:** Implemented `SimulationEngine` for Baseline DCA calculations using Pandas.
+- **Database Models:** Added `Simulation` and `SimulationResult` tables to store configurations and performance metrics.
+- **API Endpoints:**
+    - `GET /api/v1/simulations/assets`: List available assets for simulation.
+    - `POST /api/v1/simulations/run`: Execute a baseline DCA simulation and persist results.
+- **Features:** Supports custom date ranges, investment amounts, and frequencies (daily, weekly, monthly).
+- **Architecture:** Decoupled simulation logic from persistence using a Service layer.
+
+### 6.4. UI/UX Design Prototypes
 - **Stitch Prototypes:** Available in `stitch/` folder with detailed designs for key components.
 - **Current Coverage:** Single asset simulation interface with interactive controls and visualization.
 - **Format:** HTML prototypes with CSS/JS and accompanying screenshots for reference.

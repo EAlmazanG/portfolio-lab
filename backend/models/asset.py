@@ -16,8 +16,9 @@ class Asset(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship with market data
+    # Relationships
     market_data = relationship("MarketData", back_populates="asset", cascade="all, delete-orphan")
+    simulations = relationship("Simulation", back_populates="asset", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Asset(ticker='{self.ticker}', name='{self.name}')>"
