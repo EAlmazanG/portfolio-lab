@@ -19,7 +19,15 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
-  ArrowUpRight
+  ArrowUpRight,
+  Clock,
+  Layout,
+  PieChart,
+  Activity,
+  CreditCard,
+  Scale,
+  Coins,
+  History
 } from "lucide-react";
 import { 
   getAssets, 
@@ -223,7 +231,10 @@ export default function AssetSimulationPage() {
 
           {/* 1. Asset & Dates Section */}
           <div className="px-6 py-4 flex flex-col gap-4 border-b border-border-dark/30">
-            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">1. Asset & Timeline</h3>
+            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+              <Layout size={14} className="text-primary" />
+              1. Asset & Timeline
+            </h3>
             <div className="flex flex-col gap-2">
               <label className="text-white text-[13px] font-medium opacity-80">Target Asset</label>
               <div className="relative">
@@ -267,7 +278,10 @@ export default function AssetSimulationPage() {
 
           {/* 2. Capital & Investment Section */}
           <div className="px-6 py-4 flex flex-col gap-4 border-b border-border-dark/30">
-            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">2. Capital & Strategy</h3>
+            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+              <Coins size={14} className="text-primary" />
+              2. Capital & Strategy
+            </h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
                 <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
@@ -329,7 +343,10 @@ export default function AssetSimulationPage() {
 
           {/* 3. Fees Section */}
           <div className="px-6 py-4 flex flex-col gap-4 border-b border-border-dark/30">
-            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">3. Commissions & Fees</h3>
+            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+              <CreditCard size={14} className="text-primary" />
+              3. Commissions & Fees
+            </h3>
             <div className="grid grid-cols-3 gap-3">
               <div className="flex flex-col gap-2">
                 <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
@@ -558,11 +575,14 @@ export default function AssetSimulationPage() {
                 {/* Main Chart Area */}
                 <div className="flex flex-col gap-6 mb-6">
                   {/* Portfolio Growth Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                       <div className="flex flex-col">
-                        <h3 className="text-white text-lg font-bold">Portfolio Value Growth</h3>
-                        <p className="text-text-secondary text-[11px]">Crecimiento del capital acumulado vs inversión base</p>
+                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
+                          <Activity size={18} className="text-primary" />
+                          Portfolio Value Growth
+                        </h3>
+                        <p className="text-text-secondary text-[11px]">Cumulative capital growth vs baseline investment</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                         <div 
@@ -663,11 +683,14 @@ export default function AssetSimulationPage() {
                   {/* Fees & Net Value Impact Section */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Cumulative Fees Over Time */}
-                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
                       <div className="flex justify-between items-center mb-6">
                         <div className="flex flex-col">
-                          <h3 className="text-white text-[16px] font-bold">Commissions Cost (Cumulative)</h3>
-                          <p className="text-text-secondary text-[11px]">Impacto total de comisiones acumuladas</p>
+                          <h3 className="text-white text-[16px] font-bold flex items-center gap-2">
+                            <CreditCard size={16} className="text-red-400" />
+                            Commissions Cost
+                          </h3>
+                          <p className="text-text-secondary text-[11px]">Cumulative fees impact over time</p>
                         </div>
                         <div className="text-right">
                           <p className="text-red-400 text-lg font-bold tabular-nums">-${simulation.results.total_fees.toLocaleString()}</p>
@@ -713,10 +736,13 @@ export default function AssetSimulationPage() {
                     </div>
 
                     {/* Gross vs Net Final Value */}
-                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 flex flex-col justify-between">
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 flex flex-col justify-between shadow-sm">
                       <div className="flex flex-col gap-1 mb-4">
-                        <h3 className="text-white text-[16px] font-bold">Gross vs Net Value</h3>
-                        <p className="text-text-secondary text-[11px]">Diferencia entre el valor bruto y el valor neto tras comisiones</p>
+                        <h3 className="text-white text-[16px] font-bold flex items-center gap-2">
+                          <Scale size={16} className="text-primary" />
+                          Gross vs Net Value
+                        </h3>
+                        <p className="text-text-secondary text-[11px]">Profitability impact after all fees</p>
                       </div>
                       
                       <div className="flex-1 flex flex-col justify-center gap-6">
@@ -890,10 +916,13 @@ export default function AssetSimulationPage() {
                   </div>
 
                   {/* Asset Accumulation Mini Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 h-fit">
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 h-fit shadow-sm">
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex flex-col">
-                        <h4 className="text-white font-bold">Asset Accumulation</h4>
+                        <h4 className="text-white font-bold flex items-center gap-2">
+                          <PieChart size={16} className="text-primary" />
+                          Asset Accumulation
+                        </h4>
                         <p className="text-text-secondary text-[11px]">Cumulative units over time</p>
                       </div>
                       <div className="text-right">
@@ -921,16 +950,6 @@ export default function AssetSimulationPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-dark/50">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 size={12} className="text-primary" />
-                        <span className="text-[10px] text-text-secondary uppercase font-bold tracking-wider">Historical growth</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                        <TrendingUp size={10} />
-                        <span className="text-[10px] font-black italic">ASSET ACCUMULATION</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </>
@@ -952,10 +971,10 @@ export default function AssetSimulationPage() {
         <aside className="hidden xl:flex w-[320px] flex-col border-l border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10">
           <div className="p-6 border-b border-border-dark/30">
             <h2 className="text-white text-lg font-bold flex items-center gap-2">
-              <Calendar size={18} className="text-primary" />
+              <History size={18} className="text-primary" />
               Past Simulations
             </h2>
-            <p className="text-text-secondary text-[11px] mt-1">Recupera análisis anteriores</p>
+            <p className="text-text-secondary text-[11px] mt-1">Recover your previous analyses</p>
           </div>
 
           <div className="flex-1">
@@ -978,7 +997,7 @@ export default function AssetSimulationPage() {
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
                           <span className="text-white font-black text-base group-hover:text-primary transition-colors tracking-tight">{item.asset_ticker}</span>
-                            <span className={cn(
+                          <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
                             item.total_return_percent >= 0 ? "bg-primary/10 text-primary" : "bg-red-400/10 text-red-400"
                           )}>
@@ -987,15 +1006,21 @@ export default function AssetSimulationPage() {
                         </div>
                         <span className="text-text-secondary text-[11px] font-medium opacity-70 line-clamp-1">{item.asset_name}</span>
                       </div>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirm(item.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[9px] text-text-secondary font-mono flex items-center gap-1">
+                          <Clock size={10} />
+                          {new Date(item.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(item.id);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Compact Metric Grid */}
@@ -1011,8 +1036,10 @@ export default function AssetSimulationPage() {
                         </span>
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Gross Profit</span>
-                        <span className="text-white text-xs font-medium">${item.gross_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                        <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Fees Impact</span>
+                        <span className="text-red-400 text-xs font-medium">
+                          {((item.total_fees / (item.final_value + item.total_fees)) * 100).toFixed(1)}%
+                        </span>
                       </div>
                       <div className="flex flex-col">
                         <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">vs Baseline</span>

@@ -80,6 +80,7 @@ class SimulationHistoryItem(BaseModel):
     total_invested: float
     gross_profit: float
     net_profit: float
+    total_fees: float
     total_return_percent: float
     smart_vs_baseline_diff: float
     created_at: datetime

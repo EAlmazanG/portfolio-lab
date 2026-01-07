@@ -48,6 +48,7 @@ class SimulationService:
                         "total_invested": result.total_invested,
                         "gross_profit": round(float(gross_profit), 2),
                         "net_profit": round(float(net_profit), 2),
+                        "total_fees": round(float(result.total_fees or 0.0), 2),
                         "total_return_percent": result.total_return_percent,
                         "smart_vs_baseline_diff": round(float(smart_vs_baseline), 2),
                         "created_at": sim.created_at
