@@ -10,9 +10,13 @@ class SimulationBase(BaseModel):
     asset_id: int
     start_date: datetime
     end_date: datetime
+    initial_capital: float = Field(default=0.0, ge=0)
     base_amount: float = Field(gt=0)
     frequency: str = Field(pattern="^(daily|weekly|monthly)$")
+    investment_mode: str = Field(default="per_contribution", pattern="^(annual|per_contribution)$")
     commission_fee_percent: float = Field(default=0.0, ge=0)
+    minimum_fee_per_trade: float = Field(default=0.0, ge=0)
+    maintenance_fee_annual_percent: float = Field(default=0.0, ge=0)
     dynamic_timing_enabled: bool = Field(default=False)
     timing_aggressiveness: float = Field(default=0.5, ge=0, le=1)
     dynamic_sizing_enabled: bool = Field(default=False)
@@ -27,8 +31,10 @@ class SimulationCreate(SimulationBase):
 class PortfolioPoint(BaseModel):
     """Single point in portfolio history."""
     date: str
-    value: float
+    price: float
     invested: float
+    baseline_value: float
+    smart_value: float
 
 
 class SimulationResultSchema(BaseModel):
@@ -38,6 +44,8 @@ class SimulationResultSchema(BaseModel):
     total_return_percent: float
     avg_purchase_price: float
     total_assets_accumulated: float
+    baseline_final_value: float
+    baseline_return_percent: float
     portfolio_history: List[PortfolioPoint]
 
 

@@ -37,7 +37,15 @@ class SimulationService:
         dca_result = engine.run_baseline_dca(
             base_amount=data.base_amount,
             frequency=data.frequency,
-            commission_percent=data.commission_fee_percent
+            initial_capital=data.initial_capital,
+            investment_mode=data.investment_mode,
+            commission_percent=data.commission_fee_percent,
+            minimum_fee_per_trade=data.minimum_fee_per_trade,
+            maintenance_fee_annual_percent=data.maintenance_fee_annual_percent,
+            dynamic_timing_enabled=data.dynamic_timing_enabled,
+            timing_aggressiveness=data.timing_aggressiveness,
+            dynamic_sizing_enabled=data.dynamic_sizing_enabled,
+            sizing_multiplier=data.sizing_multiplier
         )
         
         result_schema = SimulationResultSchema(
@@ -46,6 +54,8 @@ class SimulationService:
             total_return_percent=dca_result.total_return_percent,
             avg_purchase_price=dca_result.avg_purchase_price,
             total_assets_accumulated=dca_result.total_assets_accumulated,
+            baseline_final_value=dca_result.baseline_final_value,
+            baseline_return_percent=dca_result.baseline_return_percent,
             portfolio_history=dca_result.portfolio_history
         )
         
@@ -60,9 +70,13 @@ class SimulationService:
                     asset_id=data.asset_id,
                     start_date=data.start_date,
                     end_date=data.end_date,
+                    initial_capital=data.initial_capital,
                     base_amount=data.base_amount,
                     frequency=data.frequency,
+                    investment_mode=data.investment_mode,
                     commission_fee_percent=data.commission_fee_percent,
+                    minimum_fee_per_trade=data.minimum_fee_per_trade,
+                    maintenance_fee_annual_percent=data.maintenance_fee_annual_percent,
                     dynamic_timing_enabled=data.dynamic_timing_enabled,
                     timing_aggressiveness=data.timing_aggressiveness,
                     dynamic_sizing_enabled=data.dynamic_sizing_enabled,

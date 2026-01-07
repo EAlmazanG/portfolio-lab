@@ -7,8 +7,10 @@ export interface Asset {
 
 export interface PortfolioPoint {
   date: string;
-  value: number;
+  price: number;
   invested: number;
+  baseline_value: number;
+  smart_value: number;
 }
 
 export interface SimulationResults {
@@ -18,15 +20,21 @@ export interface SimulationResults {
   avg_purchase_price: number;
   total_assets_accumulated: number;
   portfolio_history: PortfolioPoint[];
+  baseline_final_value: number;
+  baseline_return_percent: number;
 }
 
 export interface SimulationConfig {
   asset_id: number;
   start_date: string;
   end_date: string;
+  initial_capital: number;
   base_amount: number;
   frequency: 'daily' | 'weekly' | 'monthly';
+  investment_mode: 'annual' | 'per_contribution';
   commission_fee_percent: number;
+  minimum_fee_per_trade: number;
+  maintenance_fee_annual_percent: number;
 }
 
 export interface SimulationResponse {

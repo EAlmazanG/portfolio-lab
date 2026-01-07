@@ -22,11 +22,15 @@ class Simulation(Base):
     # Configuration
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
+    initial_capital = Column(Float, default=0.0)
     base_amount = Column(Float, nullable=False)  # e.g., $500
     frequency = Column(String(20), nullable=False)  # 'daily', 'weekly', 'monthly'
+    investment_mode = Column(String(20), default="per_contribution")  # 'annual' or 'per_contribution'
     
-    # Simple commission
+    # Fees
     commission_fee_percent = Column(Float, default=0.0)
+    minimum_fee_per_trade = Column(Float, default=0.0)
+    maintenance_fee_annual_percent = Column(Float, default=0.0)
 
     # Smart Features
     dynamic_timing_enabled = Column(Boolean, default=False)
