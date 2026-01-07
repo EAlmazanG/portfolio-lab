@@ -2,15 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area 
-} from "recharts";
-import { 
   TrendingUp, 
   TrendingDown, 
   Calendar, 
@@ -24,7 +15,11 @@ import {
   Settings as SettingsIcon,
   Search,
   Info,
-  Trash2
+  Trash2,
+  AlertTriangle,
+  X,
+  CheckCircle2,
+  ArrowUpRight
 } from "lucide-react";
 import { 
   getAssets, 
@@ -41,6 +36,18 @@ import {
 } from "../types/simulation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  AreaChart, 
+  Area,
+  BarChart,
+  Bar,
+  Cell
+} from "recharts";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -52,6 +59,7 @@ export default function AssetSimulationPage() {
   const [simulation, setSimulation] = useState<SimulationResponse | null>(null);
   const [history, setHistory] = useState<SimulationHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -140,13 +148,11 @@ export default function AssetSimulationPage() {
     }
   };
 
-  const handleDeleteSimulation = async (e: any, id: number) => {
-    e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this simulation?")) return;
-    
+  const handleDeleteSimulation = async (id: number) => {
     try {
       await deleteSimulation(id);
       if (simulation?.id === id) setSimulation(null);
+      setDeleteConfirm(null);
       loadHistory();
     } catch (error) {
       console.error("Error deleting simulation:", error);
@@ -158,6 +164,35 @@ export default function AssetSimulationPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="size-16 rounded-full bg-red-400/10 flex items-center justify-center text-red-400 mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">Delete Simulation?</h3>
+            <p className="text-text-secondary text-sm text-center mb-8">
+              This action cannot be undone. All data associated with this simulation will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-6 py-3 rounded-xl border border-border-active bg-surface-dark text-white font-bold hover:bg-border-active transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleDeleteSimulation(deleteConfirm)}
+                className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top Navigation */}
       <header className="flex items-center justify-between border-b border-border-dark px-6 py-3 flex-shrink-0 z-20 bg-background-dark">
         <div className="flex items-center gap-4 text-white">
@@ -438,21 +473,21 @@ export default function AssetSimulationPage() {
             {simulation ? (
               <>
                 <header className="flex justify-between items-start mb-8">
-                  <div>
-                    <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Simulation Results</h2>
-                    <div className="flex items-center gap-2 text-text-secondary text-sm">
-                      <Calendar size={14} />
-                      <span>{new Date(simulation.config.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(simulation.config.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                      <span className="mx-2">•</span>
-                      <span>{selectedAsset?.name}</span>
+                    <div className="flex flex-col">
+                      <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Simulation Results</h2>
+                      <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
+                        <Calendar size={14} />
+                        <span>{new Date(simulation.config.start_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(simulation.config.end_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span className="mx-2 opacity-30">•</span>
+                        <span className="text-primary font-bold tracking-tight">{selectedAsset?.name} ({selectedAsset?.ticker})</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-text-secondary text-xs uppercase font-bold tracking-widest mb-1">Final Portfolio Value</p>
-                    <h2 className="text-primary text-4xl font-black tabular-nums">
-                      ${simulation.results.final_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </h2>
-                  </div>
+            <div className="text-right">
+              <p className="text-text-secondary text-[10px] uppercase font-black tracking-[0.2em] mb-1 opacity-60">Final Portfolio Value</p>
+              <h2 className="text-primary text-4xl font-black tabular-nums tracking-tighter drop-shadow-[0_0_15px_rgba(19,236,91,0.2)]">
+                ${simulation.results.final_value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h2>
+            </div>
                 </header>
 
                 {/* KPI Cards */}
@@ -467,7 +502,7 @@ export default function AssetSimulationPage() {
                       <div className="group/info relative cursor-help">
                         <Info size={14} className="text-text-secondary" />
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                          Porcentaje de ganancia o pérdida total incluyendo las estrategias inteligentes aplicadas sobre el capital invertido.
+                          Total return percentage including the smart strategies applied over the invested capital.
                         </div>
                       </div>
                     </div>
@@ -489,7 +524,7 @@ export default function AssetSimulationPage() {
                       <div className="group/info relative cursor-help">
                         <Info size={14} className="text-text-secondary" />
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                          Retorno que habrías obtenido con una estrategia de inversión recurrente fija (DCA básico) sin ajustes dinámicos.
+                          Return you would have obtained with a fixed recurring investment strategy (Standard DCA) without dynamic adjustments.
                         </div>
                       </div>
                     </div>
@@ -509,7 +544,7 @@ export default function AssetSimulationPage() {
                       <div className="group/info relative cursor-help">
                         <Info size={14} className="text-text-secondary" />
                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                          Cantidad total de dinero de tu bolsillo que ha sido invertida en el activo a lo largo de todo el periodo.
+                          Total amount of money out of your pocket that has been invested in the asset throughout the entire period.
                         </div>
                       </div>
                     </div>
@@ -789,7 +824,7 @@ export default function AssetSimulationPage() {
                       <div className="group/info relative cursor-help">
                         <Info size={14} className="text-text-secondary" />
                         <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                          Comparativa detallada entre la estrategia base y la optimizada.
+                          Detailed comparison between the baseline and optimized strategy.
                         </div>
                       </div>
                     </div>
@@ -800,7 +835,7 @@ export default function AssetSimulationPage() {
                           <div className="group/info relative cursor-help">
                             <Info size={12} className="text-text-secondary/50" />
                             <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                              Precio medio al que has comprado el activo durante todo el periodo.
+                              The average price at which you bought the asset during the entire period.
                             </div>
                           </div>
                         </div>
@@ -815,7 +850,7 @@ export default function AssetSimulationPage() {
                           <div className="group/info relative cursor-help">
                             <Info size={12} className="text-text-secondary/50" />
                             <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                              Cantidad total de unidades del activo acumuladas.
+                              Total units of the asset accumulated.
                             </div>
                           </div>
                         </div>
@@ -829,7 +864,7 @@ export default function AssetSimulationPage() {
                           <div className="group/info relative cursor-help">
                             <Info size={12} className="text-text-secondary/50" />
                             <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                              Suma total de comisiones por compra y mantenimiento anual.
+                              Total sum of purchase and annual maintenance fees.
                             </div>
                           </div>
                         </div>
@@ -843,7 +878,7 @@ export default function AssetSimulationPage() {
                           <div className="group/info relative cursor-help">
                             <Info size={12} className="text-text-secondary/50" />
                             <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                              Mejora en el precio medio respecto a la compra única al inicio.
+                              Improvement in the average price compared to buying all at once on day one.
                             </div>
                           </div>
                         </div>
@@ -856,25 +891,45 @@ export default function AssetSimulationPage() {
 
                   {/* Asset Accumulation Mini Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 h-fit">
-                    <h4 className="text-white font-bold mb-4">Asset Accumulation</h4>
-                    <div className="flex flex-wrap items-center gap-4 mb-4">
-                      <div className="flex-1 min-w-[120px]">
-                        <p className="text-xs text-text-secondary mb-1">Total {selectedAsset?.ticker}</p>
-                        <p className="text-2xl font-bold text-white">{simulation.results.total_assets_accumulated.toFixed(4)}</p>
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex flex-col">
+                        <h4 className="text-white font-bold">Asset Accumulation</h4>
+                        <p className="text-text-secondary text-[11px]">Cumulative units over time</p>
                       </div>
-                      <div className="hidden sm:block h-12 w-px bg-border-dark"></div>
-                      <div className="flex-1 min-w-[120px]">
-                        <p className="text-xs text-text-secondary mb-1">Smart Benefit</p>
-                        <p className="text-xl font-bold text-primary">+{ (simulation.results.total_assets_accumulated * 0.02).toFixed(4) }</p>
+                      <div className="text-right">
+                        <p className="text-white text-xl font-black">{simulation.results.total_assets_accumulated.toFixed(4)}</p>
+                        <p className="text-text-secondary text-[10px] uppercase font-bold tracking-widest">{selectedAsset?.ticker}</p>
                       </div>
                     </div>
-                    {/* Visual Bar Representation */}
-                    <div className="flex items-end gap-1 h-[60px] mt-4">
-                      {[40, 50, 80, 60, 45, 90, 70, 85, 55, 65, 75, 95].map((h, i) => (
-                        <div key={i} className="flex-1 bg-primary/10 rounded-t-sm relative group" style={{ height: `${h}%` }}>
-                          <div className="absolute bottom-0 w-full bg-primary/40 rounded-t-sm" style={{ height: `${Math.random() * 60 + 20}%` }}></div>
-                        </div>
-                      ))}
+                    
+                    <div className="w-full h-[120px] mt-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={simulation.results.portfolio_history.filter((_, i) => i % 30 === 0 || i === simulation.results.portfolio_history.length - 1)}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis dataKey="date" hide />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                            itemStyle={{ fontSize: '11px', color: '#13ec5b' }}
+                            labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '10px' }}
+                            formatter={(value: any) => [`${Number(value).toFixed(4)} units`, "Accumulated"]}
+                          />
+                          <Bar dataKey="smart_value" radius={[2, 2, 0, 0]}>
+                            {simulation.results.portfolio_history.filter((_, i) => i % 30 === 0 || i === simulation.results.portfolio_history.length - 1).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill="#13ec5b" fillOpacity={0.3 + (index / 25)} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-dark/50">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={12} className="text-primary" />
+                        <span className="text-[10px] text-text-secondary uppercase font-bold tracking-wider">Historical growth</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        <TrendingUp size={10} />
+                        <span className="text-[10px] font-black italic">ASSET ACCUMULATION</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -915,38 +970,67 @@ export default function AssetSimulationPage() {
                     key={item.id}
                     onClick={() => handleLoadSimulation(item.id)}
                     className={cn(
-                      "p-4 border-b border-border-dark/30 hover:bg-surface-dark transition-colors text-left group cursor-pointer relative",
-                      simulation?.id === item.id && "bg-surface-dark border-l-2 border-l-primary"
+                      "p-5 border-b border-border-dark/30 hover:bg-surface-dark transition-all text-left group cursor-pointer relative",
+                      simulation?.id === item.id ? "bg-surface-dark border-l-4 border-l-primary shadow-inner" : "border-l-4 border-l-transparent"
                     )}
                   >
-                    <div className="flex justify-between items-start mb-1">
+                    <div className="flex justify-between items-start mb-3">
                       <div className="flex flex-col">
-                        <span className="text-white font-bold text-sm group-hover:text-primary transition-colors">{item.asset_ticker}</span>
-                        <span className="text-text-secondary text-[10px]">{item.asset_name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-black text-base group-hover:text-primary transition-colors tracking-tight">{item.asset_ticker}</span>
+                            <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
+                            item.total_return_percent >= 0 ? "bg-primary/10 text-primary" : "bg-red-400/10 text-red-400"
+                          )}>
+                            {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
+                          </span>
+                        </div>
+                        <span className="text-text-secondary text-[11px] font-medium opacity-70 line-clamp-1">{item.asset_name}</span>
                       </div>
                       <button 
-                        onClick={(e) => handleDeleteSimulation(e, item.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 text-text-secondary hover:text-red-400 transition-all rounded hover:bg-background-dark"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirm(item.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
-                    <div className="flex justify-between items-end mt-2">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-text-secondary text-[10px] flex items-center gap-1">
-                          <Calendar size={10} />
-                          {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
-                        </span>
-                        <span className="text-[10px] text-white/60 font-medium tracking-tight">
-                          Val: ${item.final_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+
+                    {/* Compact Metric Grid */}
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                      <div className="flex flex-col">
+                        <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span>
+                        <span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Net Profit</span>
+                        <span className={cn("text-xs font-bold", item.net_profit >= 0 ? "text-primary" : "text-red-400")}>
+                          ${item.net_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
-                      <span className={cn(
-                        "text-[13px] font-black",
-                        item.total_return_percent >= 0 ? "text-primary" : "text-red-400"
-                      )}>
-                        {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
+                      <div className="flex flex-col">
+                        <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Gross Profit</span>
+                        <span className="text-white text-xs font-medium">${item.gross_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">vs Baseline</span>
+                        <span className="text-primary text-xs font-black flex items-center gap-0.5">
+                          <TrendingUp size={10} />
+                          +{item.smart_vs_baseline_diff}%
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-border-dark/20 flex justify-between items-center">
+                      <span className="text-text-secondary text-[10px] flex items-center gap-1.5 font-medium">
+                        <Calendar size={12} className="opacity-50" />
+                        {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
                       </span>
+                      <div className="size-6 rounded-full bg-background-dark flex items-center justify-center border border-border-dark group-hover:border-primary transition-colors">
+                        <ArrowUpRight size={12} className="text-text-secondary group-hover:text-primary transition-colors" />
+                      </div>
                     </div>
                   </div>
                 ))}

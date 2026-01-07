@@ -34,6 +34,10 @@ class SimulationService:
                 # Get the latest result for this simulation
                 result = sim.results[0] if sim.results else None
                 if result:
+                    gross_profit = result.final_value + (result.total_fees or 0.0) - result.total_invested
+                    net_profit = result.final_value - result.total_invested
+                    smart_vs_baseline = result.total_return_percent - (result.baseline_return_percent or result.total_return_percent)
+                    
                     history.append({
                         "id": sim.id,
                         "asset_ticker": sim.asset.ticker,
@@ -41,7 +45,11 @@ class SimulationService:
                         "start_date": sim.start_date,
                         "end_date": sim.end_date,
                         "final_value": result.final_value,
+                        "total_invested": result.total_invested,
+                        "gross_profit": round(float(gross_profit), 2),
+                        "net_profit": round(float(net_profit), 2),
                         "total_return_percent": result.total_return_percent,
+                        "smart_vs_baseline_diff": round(float(smart_vs_baseline), 2),
                         "created_at": sim.created_at
                     })
             return history

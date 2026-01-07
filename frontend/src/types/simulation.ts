@@ -55,7 +55,11 @@ export interface SimulationHistoryItem {
   start_date: string;
   end_date: string;
   final_value: number;
+  total_invested: number;
+  gross_profit: number;
+  net_profit: number;
   total_return_percent: number;
+  smart_vs_baseline_diff: number;
   created_at: string;
 }
 
