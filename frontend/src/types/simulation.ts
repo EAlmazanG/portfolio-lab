@@ -11,6 +11,7 @@ export interface PortfolioPoint {
   invested: number;
   baseline_value: number;
   smart_value: number;
+  cumulative_fees: number;
 }
 
 export interface SimulationResults {
@@ -22,6 +23,10 @@ export interface SimulationResults {
   portfolio_history: PortfolioPoint[];
   baseline_final_value: number;
   baseline_return_percent: number;
+  baseline_avg_purchase_price: number;
+  dca_efficiency: number;
+  total_fees: number;
+  fees_percentage: number;
 }
 
 export interface SimulationConfig {

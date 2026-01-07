@@ -56,6 +56,10 @@ class SimulationService:
             total_assets_accumulated=dca_result.total_assets_accumulated,
             baseline_final_value=dca_result.baseline_final_value,
             baseline_return_percent=dca_result.baseline_return_percent,
+            baseline_avg_purchase_price=dca_result.baseline_avg_purchase_price,
+            dca_efficiency=dca_result.dca_efficiency,
+            total_fees=dca_result.total_fees,
+            fees_percentage=dca_result.fees_percentage,
             portfolio_history=dca_result.portfolio_history
         )
         

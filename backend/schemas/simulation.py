@@ -35,6 +35,7 @@ class PortfolioPoint(BaseModel):
     invested: float
     baseline_value: float
     smart_value: float
+    cumulative_fees: float
 
 
 class SimulationResultSchema(BaseModel):
@@ -46,6 +47,10 @@ class SimulationResultSchema(BaseModel):
     total_assets_accumulated: float
     baseline_final_value: float
     baseline_return_percent: float
+    baseline_avg_purchase_price: float
+    dca_efficiency: float
+    total_fees: float
+    fees_percentage: float
     portfolio_history: List[PortfolioPoint]
 
 

@@ -42,7 +42,9 @@ export default function AssetSimulationPage() {
     smart: true,
     baseline: true,
     invested: true,
-    price: true
+    price: true,
+    fees: true,
+    net: true
   });
 
   // Form state
@@ -462,7 +464,10 @@ export default function AssetSimulationPage() {
                   {/* Portfolio Growth Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                      <h3 className="text-white text-lg font-bold">Portfolio Value Growth</h3>
+                      <div className="flex flex-col">
+                        <h3 className="text-white text-lg font-bold">Portfolio Value Growth</h3>
+                        <p className="text-text-secondary text-[11px]">Crecimiento del capital acumulado vs inversión base</p>
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                         <div 
                           className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.smart && "opacity-30")}
@@ -559,6 +564,105 @@ export default function AssetSimulationPage() {
                     </div>
                   </div>
 
+                  {/* Fees & Net Value Impact Section */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Cumulative Fees Over Time */}
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col">
+                          <h3 className="text-white text-[16px] font-bold">Commissions Cost (Cumulative)</h3>
+                          <p className="text-text-secondary text-[11px]">Impacto total de comisiones acumuladas</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-red-400 text-lg font-bold tabular-nums">-${simulation.results.total_fees.toLocaleString()}</p>
+                          <p className="text-text-secondary text-[10px] uppercase font-bold tracking-widest">{simulation.results.fees_percentage}% del total invertido</p>
+                        </div>
+                      </div>
+                      <div className="w-full h-[200px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={simulation.results.portfolio_history}>
+                            <defs>
+                              <linearGradient id="gradientFees" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#f87171" stopOpacity={0.2}/>
+                                <stop offset="100%" stopColor="#f87171" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                            <XAxis dataKey="date" hide />
+                            <YAxis 
+                              stroke="#9db9a6" 
+                              fontSize={10} 
+                              tickLine={false} 
+                              axisLine={false}
+                              tickFormatter={(value) => `$${value}`}
+                            />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                              itemStyle={{ fontSize: '11px', color: '#f87171' }}
+                              labelStyle={{ color: '#9db9a6', marginBottom: '4px' }}
+                              formatter={(value: any) => [`$${value.toLocaleString()}`, "Fees"]}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="cumulative_fees" 
+                              stroke="#f87171" 
+                              strokeWidth={2}
+                              fillOpacity={1} 
+                              fill="url(#gradientFees)" 
+                              name="Cumulative Fees"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Gross vs Net Final Value */}
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 flex flex-col justify-between">
+                      <div className="flex flex-col gap-1 mb-4">
+                        <h3 className="text-white text-[16px] font-bold">Gross vs Net Value</h3>
+                        <p className="text-text-secondary text-[11px]">Diferencia entre el valor bruto y el valor neto tras comisiones</p>
+                      </div>
+                      
+                      <div className="flex-1 flex flex-col justify-center gap-6">
+                        {/* Comparison Bars */}
+                        <div className="space-y-4">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-bold">
+                              <span className="text-text-secondary uppercase">Gross Value (Before Fees)</span>
+                              <span className="text-white">${(simulation.results.final_value + simulation.results.total_fees).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="w-full h-4 bg-border-dark rounded-full overflow-hidden">
+                              <div className="h-full bg-slate-500 w-full"></div>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[11px] font-bold">
+                              <span className="text-primary uppercase">Net Value (After Fees)</span>
+                              <span className="text-primary">${simulation.results.final_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="w-full h-4 bg-border-dark rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-primary" 
+                                style={{ width: `${(simulation.results.final_value / (simulation.results.final_value + simulation.results.total_fees) * 100)}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Fee Impact Info */}
+                        <div className="bg-background-dark/50 rounded-lg p-4 border border-border-dark/50 flex items-center gap-4">
+                          <div className="size-12 rounded-full border-4 border-red-400/30 border-t-red-400 flex items-center justify-center text-[10px] font-bold text-red-400">
+                            {simulation.results.fees_percentage}%
+                          </div>
+                          <div>
+                            <p className="text-white text-xs font-bold">Coste de Comisiones</p>
+                            <p className="text-text-secondary text-[10px]">Las comisiones han reducido tu rentabilidad total en un {simulation.results.fees_percentage}%.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Asset Price Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
@@ -640,7 +744,7 @@ export default function AssetSimulationPage() {
                           </div>
                         </div>
                         <div className="flex gap-4 text-sm font-medium">
-                          <span className="text-slate-400" title="Standard DCA">${ (simulation.results.avg_purchase_price * 1.05).toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
+                          <span className="text-slate-400" title="Standard DCA">${ simulation.results.baseline_avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
                           <span className="text-primary" title="Smart DCA">${ simulation.results.avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
                         </div>
                       </div>
@@ -660,6 +764,20 @@ export default function AssetSimulationPage() {
                       </div>
                       <div className="flex justify-between items-center pb-2 border-b border-border-dark flex-wrap gap-2">
                         <div className="flex items-center gap-2">
+                          <span className="text-text-secondary text-sm">Total Fees Paid</span>
+                          <div className="group/info relative cursor-help">
+                            <Info size={12} className="text-text-secondary/50" />
+                            <div className="absolute bottom-full left-0 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
+                              Suma total de comisiones por compra y mantenimiento anual.
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-4 text-sm font-medium">
+                          <span className="text-red-400">${simulation.results.total_fees.toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pb-2 border-b border-border-dark flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
                           <span className="text-text-secondary text-sm">DCA Efficiency</span>
                           <div className="group/info relative cursor-help">
                             <Info size={12} className="text-text-secondary/50" />
@@ -669,7 +787,7 @@ export default function AssetSimulationPage() {
                           </div>
                         </div>
                         <div className="flex gap-4 text-sm font-medium">
-                          <span className="text-primary">+8.4%</span>
+                          <span className="text-primary">{simulation.results.dca_efficiency > 0 ? "+" : ""}{simulation.results.dca_efficiency}%</span>
                         </div>
                       </div>
                     </div>

@@ -23,6 +23,11 @@ class DCAResult:
     # Comparison metrics (Smart vs Baseline)
     baseline_final_value: float
     baseline_return_percent: float
+    baseline_avg_purchase_price: float
+    dca_efficiency: float
+    # Fee metrics
+    total_fees: float
+    fees_percentage: float
 
 
 class SimulationEngine:
@@ -117,6 +122,7 @@ class SimulationEngine:
 
         total_invested = 0.0
         assets_accumulated = 0.0
+        total_fees = 0.0
         portfolio_history = []
         
         # Maintenance fee logic: annual percent divided by trading days (~252)
@@ -126,6 +132,7 @@ class SimulationEngine:
         if initial_capital > 0:
             first_row = self.market_data.iloc[0]
             fee = max(initial_capital * (commission_percent / 100.0), minimum_fee_per_trade)
+            total_fees += fee
             net_initial = initial_capital - fee
             assets_accumulated += net_initial / first_row['close']
             total_invested += initial_capital
@@ -135,13 +142,16 @@ class SimulationEngine:
         for date, row in self.market_data.iterrows():
             # Apply maintenance fee if enabled (deduct from assets)
             if daily_maintenance_factor > 0 and assets_accumulated > 0:
-                # Deducting from assets accumulated (like an expense ratio)
+                # Calculate fee in $ for tracking (approximation)
+                maint_fee_today = (assets_accumulated * row['close']) * daily_maintenance_factor
+                total_fees += maint_fee_today
                 assets_accumulated *= (1.0 - daily_maintenance_factor)
 
             # Check if today is an investment day
             if current_investment_idx < len(investment_dates) and date >= investment_dates[current_investment_idx]:
                 # Calculate fee
                 fee = max(periodic_amount * (commission_percent / 100.0), minimum_fee_per_trade)
+                total_fees += fee
                 net_investment = periodic_amount - fee
                 
                 if net_investment > 0:
@@ -160,12 +170,17 @@ class SimulationEngine:
                 "price": round(float(row['close']), 2),
                 "invested": round(float(total_invested), 2),
                 "baseline_value": round(float(current_value), 2),
-                "smart_value": round(float(current_value), 2)  # Currently same as baseline
+                "smart_value": round(float(current_value), 2),  # Currently same as baseline
+                "cumulative_fees": round(float(total_fees), 2)
             })
 
         final_value = float(assets_accumulated * self.market_data.iloc[-1]['close'])
         total_return_percent = float(((final_value - total_invested) / total_invested * 100)) if total_invested > 0 else 0.0
         avg_price = float(total_invested / assets_accumulated) if assets_accumulated > 0 else 0.0
+        
+        # Calculate DCA Efficiency: How much better is our avg_price vs buying at the very start (Lump Sum)
+        first_price = float(self.market_data.iloc[0]['close'])
+        dca_efficiency = float(((first_price - avg_price) / first_price * 100)) if first_price > 0 else 0.0
 
         return DCAResult(
             portfolio_history=portfolio_history,
@@ -175,5 +190,9 @@ class SimulationEngine:
             avg_purchase_price=round(avg_price, 2),
             total_assets_accumulated=float(assets_accumulated),
             baseline_final_value=round(final_value, 2),
-            baseline_return_percent=round(total_return_percent, 2)
+            baseline_return_percent=round(total_return_percent, 2),
+            baseline_avg_purchase_price=round(avg_price, 2),
+            dca_efficiency=round(dca_efficiency, 2),
+            total_fees=round(float(total_fees), 2),
+            fees_percentage=round(float((total_fees / total_invested) * 100), 2) if total_invested > 0 else 0.0
         )
