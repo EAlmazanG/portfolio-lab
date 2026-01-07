@@ -723,6 +723,12 @@ video {
 .h-screen {
   height: 100vh;
 }
+.h-11 {
+  height: 2.75rem;
+}
+.h-\[150px\] {
+  height: 150px;
+}
 .w-10 {
   width: 2.5rem;
 }
@@ -802,11 +808,17 @@ video {
 .grid-cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .flex-col {
   flex-direction: column;
 }
 .flex-wrap {
   flex-wrap: wrap;
+}
+.items-start {
+  align-items: flex-start;
 }
 .items-end {
   align-items: flex-end;
@@ -846,6 +858,9 @@ video {
 }
 .gap-9 {
   gap: 2.25rem;
+}
+.gap-3 {
+  gap: 0.75rem;
 }
 .gap-x-6 {
   -moz-column-gap: 1.5rem;
@@ -925,6 +940,9 @@ video {
 .border-slate-500 {
   --tw-border-opacity: 1;
   border-color: rgb(100 116 139 / var(--tw-border-opacity, 1));
+}
+.border-border-dark\/30 {
+  border-color: rgb(40 57 46 / 0.3);
 }
 .bg-\[\#0b0f0c\] {
   --tw-bg-opacity: 1;
@@ -1017,6 +1035,10 @@ video {
   padding-top: 1rem;
   padding-bottom: 1rem;
 }
+.px-3 {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
 .pb-0\.5 {
   padding-bottom: 0.125rem;
 }
@@ -1034,6 +1056,9 @@ video {
 }
 .text-center {
   text-align: center;
+}
+.text-right {
+  text-align: right;
 }
 .font-display {
   font-family: var(--font-manrope), sans-serif;
@@ -1075,6 +1100,19 @@ video {
   font-size: 0.75rem;
   line-height: 1rem;
 }
+.text-\[11px\] {
+  font-size: 11px;
+}
+.text-\[12px\] {
+  font-size: 12px;
+}
+.text-\[13px\] {
+  font-size: 13px;
+}
+.text-4xl {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+}
 .font-bold {
   font-weight: 700;
 }
@@ -1084,6 +1122,19 @@ video {
 .font-normal {
   font-weight: 400;
 }
+.font-black {
+  font-weight: 900;
+}
+.uppercase {
+  text-transform: uppercase;
+}
+.italic {
+  font-style: italic;
+}
+.tabular-nums {
+  --tw-numeric-spacing: tabular-nums;
+  font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
+}
 .leading-normal {
   line-height: 1.5;
 }
@@ -1092,6 +1143,12 @@ video {
 }
 .tracking-\[-0\.015em\] {
   letter-spacing: -0.015em;
+}
+.tracking-wider {
+  letter-spacing: 0.05em;
+}
+.tracking-widest {
+  letter-spacing: 0.1em;
 }
 .text-background-dark {
   --tw-text-opacity: 1;
@@ -1135,6 +1192,18 @@ video {
 }
 .opacity-\[0\.03\] {
   opacity: 0.03;
+}
+.opacity-50 {
+  opacity: 0.5;
+}
+.opacity-80 {
+  opacity: 0.8;
+}
+.opacity-30 {
+  opacity: 0.3;
+}
+.opacity-70 {
+  opacity: 0.7;
 }
 .shadow {
   --tw-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);

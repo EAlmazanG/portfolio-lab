@@ -38,6 +38,12 @@ export default function AssetSimulationPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
   const [simulation, setSimulation] = useState<SimulationResponse | null>(null);
+  const [visibleSeries, setVisibleSeries] = useState({
+    smart: true,
+    baseline: true,
+    invested: true,
+    price: true
+  });
 
   // Form state
   const [config, setConfig] = useState<SimulationConfig & { 
@@ -117,14 +123,14 @@ export default function AssetSimulationPage() {
             <p className="text-text-secondary text-sm">Set up your smart DCA parameters.</p>
           </div>
 
-          {/* Asset & Base Settings */}
-          <div className="px-6 py-4 flex flex-col gap-5">
-            {/* Asset Selector */}
+          {/* 1. Asset & Dates Section */}
+          <div className="px-6 py-4 flex flex-col gap-4 border-b border-border-dark/30">
+            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">1. Asset & Timeline</h3>
             <div className="flex flex-col gap-2">
-              <label className="text-white text-sm font-medium leading-normal">Select Asset</label>
+              <label className="text-white text-[13px] font-medium opacity-80">Target Asset</label>
               <div className="relative">
                 <select 
-                  className="appearance-none flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-base font-normal leading-normal cursor-pointer"
+                  className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm font-normal cursor-pointer"
                   value={config.asset_id}
                   onChange={(e) => setConfig({ ...config, asset_id: Number(e.target.value) })}
                 >
@@ -135,32 +141,54 @@ export default function AssetSimulationPage() {
                   ))}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                  <ChevronDown size={16} />
+                  <ChevronDown size={14} />
                 </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              {/* Initial Capital */}
+            <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal">Initial Capital ($)</label>
+                <label className="text-white text-[13px] font-medium opacity-80">Start Date</label>
                 <input 
-                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-base placeholder:text-text-secondary"
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
+                  type="date" 
+                  value={config.start_date}
+                  onChange={(e) => setConfig({ ...config, start_date: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-white text-[13px] font-medium opacity-80">End Date</label>
+                <input 
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
+                  type="date" 
+                  value={config.end_date}
+                  onChange={(e) => setConfig({ ...config, end_date: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Capital & Investment Section */}
+          <div className="px-6 py-4 flex flex-col gap-4 border-b border-border-dark/30">
+            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">2. Capital & Strategy</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
+                <input 
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
                   type="number" 
                   value={config.initial_capital}
                   onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
                 />
               </div>
-              {/* Investment Mode */}
               <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal">Inv. Mode</label>
+                <label className="text-white text-[13px] font-medium opacity-80">Investment Mode</label>
                 <div className="relative">
                   <select 
-                    className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-sm cursor-pointer"
+                    className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-[12px] cursor-pointer"
                     value={config.investment_mode}
                     onChange={(e) => setConfig({ ...config, investment_mode: e.target.value as any })}
                   >
-                    <option value="per_contribution">Fixed per trade</option>
+                    <option value="per_contribution">Fixed Amount</option>
                     <option value="annual">Annual Budget</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
@@ -168,12 +196,13 @@ export default function AssetSimulationPage() {
                   </div>
                 </div>
               </div>
-              {/* Frequency */}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal">Frequency</label>
+                <label className="text-white text-[13px] font-medium opacity-80">Frequency</label>
                 <div className="relative">
                   <select 
-                    className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-sm cursor-pointer"
+                    className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm cursor-pointer"
                     value={config.frequency}
                     onChange={(e) => setConfig({ ...config, frequency: e.target.value as any })}
                   >
@@ -186,51 +215,28 @@ export default function AssetSimulationPage() {
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Investment Amount */}
-            <div className="flex flex-col gap-2">
-              <label className="text-white text-sm font-medium leading-normal">
-                {config.investment_mode === "annual" ? "Annual Total Budget ($)" : "Amount per Contribution ($)"}
-              </label>
-              <input 
-                className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-base placeholder:text-text-secondary"
-                type="number" 
-                value={config.base_amount}
-                onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
-              />
-            </div>
-
-            {/* Date Range */}
-            <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal">Start Date</label>
-                <input 
-                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-base"
-                  type="date" 
-                  value={config.start_date}
-                  onChange={(e) => setConfig({ ...config, start_date: e.target.value })}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal">End Date</label>
-                <input 
-                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-base"
-                  type="date" 
-                  value={config.end_date}
-                  onChange={(e) => setConfig({ ...config, end_date: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Fees */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal flex justify-between">
-                  <span>Comm. (%)</span>
+                <label className="text-white text-[13px] font-medium opacity-80">
+                  {config.investment_mode === "annual" ? "Annual ($)" : "Trade ($)"}
                 </label>
                 <input 
-                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-sm placeholder:text-text-secondary"
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                  type="number" 
+                  value={config.base_amount}
+                  onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Fees Section */}
+          <div className="px-6 py-4 flex flex-col gap-4 border-b border-border-dark/30">
+            <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">3. Commissions & Fees</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col gap-2">
+                <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
+                <input 
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
                   step="0.01" 
                   type="number" 
                   value={config.commission_fee_percent}
@@ -238,30 +244,25 @@ export default function AssetSimulationPage() {
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="text-white text-sm font-medium leading-normal flex justify-between">
-                  <span>Min. Fee ($)</span>
-                </label>
+                <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
                 <input 
-                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-sm placeholder:text-text-secondary"
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
                   step="0.1" 
                   type="number" 
                   value={config.minimum_fee_per_trade}
                   onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Number(e.target.value) })}
                 />
               </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-white text-sm font-medium leading-normal flex justify-between">
-                <span>Annual Maintenance Fee (%)</span>
-              </label>
-              <input 
-                className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-12 px-4 text-base placeholder:text-text-secondary"
-                step="0.01" 
-                type="number" 
-                value={config.maintenance_fee_annual_percent}
-                onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
-              />
+              <div className="flex flex-col gap-2">
+                <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
+                <input 
+                  className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                  step="0.01" 
+                  type="number" 
+                  value={config.maintenance_fee_annual_percent}
+                  onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
+                />
+              </div>
             </div>
           </div>
 
@@ -271,7 +272,7 @@ export default function AssetSimulationPage() {
           <div className="px-6 py-4 flex flex-col gap-6">
             <div className="flex items-center gap-2">
               <BrainCircuit className="text-primary" size={20} />
-              <h3 className="text-white text-base font-bold">Smart Features</h3>
+              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50">4. Smart Optimization</h3>
             </div>
 
             {/* Feature 1: Dynamic Timing */}
@@ -373,7 +374,7 @@ export default function AssetSimulationPage() {
           <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
             {simulation ? (
               <>
-                <header className="flex justify-between items-end mb-8">
+                <header className="flex justify-between items-start mb-8">
                   <div>
                     <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Simulation Results</h2>
                     <div className="flex items-center gap-2 text-text-secondary text-sm">
@@ -383,8 +384,11 @@ export default function AssetSimulationPage() {
                       <span>{selectedAsset?.name}</span>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    {/* Buttons removed as requested */}
+                  <div className="text-right">
+                    <p className="text-text-secondary text-xs uppercase font-bold tracking-widest mb-1">Final Portfolio Value</p>
+                    <h2 className="text-primary text-4xl font-black tabular-nums">
+                      ${simulation.results.final_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </h2>
                   </div>
                 </header>
 
@@ -454,120 +458,161 @@ export default function AssetSimulationPage() {
                 </div>
 
                 {/* Main Chart Area */}
-                <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 mb-6">
-                  <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                    <h3 className="text-white text-lg font-bold">Strategy Performance</h3>
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-primary"></span>
-                        <span className="text-xs text-white">Smart DCA</span>
+                <div className="flex flex-col gap-6 mb-6">
+                  {/* Portfolio Growth Chart */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
+                    <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                      <h3 className="text-white text-lg font-bold">Portfolio Value Growth</h3>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.smart && "opacity-30")}
+                          onClick={() => setVisibleSeries(prev => ({ ...prev, smart: !prev.smart }))}
+                        >
+                          <span className="w-3 h-3 rounded-full bg-primary"></span>
+                          <span className="text-xs text-white">Smart DCA</span>
+                        </div>
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.baseline && "opacity-30")}
+                          onClick={() => setVisibleSeries(prev => ({ ...prev, baseline: !prev.baseline }))}
+                        >
+                          <span className="w-3 h-3 rounded-full bg-slate-400"></span>
+                          <span className="text-xs text-text-secondary">Standard DCA</span>
+                        </div>
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.invested && "opacity-30")}
+                          onClick={() => setVisibleSeries(prev => ({ ...prev, invested: !prev.invested }))}
+                        >
+                          <span className="w-3 h-3 border-t-2 border-slate-500 border-dashed"></span>
+                          <span className="text-xs text-text-secondary">Invested Amount</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-slate-400"></span>
-                        <span className="text-xs text-text-secondary">Standard DCA</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 border-t-2 border-slate-500 border-dashed"></span>
-                        <span className="text-xs text-text-secondary">Invested Amount</span>
-                      </div>
-                      <div className="flex items-center gap-2">
+                    </div>
+                    <div className="w-full h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={simulation.results.portfolio_history}>
+                          <defs>
+                            <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
+                              <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(str) => {
+                              const date = new Date(str);
+                              return date.getFullYear().toString();
+                            }}
+                            interval={Math.floor(simulation.results.portfolio_history.length / 5)}
+                          />
+                          <YAxis 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                            itemStyle={{ fontSize: '12px', padding: '2px 0' }}
+                            labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
+                            formatter={(value: any, name: string) => [`$${value.toLocaleString()}`, name]}
+                          />
+                          {visibleSeries.smart && (
+                            <Area 
+                              type="monotone" 
+                              dataKey="smart_value" 
+                              stroke="#13ec5b" 
+                              strokeWidth={3}
+                              fillOpacity={1} 
+                              fill="url(#gradientSmart)" 
+                              name="Smart DCA"
+                            />
+                          )}
+                          {visibleSeries.baseline && (
+                            <Area 
+                              type="monotone" 
+                              dataKey="baseline_value" 
+                              stroke="#94a3b8" 
+                              strokeWidth={2}
+                              fill="transparent"
+                              name="Standard DCA"
+                            />
+                          )}
+                          {visibleSeries.invested && (
+                            <Area 
+                              type="monotone" 
+                              dataKey="invested" 
+                              stroke="#64748b" 
+                              strokeWidth={1.5}
+                              strokeDasharray="5 5"
+                              fill="transparent"
+                              name="Invested Amount"
+                            />
+                          )}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Asset Price Chart */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
+                    <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+                      <h3 className="text-white text-sm font-bold opacity-70 italic">Asset Price Reference</h3>
+                      <div 
+                        className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.price && "opacity-30")}
+                        onClick={() => setVisibleSeries(prev => ({ ...prev, price: !prev.price }))}
+                      >
                         <span className="w-3 h-3 rounded-full bg-blue-400"></span>
                         <span className="text-xs text-text-secondary">Asset Price</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="w-full h-[350px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={simulation.results.portfolio_history}>
-                        <defs>
-                          <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
-                            <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="gradientPrice" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.1}/>
-                            <stop offset="100%" stopColor="#60a5fa" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="#9db9a6" 
-                          fontSize={10} 
-                          tickLine={false} 
-                          axisLine={false}
-                          tickFormatter={(str) => {
-                            const date = new Date(str);
-                            return date.getFullYear().toString();
-                          }}
-                          interval={Math.floor(simulation.results.portfolio_history.length / 5)}
-                        />
-                        <YAxis 
-                          yAxisId="left"
-                          stroke="#9db9a6" 
-                          fontSize={10} 
-                          tickLine={false} 
-                          axisLine={false}
-                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                        />
-                        <YAxis 
-                          yAxisId="right"
-                          orientation="right"
-                          stroke="#60a5fa" 
-                          fontSize={10} 
-                          tickLine={false} 
-                          axisLine={false}
-                          tickFormatter={(value) => `$${value.toLocaleString()}`}
-                        />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
-                          itemStyle={{ fontSize: '12px', padding: '2px 0' }}
-                          labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
-                          formatter={(value: any, name: string) => {
-                            return [`$${value.toLocaleString()}`, name];
-                          }}
-                        />
-                        <Area 
-                          yAxisId="right"
-                          type="monotone" 
-                          dataKey="price" 
-                          stroke="#60a5fa" 
-                          strokeWidth={1}
-                          fillOpacity={1} 
-                          fill="url(#gradientPrice)" 
-                          name="Asset Price"
-                        />
-                        <Area 
-                          yAxisId="left"
-                          type="monotone" 
-                          dataKey="smart_value" 
-                          stroke="#13ec5b" 
-                          strokeWidth={3}
-                          fillOpacity={1} 
-                          fill="url(#gradientSmart)" 
-                          name="Smart DCA"
-                        />
-                        <Area 
-                          yAxisId="left"
-                          type="monotone" 
-                          dataKey="baseline_value" 
-                          stroke="#94a3b8" 
-                          strokeWidth={2}
-                          fill="transparent"
-                          name="Standard DCA"
-                        />
-                        <Area 
-                          yAxisId="left"
-                          type="monotone" 
-                          dataKey="invested" 
-                          stroke="#64748b" 
-                          strokeWidth={1.5}
-                          strokeDasharray="5 5"
-                          fill="transparent"
-                          name="Invested Amount"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                    <div className="w-full h-[150px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={simulation.results.portfolio_history}>
+                          <defs>
+                            <linearGradient id="gradientPrice" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.1}/>
+                              <stop offset="100%" stopColor="#60a5fa" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis 
+                            dataKey="date" 
+                            hide={true}
+                          />
+                          <YAxis 
+                            orientation="right"
+                            stroke="#60a5fa" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => `$${value.toLocaleString()}`}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                            itemStyle={{ fontSize: '11px', padding: '2px 0' }}
+                            labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '10px' }}
+                            formatter={(value: any) => [`$${value.toLocaleString()}`, "Price"]}
+                          />
+                          {visibleSeries.price && (
+                            <Area 
+                              type="monotone" 
+                              dataKey="price" 
+                              stroke="#60a5fa" 
+                              strokeWidth={1}
+                              fillOpacity={1} 
+                              fill="url(#gradientPrice)" 
+                              name="Asset Price"
+                            />
+                          )}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 </div>
 
