@@ -48,3 +48,14 @@ export interface SimulationResponse {
   results: SimulationResults;
 }
 
+export interface SimulationHistoryItem {
+  id: number;
+  asset_ticker: string;
+  asset_name: string;
+  start_date: string;
+  end_date: string;
+  final_value: number;
+  total_return_percent: number;
+  created_at: string;
+}
+

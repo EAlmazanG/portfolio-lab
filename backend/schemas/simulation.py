@@ -67,3 +67,18 @@ class AssetSimpleResponse(BaseModel):
     ticker: str
     name: str
     asset_type: str
+
+
+class SimulationHistoryItem(BaseModel):
+    """Simplified simulation info for the history list."""
+    id: int
+    asset_ticker: str
+    asset_name: str
+    start_date: datetime
+    end_date: datetime
+    final_value: float
+    total_return_percent: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

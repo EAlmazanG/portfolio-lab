@@ -70,6 +70,16 @@ class SimulationResult(Base):
     avg_purchase_price = Column(Float, nullable=True)
     total_assets_accumulated = Column(Float, nullable=True)
 
+    # Comparison metrics
+    baseline_final_value = Column(Float, nullable=True)
+    baseline_return_percent = Column(Float, nullable=True)
+    baseline_avg_purchase_price = Column(Float, nullable=True)
+    dca_efficiency = Column(Float, nullable=True)
+
+    # Fee metrics
+    total_fees = Column(Float, nullable=True)
+    fees_percentage = Column(Float, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):

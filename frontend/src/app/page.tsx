@@ -23,10 +23,22 @@ import {
   LineChart as LineChartIcon,
   Settings as SettingsIcon,
   Search,
-  Info
+  Info,
+  Trash2
 } from "lucide-react";
-import { getAssets, runSimulation } from "../lib/api";
-import { Asset, SimulationConfig, SimulationResponse } from "../types/simulation";
+import { 
+  getAssets, 
+  runSimulation, 
+  getSimulationHistory, 
+  getSimulationDetails,
+  deleteSimulation
+} from "../lib/api";
+import { 
+  Asset, 
+  SimulationConfig, 
+  SimulationResponse, 
+  SimulationHistoryItem 
+} from "../types/simulation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -38,6 +50,8 @@ export default function AssetSimulationPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
   const [simulation, setSimulation] = useState<SimulationResponse | null>(null);
+  const [history, setHistory] = useState<SimulationHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -70,6 +84,18 @@ export default function AssetSimulationPage() {
     sizing_multiplier: 2.5,
   });
 
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const data = await getSimulationHistory();
+      setHistory(data);
+    } catch (error) {
+      console.error("Error loading history:", error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
     getAssets().then((data: Asset[]) => {
       setAssets(data);
@@ -77,6 +103,7 @@ export default function AssetSimulationPage() {
         setConfig((prev) => ({ ...prev, asset_id: data[0].id }));
       }
     });
+    loadHistory();
   }, []);
 
   const handleRunSimulation = async () => {
@@ -85,11 +112,45 @@ export default function AssetSimulationPage() {
     try {
       const results = await runSimulation(config as any);
       setSimulation(results);
+      loadHistory(); // Refresh history
     } catch (error) {
       console.error("Error running simulation:", error);
       alert("Error running simulation. Check console.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLoadSimulation = async (id: number) => {
+    setLoading(true);
+    try {
+      const details = await getSimulationDetails(id);
+      setSimulation(details);
+      // Update config form to match the loaded simulation
+      setConfig({
+        ...details.config,
+        start_date: details.config.start_date.split("T")[0],
+        end_date: details.config.end_date.split("T")[0],
+      } as any);
+    } catch (error) {
+      console.error("Error loading simulation details:", error);
+      alert("Error loading simulation details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSimulation = async (e: any, id: number) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this simulation?")) return;
+    
+    try {
+      await deleteSimulation(id);
+      if (simulation?.id === id) setSimulation(null);
+      loadHistory();
+    } catch (error) {
+      console.error("Error deleting simulation:", error);
+      alert("Error deleting simulation.");
     }
   };
 
@@ -831,6 +892,68 @@ export default function AssetSimulationPage() {
             )}
           </div>
         </main>
+
+        {/* Right Sidebar: History */}
+        <aside className="hidden xl:flex w-[320px] flex-col border-l border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10">
+          <div className="p-6 border-b border-border-dark/30">
+            <h2 className="text-white text-lg font-bold flex items-center gap-2">
+              <Calendar size={18} className="text-primary" />
+              Past Simulations
+            </h2>
+            <p className="text-text-secondary text-[11px] mt-1">Recupera análisis anteriores</p>
+          </div>
+
+          <div className="flex-1">
+            {loadingHistory ? (
+              <div className="p-10 text-center text-text-secondary text-sm">Loading...</div>
+            ) : history.length === 0 ? (
+              <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">No historical data yet</div>
+            ) : (
+              <div className="flex flex-col">
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleLoadSimulation(item.id)}
+                    className={cn(
+                      "p-4 border-b border-border-dark/30 hover:bg-surface-dark transition-colors text-left group cursor-pointer relative",
+                      simulation?.id === item.id && "bg-surface-dark border-l-2 border-l-primary"
+                    )}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <div className="flex flex-col">
+                        <span className="text-white font-bold text-sm group-hover:text-primary transition-colors">{item.asset_ticker}</span>
+                        <span className="text-text-secondary text-[10px]">{item.asset_name}</span>
+                      </div>
+                      <button 
+                        onClick={(e) => handleDeleteSimulation(e, item.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-text-secondary hover:text-red-400 transition-all rounded hover:bg-background-dark"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <div className="flex justify-between items-end mt-2">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-text-secondary text-[10px] flex items-center gap-1">
+                          <Calendar size={10} />
+                          {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
+                        </span>
+                        <span className="text-[10px] text-white/60 font-medium tracking-tight">
+                          Val: ${item.final_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      <span className={cn(
+                        "text-[13px] font-black",
+                        item.total_return_percent >= 0 ? "text-primary" : "text-red-400"
+                      )}>
+                        {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
       </div>
     </div>
   );
