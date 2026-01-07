@@ -210,3 +210,5 @@ __marimo__/
 .cursorrules
 .DS_Store
 stitch/.DS_Store
+/frontend/.next/cache
+/frontend/.next/cache
