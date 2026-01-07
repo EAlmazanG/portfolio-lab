@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from typing import List
+from datetime import datetime
 
 from backend.schemas.simulation import (
     SimulationCreate, 
@@ -18,6 +19,17 @@ router = APIRouter(prefix="/simulations", tags=["simulations"])
 async def get_assets():
     """List all available assets for simulation."""
     return SimulationService.get_assets()
+
+
+@router.get("/assets/{asset_id}/history")
+async def get_asset_history(asset_id: int, start_date: str, end_date: str):
+    """Get historical price data for an asset."""
+    try:
+        start = datetime.fromisoformat(start_date)
+        end = datetime.fromisoformat(end_date)
+        return SimulationService.get_asset_history(asset_id, start, end)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/history", response_model=List[SimulationHistoryItem])

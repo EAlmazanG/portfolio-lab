@@ -15,6 +15,21 @@ class SimulationService:
     """Service to handle simulation logic and persistence."""
 
     @staticmethod
+    def get_asset_history(asset_id: int, start_date: datetime, end_date: datetime):
+        """Returns historical price data for an asset."""
+        engine = SimulationEngine(asset_id, start_date, end_date)
+        if engine.market_data.empty:
+            return []
+        
+        history = []
+        for date, row in engine.market_data.iterrows():
+            history.append({
+                "date": date.strftime("%Y-%m-%d"),
+                "price": round(float(row['close']), 2)
+            })
+        return history
+
+    @staticmethod
     def get_assets():
         """Returns all active assets."""
         db = SessionLocal()

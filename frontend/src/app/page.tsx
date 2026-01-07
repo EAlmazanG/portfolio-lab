@@ -28,14 +28,17 @@ import {
   CreditCard,
   Scale,
   Coins,
-  History
+  History,
+  Plus,
+  RefreshCcw
 } from "lucide-react";
 import { 
   getAssets, 
   runSimulation, 
   getSimulationHistory, 
   getSimulationDetails,
-  deleteSimulation
+  deleteSimulation,
+  getAssetHistory
 } from "../lib/api";
 import { 
   Asset, 
@@ -71,6 +74,8 @@ export default function AssetSimulationPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [collapsedHistory, setCollapsedHistory] = useState<Record<number, boolean>>({});
+  const [assetPreviewData, setAssetPreviewData] = useState<{date: string, price: number}[]>([]);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -115,19 +120,36 @@ export default function AssetSimulationPage() {
     }
   };
 
+  const loadAssetPreview = async (assetId: number) => {
+    if (!assetId) return;
+    setLoadingPreview(true);
+    try {
+      const data = await getAssetHistory(assetId, config.start_date, config.end_date);
+      setAssetPreviewData(data);
+    } catch (error) {
+      console.error("Error loading asset preview:", error);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
   useEffect(() => {
     getAssets().then((data: Asset[]) => {
       setAssets(data);
-      if (data.length > 0) {
-        setConfig((prev) => ({ ...prev, asset_id: data[0].id }));
-      }
     });
     loadHistory();
   }, []);
 
+  const handleNewSimulation = () => {
+    setSimulation(null);
+    setAssetPreviewData([]);
+    setConfig(prev => ({ ...prev, asset_id: 0 }));
+  };
+
   const handleRunSimulation = async () => {
     setLoading(true);
     setSimulation(null); // Clear previous results to avoid undefined issues
+    setAssetPreviewData([]); // Clear preview when running simulation
     try {
       const results = await runSimulation(config as any);
       setSimulation(results);
@@ -227,6 +249,16 @@ export default function AssetSimulationPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar: Configuration */}
         <aside className="w-full max-w-[400px] flex flex-col border-r border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10 shadow-xl">
+          <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
+            <button 
+              onClick={handleNewSimulation}
+              className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
+            >
+              <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
+              New Simulation
+            </button>
+          </div>
+
           <div className="p-6 pb-2">
             <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left pb-1">Configuration</h1>
             <p className="text-text-secondary text-sm">Set up your smart DCA parameters.</p>
@@ -255,8 +287,22 @@ export default function AssetSimulationPage() {
                     <select 
                       className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm font-normal cursor-pointer"
                       value={config.asset_id}
-                      onChange={(e) => setConfig({ ...config, asset_id: Number(e.target.value) })}
+                      onChange={(e) => {
+                        const newId = Number(e.target.value);
+                        setConfig({ ...config, asset_id: newId });
+                        if (newId === 0) {
+                          setAssetPreviewData([]);
+                          setSimulation(null);
+                        } else if (!simulation) {
+                          loadAssetPreview(newId);
+                        } else {
+                          // If changing asset after simulation, revert to preview mode
+                          setSimulation(null);
+                          loadAssetPreview(newId);
+                        }
+                      }}
                     >
+                      <option value={0} disabled>Select an asset...</option>
                       {assets.map((asset) => (
                         <option key={asset.id} value={asset.id}>
                           {asset.name} ({asset.ticker})
@@ -275,7 +321,10 @@ export default function AssetSimulationPage() {
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
                       type="date" 
                       value={config.start_date}
-                      onChange={(e) => setConfig({ ...config, start_date: e.target.value })}
+                      onChange={(e) => {
+                        setConfig({ ...config, start_date: e.target.value });
+                        if (!simulation) loadAssetPreview(config.asset_id);
+                      }}
                     />
                   </div>
                   <div className="flex flex-col gap-2">
@@ -284,7 +333,10 @@ export default function AssetSimulationPage() {
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
                       type="date" 
                       value={config.end_date}
-                      onChange={(e) => setConfig({ ...config, end_date: e.target.value })}
+                      onChange={(e) => {
+                        setConfig({ ...config, end_date: e.target.value });
+                        if (!simulation) loadAssetPreview(config.asset_id);
+                      }}
                     />
                   </div>
                 </div>
@@ -547,7 +599,7 @@ export default function AssetSimulationPage() {
           <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
             {simulation ? (
               <>
-                <header className="flex justify-between items-start mb-8">
+                <header className="flex justify-between items-start mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="flex flex-col">
                       <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Simulation Results</h2>
                       <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
@@ -566,7 +618,7 @@ export default function AssetSimulationPage() {
                 </header>
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500 delay-75">
                   {/* Card 1: Smart DCA */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -631,7 +683,7 @@ export default function AssetSimulationPage() {
                 </div>
 
                 {/* Main Chart Area */}
-                <div className="flex flex-col gap-6 mb-6">
+                <div className="flex flex-col gap-6 mb-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-150">
                   {/* Portfolio Growth Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
@@ -739,7 +791,7 @@ export default function AssetSimulationPage() {
                   </div>
 
                   {/* Fees & Net Value Impact Section */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-200">
                     {/* Cumulative Fees Over Time */}
                     <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
                       <div className="flex justify-between items-center mb-6">
@@ -844,7 +896,7 @@ export default function AssetSimulationPage() {
                   </div>
 
                   {/* Asset Price Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-300">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
                       <h3 className="text-white text-sm font-bold opacity-70 italic">Asset Price Reference</h3>
                       <div 
@@ -900,7 +952,7 @@ export default function AssetSimulationPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-10 animate-in fade-in slide-in-from-top-4 duration-500 delay-500">
                   {/* Performance Metrics Table */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 h-fit">
                     <div className="flex items-center gap-2 mb-4">
@@ -1011,14 +1063,106 @@ export default function AssetSimulationPage() {
                   </div>
                 </div>
               </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="size-20 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-6">
-                  <Sliders size={40} className="text-primary" />
+            ) : assetPreviewData.length > 0 ? (
+              <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+                <header className="flex flex-col">
+                  <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Market Overview</h2>
+                  <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
+                    <LineChartIcon size={14} className="text-primary" />
+                    <span>Historical performance for </span>
+                    <span className="text-primary font-bold">{selectedAsset?.name} ({selectedAsset?.ticker})</span>
+                  </div>
+                </header>
+
+                <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 shadow-xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                    <Activity size={200} className="text-primary" />
+                  </div>
+                  
+                  <div className="flex justify-between items-end mb-8 relative z-10">
+                    <div>
+                      <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Current Reference Price</p>
+                      <h3 className="text-white text-4xl font-black tabular-nums">
+                        ${assetPreviewData[assetPreviewData.length - 1].price.toLocaleString()}
+                      </h3>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Period Range</p>
+                      <p className="text-white font-bold">{new Date(config.start_date).getFullYear()} — {new Date(config.end_date).getFullYear()}</p>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-[400px] relative z-10">
+                    {loadingPreview && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background-dark/20 backdrop-blur-[2px] z-20 rounded-xl">
+                        <RefreshCcw size={30} className="text-primary animate-spin" />
+                      </div>
+                    )}
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={assetPreviewData}>
+                        <defs>
+                          <linearGradient id="previewGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.1}/>
+                            <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="#9db9a6" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(str) => {
+                            const date = new Date(str);
+                            return date.getFullYear().toString();
+                          }}
+                          interval={Math.floor(assetPreviewData.length / 6)}
+                        />
+                        <YAxis 
+                          stroke="#9db9a6" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => `$${value.toLocaleString()}`}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                          itemStyle={{ fontSize: '14px', color: '#13ec5b', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#9db9a6', marginBottom: '8px' }}
+                          formatter={(value: any) => [`$${value.toLocaleString()}`, "Price"]}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="price" 
+                          stroke="#13ec5b" 
+                          strokeWidth={3}
+                          fillOpacity={1} 
+                          fill="url(#previewGradient)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="mt-8 flex items-center justify-center gap-4 py-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <span className="text-primary">
+                      <Info size={18} />
+                    </span>
+                    <p className="text-sm text-text-secondary">
+                      You are viewing the <span className="text-white font-bold text-base">historical price</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Run Simulation</span> to analyze results.
+                    </p>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2">Ready to Simulate?</h2>
-                <p className="text-text-secondary max-w-md">
-                  Configure your smart DCA strategy parameters on the left and click "Run Simulation" to see the results.
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
+                <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group">
+                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
+                  <Sliders size={48} className="text-primary relative z-10" />
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-3">Ready to Start?</h2>
+                <p className="text-text-secondary max-w-sm leading-relaxed">
+                  Select an asset from the list to see its history and configure your smart DCA strategy.
                 </p>
               </div>
             )}
