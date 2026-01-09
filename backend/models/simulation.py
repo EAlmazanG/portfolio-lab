@@ -37,6 +37,11 @@ class Simulation(Base):
     timing_aggressiveness = Column(Float, default=0.5)
     dynamic_sizing_enabled = Column(Boolean, default=False)
     sizing_multiplier = Column(Float, default=1.0)
+    smart_indicator = Column(String(20), default="RSI")
+    rsi_threshold_low = Column(Float, default=30.0)
+    rsi_threshold_high = Column(Float, default=70.0)
+    ma_period_short = Column(Integer, default=50)
+    ma_period_long = Column(Integer, default=200)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

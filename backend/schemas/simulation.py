@@ -21,6 +21,11 @@ class SimulationBase(BaseModel):
     timing_aggressiveness: float = Field(default=0.5, ge=0, le=1)
     dynamic_sizing_enabled: bool = Field(default=False)
     sizing_multiplier: float = Field(default=1.0, ge=1, le=5)
+    smart_indicator: str = Field(default="RSI", pattern="^(RSI|MA|MACD)$")
+    rsi_threshold_low: float = Field(default=30.0, ge=0, le=100)
+    rsi_threshold_high: float = Field(default=70.0, ge=0, le=100)
+    ma_period_short: int = Field(default=50, ge=1)
+    ma_period_long: int = Field(default=200, ge=1)
 
 
 class SimulationCreate(SimulationBase):

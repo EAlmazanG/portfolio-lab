@@ -40,6 +40,15 @@ export interface SimulationConfig {
   commission_fee_percent: number;
   minimum_fee_per_trade: number;
   maintenance_fee_annual_percent: number;
+  dynamic_timing_enabled?: boolean;
+  timing_aggressiveness?: number;
+  dynamic_sizing_enabled?: boolean;
+  sizing_multiplier?: number;
+  smart_indicator?: 'RSI' | 'MA' | 'MACD';
+  rsi_threshold_low?: number;
+  rsi_threshold_high?: number;
+  ma_period_short?: number;
+  ma_period_long?: number;
 }
 
 export interface SimulationResponse {
@@ -63,4 +72,3 @@ export interface SimulationHistoryItem {
   smart_vs_baseline_diff: number;
   created_at: string;
 }
-

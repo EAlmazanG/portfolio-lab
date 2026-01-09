@@ -86,12 +86,7 @@ export default function AssetSimulationPage() {
   });
 
   // Form state
-  const [config, setConfig] = useState<SimulationConfig & { 
-    dynamic_timing_enabled: boolean, 
-    timing_aggressiveness: number,
-    dynamic_sizing_enabled: boolean,
-    sizing_multiplier: number
-  }>({
+  const [config, setConfig] = useState<SimulationConfig>({
     asset_id: 0,
     start_date: "2021-01-01",
     end_date: new Date().toISOString().split("T")[0],
@@ -106,6 +101,11 @@ export default function AssetSimulationPage() {
     timing_aggressiveness: 0.75,
     dynamic_sizing_enabled: true,
     sizing_multiplier: 2.5,
+    smart_indicator: 'RSI',
+    rsi_threshold_low: 30,
+    rsi_threshold_high: 70,
+    ma_period_short: 50,
+    ma_period_long: 200,
   });
 
   const loadHistory = async () => {
@@ -172,6 +172,14 @@ export default function AssetSimulationPage() {
         ...details.config,
         start_date: details.config.start_date.split("T")[0],
         end_date: details.config.end_date.split("T")[0],
+        // Ensure all smart fields are present (with defaults if missing)
+        smart_indicator: details.config.smart_indicator || 'RSI',
+        rsi_threshold_low: details.config.rsi_threshold_low || 30,
+        rsi_threshold_high: details.config.rsi_threshold_high || 70,
+        ma_period_short: details.config.ma_period_short || 50,
+        ma_period_long: details.config.ma_period_long || 200,
+        dynamic_timing_enabled: !!details.config.dynamic_timing_enabled,
+        dynamic_sizing_enabled: !!details.config.dynamic_sizing_enabled,
       } as any);
     } catch (error) {
       console.error("Error loading simulation details:", error);
@@ -492,6 +500,78 @@ export default function AssetSimulationPage() {
 
             {!collapsedSections.section4 && (
               <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
+                {/* Indicator Selection */}
+                <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                  <div className="flex flex-col gap-3">
+                    <label className="text-white text-[13px] font-medium opacity-80 flex items-center gap-2">
+                      <Activity size={14} className="text-primary" />
+                      Smart Indicator
+                    </label>
+                    <div className="relative">
+                      <select 
+                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-10 px-4 text-sm cursor-pointer"
+                        value={config.smart_indicator}
+                        onChange={(e) => setConfig({ ...config, smart_indicator: e.target.value as any })}
+                      >
+                        <option value="RSI">RSI (Relative Strength Index)</option>
+                        <option value="MA">Moving Average Crossover</option>
+                        <option value="MACD">MACD (Trend Following)</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                        <ChevronDown size={14} />
+                      </div>
+                    </div>
+
+                    {/* RSI Specific Params */}
+                    {config.smart_indicator === 'RSI' && (
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Oversold (Buy)</label>
+                          <input 
+                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                            type="number" 
+                            value={config.rsi_threshold_low}
+                            onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Overbought (Sell)</label>
+                          <input 
+                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                            type="number" 
+                            value={config.rsi_threshold_high}
+                            onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MA Specific Params */}
+                    {config.smart_indicator === 'MA' && (
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
+                          <input 
+                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                            type="number" 
+                            value={config.ma_period_short}
+                            onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Long Period</label>
+                          <input 
+                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                            type="number" 
+                            value={config.ma_period_long}
+                            onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Feature 1: Dynamic Timing */}
                 <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
                   <div className="flex justify-between items-center mb-4">

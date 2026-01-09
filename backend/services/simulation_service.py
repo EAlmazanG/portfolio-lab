@@ -98,7 +98,12 @@ class SimulationService:
                 dynamic_timing_enabled=sim.dynamic_timing_enabled,
                 timing_aggressiveness=sim.timing_aggressiveness,
                 dynamic_sizing_enabled=sim.dynamic_sizing_enabled,
-                sizing_multiplier=sim.sizing_multiplier
+                sizing_multiplier=sim.sizing_multiplier,
+                smart_indicator=sim.smart_indicator or "RSI",
+                rsi_threshold_low=sim.rsi_threshold_low or 30.0,
+                rsi_threshold_high=sim.rsi_threshold_high or 70.0,
+                ma_period_short=sim.ma_period_short or 50,
+                ma_period_long=sim.ma_period_long or 200
             )
             
             result_schema = SimulationResultSchema(
@@ -146,7 +151,12 @@ class SimulationService:
             dynamic_timing_enabled=data.dynamic_timing_enabled,
             timing_aggressiveness=data.timing_aggressiveness,
             dynamic_sizing_enabled=data.dynamic_sizing_enabled,
-            sizing_multiplier=data.sizing_multiplier
+            sizing_multiplier=data.sizing_multiplier,
+            smart_indicator=data.smart_indicator,
+            rsi_threshold_low=data.rsi_threshold_low,
+            rsi_threshold_high=data.rsi_threshold_high,
+            ma_period_short=data.ma_period_short,
+            ma_period_long=data.ma_period_long
         )
         
         result_schema = SimulationResultSchema(
@@ -185,7 +195,12 @@ class SimulationService:
                     dynamic_timing_enabled=data.dynamic_timing_enabled,
                     timing_aggressiveness=data.timing_aggressiveness,
                     dynamic_sizing_enabled=data.dynamic_sizing_enabled,
-                    sizing_multiplier=data.sizing_multiplier
+                    sizing_multiplier=data.sizing_multiplier,
+                    smart_indicator=data.smart_indicator,
+                    rsi_threshold_low=data.rsi_threshold_low,
+                    rsi_threshold_high=data.rsi_threshold_high,
+                    ma_period_short=data.ma_period_short,
+                    ma_period_long=data.ma_period_long
                 )
                 db.add(sim)
                 db.commit()
