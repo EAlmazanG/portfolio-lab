@@ -68,3 +68,13 @@ async def delete_simulation(simulation_id: int):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@router.delete("/all/delete", tags=["simulations"])
+async def delete_all_simulations():
+    """Delete all past simulations."""
+    try:
+        SimulationService.delete_all_simulations()
+        return {"status": "all deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")

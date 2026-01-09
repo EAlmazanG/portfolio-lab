@@ -76,6 +76,8 @@ export default function AssetSimulationPage() {
   const [collapsedHistory, setCollapsedHistory] = useState<Record<number, boolean>>({});
   const [assetPreviewData, setAssetPreviewData] = useState<{date: string, price: number}[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [showAssetWarning, setShowAssetWarning] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -146,7 +148,37 @@ export default function AssetSimulationPage() {
     setConfig(prev => ({ ...prev, asset_id: 0 }));
   };
 
+  const handleCollapseAllHistory = () => {
+    const allCollapsed: Record<number, boolean> = {};
+    history.forEach(item => {
+      allCollapsed[item.id] = true;
+    });
+    setCollapsedHistory(allCollapsed);
+  };
+
+  const handleDeleteAllSimulations = async () => {
+    try {
+      // In a real app, we might have a single endpoint for this.
+      // For now, let's delete them one by one or suggest adding a backend endpoint.
+      // But looking at current API, we only have deleteSimulation(id).
+      // Let's do it sequentially for now but inform about efficiency.
+      for (const item of history) {
+        await deleteSimulation(item.id);
+      }
+      setSimulation(null);
+      setHistory([]);
+      setShowDeleteAllConfirm(false);
+    } catch (error) {
+      console.error("Error deleting all simulations:", error);
+      alert("Error deleting all simulations.");
+    }
+  };
+
   const handleRunSimulation = async () => {
+    if (!config.asset_id || config.asset_id === 0) {
+      setShowAssetWarning(true);
+      return;
+    }
     setLoading(true);
     setSimulation(null); // Clear previous results to avoid undefined issues
     setAssetPreviewData([]); // Clear preview when running simulation
@@ -205,6 +237,56 @@ export default function AssetSimulationPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
+      {/* Asset Selection Warning Modal */}
+      {showAssetWarning && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="size-16 rounded-full bg-yellow-400/10 flex items-center justify-center text-yellow-400 mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">No Asset Selected</h3>
+            <p className="text-text-secondary text-sm text-center mb-8">
+              Please select an asset before running the simulation.
+            </p>
+            <button 
+              onClick={() => setShowAssetWarning(false)}
+              className="w-full px-6 py-3 rounded-xl bg-primary text-background-dark font-bold hover:bg-[#3af578] transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete All Confirmation Modal */}
+      {showDeleteAllConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="size-16 rounded-full bg-red-400/10 flex items-center justify-center text-red-400 mx-auto mb-6">
+              <Trash2 size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">Clear All History?</h3>
+            <p className="text-text-secondary text-sm text-center mb-8">
+              This will permanently delete all {history.length} simulations in your history. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteAllConfirm(false)}
+                className="flex-1 px-6 py-3 rounded-xl border border-border-active bg-surface-dark text-white font-bold hover:bg-border-active transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteAllSimulations}
+                className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -1252,11 +1334,29 @@ export default function AssetSimulationPage() {
         {/* Right Sidebar: History */}
         <aside className="hidden xl:flex w-[320px] flex-col border-l border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10">
           <div className="p-6 border-b border-border-dark/30">
-            <h2 className="text-white text-lg font-bold flex items-center gap-2">
-              <History size={18} className="text-primary" />
-              Past Simulations
-            </h2>
-            <p className="text-text-secondary text-[11px] mt-1">Recover your previous analyses</p>
+            <div className="flex justify-between items-start mb-1">
+              <h2 className="text-white text-lg font-bold flex items-center gap-2">
+                <History size={18} className="text-primary" />
+                Past Simulations
+              </h2>
+              <div className="flex gap-1">
+                <button 
+                  onClick={handleCollapseAllHistory}
+                  title="Minimize All"
+                  className="p-1.5 text-text-secondary hover:text-white transition-colors rounded-md hover:bg-surface-dark"
+                >
+                  <ChevronDown size={16} className="rotate-180" />
+                </button>
+                <button 
+                  onClick={() => setShowDeleteAllConfirm(true)}
+                  title="Delete All"
+                  className="p-1.5 text-text-secondary hover:text-red-400 transition-colors rounded-md hover:bg-red-400/10"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+            <p className="text-text-secondary text-[11px]">Recover your previous analyses</p>
           </div>
 
           <div className="flex-1">

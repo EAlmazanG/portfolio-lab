@@ -247,3 +247,13 @@ class SimulationService:
             db.commit()
         finally:
             db.close()
+
+    @staticmethod
+    def delete_all_simulations():
+        """Deletes all simulations and their results."""
+        db = SessionLocal()
+        try:
+            db.query(Simulation).delete()
+            db.commit()
+        finally:
+            db.close()
