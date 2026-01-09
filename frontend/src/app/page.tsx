@@ -78,6 +78,8 @@ export default function AssetSimulationPage() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [showAssetWarning, setShowAssetWarning] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -237,6 +239,46 @@ export default function AssetSimulationPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-8 left-8 z-[100] flex flex-col gap-4">
+        <button 
+          onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
+          className={cn(
+            "flex items-center justify-center size-12 rounded-full border shadow-2xl transition-all hover:scale-110 active:scale-95",
+            leftSidebarOpen 
+              ? "bg-surface-dark border-border-active text-primary" 
+              : "bg-primary border-primary text-background-dark"
+          )}
+          title={leftSidebarOpen ? "Hide Configuration" : "Show Configuration"}
+        >
+          {leftSidebarOpen ? <SettingsIcon size={20} /> : <Sliders size={20} />}
+        </button>
+        
+        <button 
+          onClick={handleRunSimulation}
+          disabled={loading}
+          className="flex items-center justify-center size-16 rounded-full bg-primary text-background-dark shadow-[0_0_20px_rgba(19,236,91,0.4)] hover:scale-110 active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+          title="Run Simulation"
+        >
+          {loading ? <RefreshCcw size={24} className="animate-spin" /> : <Play size={32} fill="currentColor" className="ml-1" />}
+        </button>
+      </div>
+
+      <div className="fixed bottom-8 right-8 z-[100]">
+        <button 
+          onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
+          className={cn(
+            "flex items-center justify-center size-14 rounded-full border shadow-2xl transition-all hover:scale-110 active:scale-95",
+            rightSidebarOpen 
+              ? "bg-surface-dark border-border-active text-primary" 
+              : "bg-primary border-primary text-background-dark"
+          )}
+          title={rightSidebarOpen ? "Hide History" : "Show History"}
+        >
+          <History size={24} />
+        </button>
+      </div>
+
       {/* Asset Selection Warning Modal */}
       {showAssetWarning && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -322,15 +364,18 @@ export default function AssetSimulationPage() {
           <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
             <LineChartIcon size={20} />
           </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em]">Portfolio-Lab</h2>
+          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em] hidden sm:block">Portfolio-Lab</h2>
         </div>
-        <div className="hidden md:flex flex-1 justify-end gap-8">
-          <div className="flex items-center gap-9">
-            <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Asset</a>
-            <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
-          </div>
-          <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
-             <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" alt="Profile" className="w-full h-full object-cover" />
+
+        <div className="flex flex-1 justify-end items-center gap-4">
+          <div className="hidden md:flex items-center gap-6 border-l border-border-dark pl-6">
+            <div className="flex items-center gap-6">
+              <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Asset</a>
+              <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
+            </div>
+            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
+               <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" alt="Profile" className="w-full h-full object-cover" />
+            </div>
           </div>
         </div>
       </header>
@@ -338,420 +383,407 @@ export default function AssetSimulationPage() {
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar: Configuration */}
-        <aside className="w-full max-w-[400px] flex flex-col border-r border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10 shadow-xl">
-          <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
-            <button 
-              onClick={handleNewSimulation}
-              className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
-            >
-              <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
-              New Simulation
-            </button>
-          </div>
-
-          <div className="p-6 pb-2">
-            <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left pb-1">Configuration</h1>
-            <p className="text-text-secondary text-sm">Set up your smart DCA parameters.</p>
-          </div>
-
-          {/* 1. Asset & Dates Section */}
-          <div className="border-b border-border-dark/30">
-            <div 
-              onClick={() => setCollapsedSections(prev => ({ ...prev, section1: !prev.section1 }))}
-              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-            >
-              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                <Layout size={14} className="text-primary" />
-                1. Asset & Timeline
-              </h3>
-              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section1 && "-rotate-90")}>
-                <ChevronDown size={14} />
-              </div>
-            </div>
-            
-            {!collapsedSections.section1 && (
-              <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
-                <div className="flex flex-col gap-2">
-                  <label className="text-white text-[13px] font-medium opacity-80">Target Asset</label>
-                  <div className="relative">
-                    <select 
-                      className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm font-normal cursor-pointer"
-                      value={config.asset_id}
-                      onChange={(e) => {
-                        const newId = Number(e.target.value);
-                        setConfig({ ...config, asset_id: newId });
-                        if (newId === 0) {
-                          setAssetPreviewData([]);
-                          setSimulation(null);
-                        } else if (!simulation) {
-                          loadAssetPreview(newId);
-                        } else {
-                          // If changing asset after simulation, revert to preview mode
-                          setSimulation(null);
-                          loadAssetPreview(newId);
-                        }
-                      }}
-                    >
-                      <option value={0} disabled>Select an asset...</option>
-                      {assets.map((asset) => (
-                        <option key={asset.id} value={asset.id}>
-                          {asset.name} ({asset.ticker})
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                      <ChevronDown size={14} />
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[13px] font-medium opacity-80">Start Date</label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
-                      type="date" 
-                      value={config.start_date}
-                      onChange={(e) => {
-                        setConfig({ ...config, start_date: e.target.value });
-                        if (!simulation) loadAssetPreview(config.asset_id);
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[13px] font-medium opacity-80">End Date</label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
-                      type="date" 
-                      value={config.end_date}
-                      onChange={(e) => {
-                        setConfig({ ...config, end_date: e.target.value });
-                        if (!simulation) loadAssetPreview(config.asset_id);
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 2. Capital & Investment Section */}
-          <div className="border-b border-border-dark/30">
-            <div 
-              onClick={() => setCollapsedSections(prev => ({ ...prev, section2: !prev.section2 }))}
-              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-            >
-              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                <Coins size={14} className="text-primary" />
-                2. Capital & Strategy
-              </h3>
-              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section2 && "-rotate-90")}>
-                <ChevronDown size={14} />
-              </div>
+        {leftSidebarOpen && (
+          <aside className="w-full max-w-[400px] flex flex-col border-r border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10 shadow-xl animate-in slide-in-from-left duration-300">
+            <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
+              <button 
+                onClick={handleNewSimulation}
+                className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
+              >
+                <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
+                New Simulation
+              </button>
             </div>
 
-            {!collapsedSections.section2 && (
-              <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
-                <div className="grid grid-cols-2 gap-3">
+            <div className="p-6 pb-2">
+              <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left pb-1">Configuration</h1>
+              <p className="text-text-secondary text-sm">Set up your smart DCA parameters.</p>
+            </div>
+
+            {/* 1. Asset & Dates Section */}
+            <div className="border-b border-border-dark/30">
+              <div 
+                onClick={() => setCollapsedSections(prev => ({ ...prev, section1: !prev.section1 }))}
+                className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+              >
+                <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                  <Layout size={14} className="text-primary" />
+                  1. Asset & Timeline
+                </h3>
+                <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section1 && "-rotate-90")}>
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+              
+              {!collapsedSections.section1 && (
+                <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
                   <div className="flex flex-col gap-2">
-                    <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
-                      type="number" 
-                      value={config.initial_capital}
-                      onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[13px] font-medium opacity-80">Investment Mode</label>
+                    <label className="text-white text-[13px] font-medium opacity-80">Target Asset</label>
                     <div className="relative">
                       <select 
-                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-[12px] cursor-pointer"
-                        value={config.investment_mode}
-                        onChange={(e) => setConfig({ ...config, investment_mode: e.target.value as any })}
+                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm font-normal cursor-pointer"
+                        value={config.asset_id}
+                        onChange={(e) => {
+                          const newId = Number(e.target.value);
+                          setConfig({ ...config, asset_id: newId });
+                          if (newId === 0) {
+                            setAssetPreviewData([]);
+                            setSimulation(null);
+                          } else if (!simulation) {
+                            loadAssetPreview(newId);
+                          } else {
+                            // If changing asset after simulation, revert to preview mode
+                            setSimulation(null);
+                            loadAssetPreview(newId);
+                          }
+                        }}
                       >
-                        <option value="per_contribution">Fixed Amount</option>
-                        <option value="annual">Annual Budget</option>
+                        <option value={0} disabled>Select an asset...</option>
+                        {assets.map((asset) => (
+                          <option key={asset.id} value={asset.id}>
+                            {asset.name} ({asset.ticker})
+                          </option>
+                        ))}
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
                         <ChevronDown size={14} />
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[13px] font-medium opacity-80">Frequency</label>
-                    <div className="relative">
-                      <select 
-                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm cursor-pointer"
-                        value={config.frequency}
-                        onChange={(e) => setConfig({ ...config, frequency: e.target.value as any })}
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                        <ChevronDown size={14} />
-                      </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[13px] font-medium opacity-80">Start Date</label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
+                        type="date" 
+                        value={config.start_date}
+                        onChange={(e) => {
+                          setConfig({ ...config, start_date: e.target.value });
+                          if (!simulation) loadAssetPreview(config.asset_id);
+                        }}
+                      />
                     </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[13px] font-medium opacity-80">
-                      {config.investment_mode === "annual" ? "Annual ($)" : "Trade ($)"}
-                    </label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
-                      type="number" 
-                      value={config.base_amount}
-                      onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
-                    />
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[13px] font-medium opacity-80">End Date</label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
+                        type="date" 
+                        value={config.end_date}
+                        onChange={(e) => {
+                          setConfig({ ...config, end_date: e.target.value });
+                          if (!simulation) loadAssetPreview(config.asset_id);
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* 3. Fees Section */}
-          <div className="border-b border-border-dark/30">
-            <div 
-              onClick={() => setCollapsedSections(prev => ({ ...prev, section3: !prev.section3 }))}
-              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-            >
-              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                <CreditCard size={14} className="text-primary" />
-                3. Commissions & Fees
-              </h3>
-              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section3 && "-rotate-90")}>
-                <ChevronDown size={14} />
-              </div>
-            </div>
-
-            {!collapsedSections.section3 && (
-              <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                      step="0.01" 
-                      type="number" 
-                      value={config.commission_fee_percent}
-                      onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                      step="0.1" 
-                      type="number" 
-                      value={config.minimum_fee_per_trade}
-                      onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
-                    <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                      step="0.01" 
-                      type="number" 
-                      value={config.maintenance_fee_annual_percent}
-                      onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 4. Smart Optimization Section */}
-          <div className="border-b border-border-dark/30">
-            <div 
-              onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
-              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-            >
-              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                <BrainCircuit size={14} className="text-primary" />
-                4. Smart Optimization
-              </h3>
-              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
-                <ChevronDown size={14} />
-              </div>
-            </div>
-
-            {!collapsedSections.section4 && (
-              <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
-                {/* Indicator Selection */}
-                <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                  <div className="flex flex-col gap-3">
-                    <label className="text-white text-[13px] font-medium opacity-80 flex items-center gap-2">
-                      <Activity size={14} className="text-primary" />
-                      Smart Indicator
-                    </label>
-                    <div className="relative">
-                      <select 
-                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-10 px-4 text-sm cursor-pointer"
-                        value={config.smart_indicator}
-                        onChange={(e) => setConfig({ ...config, smart_indicator: e.target.value as any })}
-                      >
-                        <option value="RSI">RSI (Relative Strength Index)</option>
-                        <option value="MA">Moving Average Crossover</option>
-                        <option value="MACD">MACD (Trend Following)</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                        <ChevronDown size={14} />
-                      </div>
-                    </div>
-
-                    {/* RSI Specific Params */}
-                    {config.smart_indicator === 'RSI' && (
-                      <div className="grid grid-cols-2 gap-3 mt-2">
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Oversold (Buy)</label>
-                          <input 
-                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                            type="number" 
-                            value={config.rsi_threshold_low}
-                            onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Overbought (Sell)</label>
-                          <input 
-                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                            type="number" 
-                            value={config.rsi_threshold_high}
-                            onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* MA Specific Params */}
-                    {config.smart_indicator === 'MA' && (
-                      <div className="grid grid-cols-2 gap-3 mt-2">
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
-                          <input 
-                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                            type="number" 
-                            value={config.ma_period_short}
-                            onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Long Period</label>
-                          <input 
-                            className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                            type="number" 
-                            value={config.ma_period_long}
-                            onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Feature 1: Dynamic Timing */}
-                <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex flex-col">
-                      <span className="text-white font-medium text-sm">Dynamic Timing</span>
-                      <span className="text-text-secondary text-xs">Adjust buy timing on volatility</span>
-                    </div>
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfig({ ...config, dynamic_timing_enabled: !config.dynamic_timing_enabled });
-                      }}
-                      className={cn(
-                        "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
-                        config.dynamic_timing_enabled ? "bg-primary" : "bg-border-dark"
-                      )}
-                    >
-                      <span className={cn(
-                        "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                        config.dynamic_timing_enabled ? "translate-x-5" : "translate-x-0"
-                      )} />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-xs text-text-secondary">
-                      <span>Conservative</span>
-                      <span className="text-primary font-bold">Aggressive ({config.timing_aggressiveness})</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="1" 
-                      step="0.05" 
-                      value={config.timing_aggressiveness}
-                      onChange={(e) => setConfig({ ...config, timing_aggressiveness: Number(e.target.value) })}
-                      className="w-full" 
-                    />
-                  </div>
-                </div>
-
-                {/* Feature 2: Dynamic Sizing */}
-                <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex flex-col">
-                      <span className="text-white font-medium text-sm">Dynamic Sizing</span>
-                      <span className="text-text-secondary text-xs">Increase amount on dips</span>
-                    </div>
-                    <div 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfig({ ...config, dynamic_sizing_enabled: !config.dynamic_sizing_enabled });
-                      }}
-                      className={cn(
-                        "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
-                        config.dynamic_sizing_enabled ? "bg-primary" : "bg-border-dark"
-                      )}
-                    >
-                      <span className={cn(
-                        "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                        config.dynamic_sizing_enabled ? "translate-x-5" : "translate-x-0"
-                      )} />
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-xs text-text-secondary">
-                      <span>1.0x</span>
-                      <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="5" 
-                      step="0.1" 
-                      value={config.sizing_multiplier}
-                      onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
-                      className="w-full" 
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="p-6 mt-auto border-t border-border-dark">
-            <button 
-              onClick={handleRunSimulation}
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3.5 text-background-dark text-base font-bold leading-normal hover:bg-[#3af578] transition-colors shadow-[0_0_15px_rgba(19,236,91,0.3)] disabled:opacity-50"
-            >
-              {loading ? "Calculating..." : (
-                <>
-                  <Play size={20} fill="currentColor" />
-                  Run Simulation
-                </>
               )}
-            </button>
-          </div>
-        </aside>
+            </div>
+
+            {/* 2. Capital & Investment Section */}
+            <div className="border-b border-border-dark/30">
+              <div 
+                onClick={() => setCollapsedSections(prev => ({ ...prev, section2: !prev.section2 }))}
+                className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+              >
+                <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                  <Coins size={14} className="text-primary" />
+                  2. Capital & Strategy
+                </h3>
+                <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section2 && "-rotate-90")}>
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+
+              {!collapsedSections.section2 && (
+                <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                        type="number" 
+                        value={config.initial_capital}
+                        onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[13px] font-medium opacity-80">Investment Mode</label>
+                      <div className="relative">
+                        <select 
+                          className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-[12px] cursor-pointer"
+                          value={config.investment_mode}
+                          onChange={(e) => setConfig({ ...config, investment_mode: e.target.value as any })}
+                        >
+                          <option value="per_contribution">Fixed Amount</option>
+                          <option value="annual">Annual Budget</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                          <ChevronDown size={14} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[13px] font-medium opacity-80">Frequency</label>
+                      <div className="relative">
+                        <select 
+                          className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm cursor-pointer"
+                          value={config.frequency}
+                          onChange={(e) => setConfig({ ...config, frequency: e.target.value as any })}
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                          <ChevronDown size={14} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[13px] font-medium opacity-80">
+                        {config.investment_mode === "annual" ? "Annual ($)" : "Trade ($)"}
+                      </label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                        type="number" 
+                        value={config.base_amount}
+                        onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Fees Section */}
+            <div className="border-b border-border-dark/30">
+              <div 
+                onClick={() => setCollapsedSections(prev => ({ ...prev, section3: !prev.section3 }))}
+                className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+              >
+                <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                  <CreditCard size={14} className="text-primary" />
+                  3. Commissions & Fees
+                </h3>
+                <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section3 && "-rotate-90")}>
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+
+              {!collapsedSections.section3 && (
+                <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                        step="0.01" 
+                        type="number" 
+                        value={config.commission_fee_percent}
+                        onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                        step="0.1" 
+                        type="number" 
+                        value={config.minimum_fee_per_trade}
+                        onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
+                      <input 
+                        className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                        step="0.01" 
+                        type="number" 
+                        value={config.maintenance_fee_annual_percent}
+                        onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Smart Optimization Section */}
+            <div className="border-b border-border-dark/30">
+              <div 
+                onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
+                className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+              >
+                <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                  <BrainCircuit size={14} className="text-primary" />
+                  4. Smart Optimization
+                </h3>
+                <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+
+              {!collapsedSections.section4 && (
+                <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
+                  {/* Indicator Selection */}
+                  <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                    <div className="flex flex-col gap-3">
+                      <label className="text-white text-[13px] font-medium opacity-80 flex items-center gap-2">
+                        <Activity size={14} className="text-primary" />
+                        Smart Indicator
+                      </label>
+                      <div className="relative">
+                        <select 
+                          className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-10 px-4 text-sm cursor-pointer"
+                          value={config.smart_indicator}
+                          onChange={(e) => setConfig({ ...config, smart_indicator: e.target.value as any })}
+                        >
+                          <option value="RSI">RSI (Relative Strength Index)</option>
+                          <option value="MA">Moving Average Crossover</option>
+                          <option value="MACD">MACD (Trend Following)</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                          <ChevronDown size={14} />
+                        </div>
+                      </div>
+
+                      {/* RSI Specific Params */}
+                      {config.smart_indicator === 'RSI' && (
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Oversold (Buy)</label>
+                            <input 
+                              className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                              type="number" 
+                              value={config.rsi_threshold_low}
+                              onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Overbought (Sell)</label>
+                            <input 
+                              className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                              type="number" 
+                              value={config.rsi_threshold_high}
+                              onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* MA Specific Params */}
+                      {config.smart_indicator === 'MA' && (
+                        <div className="grid grid-cols-2 gap-3 mt-2">
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
+                            <input 
+                              className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                              type="number" 
+                              value={config.ma_period_short}
+                              onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Long Period</label>
+                            <input 
+                              className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                              type="number" 
+                              value={config.ma_period_long}
+                              onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Feature 1: Dynamic Timing */}
+                  <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium text-sm">Dynamic Timing</span>
+                        <span className="text-text-secondary text-xs">Adjust buy timing on volatility</span>
+                      </div>
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfig({ ...config, dynamic_timing_enabled: !config.dynamic_timing_enabled });
+                        }}
+                        className={cn(
+                          "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
+                          config.dynamic_timing_enabled ? "bg-primary" : "bg-border-dark"
+                        )}
+                      >
+                        <span className={cn(
+                          "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                          config.dynamic_timing_enabled ? "translate-x-5" : "translate-x-0"
+                        )} />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs text-text-secondary">
+                        <span>Conservative</span>
+                        <span className="text-primary font-bold">Aggressive ({config.timing_aggressiveness})</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="1" 
+                        step="0.05" 
+                        value={config.timing_aggressiveness}
+                        onChange={(e) => setConfig({ ...config, timing_aggressiveness: Number(e.target.value) })}
+                        className="w-full" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feature 2: Dynamic Sizing */}
+                  <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium text-sm">Dynamic Sizing</span>
+                        <span className="text-text-secondary text-xs">Increase amount on dips</span>
+                      </div>
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfig({ ...config, dynamic_sizing_enabled: !config.dynamic_sizing_enabled });
+                        }}
+                        className={cn(
+                          "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
+                          config.dynamic_sizing_enabled ? "bg-primary" : "bg-border-dark"
+                        )}
+                      >
+                        <span className={cn(
+                          "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                          config.dynamic_sizing_enabled ? "translate-x-5" : "translate-x-0"
+                        )} />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-xs text-text-secondary">
+                        <span>1.0x</span>
+                        <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="5" 
+                        step="0.1" 
+                        value={config.sizing_multiplier}
+                        onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
+                        className="w-full" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
 
         {/* Main Content: Results */}
         <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
@@ -1332,143 +1364,145 @@ export default function AssetSimulationPage() {
         </main>
 
         {/* Right Sidebar: History */}
-        <aside className="hidden xl:flex w-[320px] flex-col border-l border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10">
-          <div className="p-6 border-b border-border-dark/30">
-            <div className="flex justify-between items-start mb-1">
-              <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                <History size={18} className="text-primary" />
-                Past Simulations
-              </h2>
-              <div className="flex gap-1">
-                <button 
-                  onClick={handleCollapseAllHistory}
-                  title="Minimize All"
-                  className="p-1.5 text-text-secondary hover:text-white transition-colors rounded-md hover:bg-surface-dark"
-                >
-                  <ChevronDown size={16} className="rotate-180" />
-                </button>
-                <button 
-                  onClick={() => setShowDeleteAllConfirm(true)}
-                  title="Delete All"
-                  className="p-1.5 text-text-secondary hover:text-red-400 transition-colors rounded-md hover:bg-red-400/10"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-            <p className="text-text-secondary text-[11px]">Recover your previous analyses</p>
-          </div>
-
-          <div className="flex-1">
-            {loadingHistory ? (
-              <div className="p-10 text-center text-text-secondary text-sm">Loading...</div>
-            ) : history.length === 0 ? (
-              <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">No historical data yet</div>
-            ) : (
-              <div className="flex flex-col">
-                {history.map((item) => (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "border-b border-border-dark/30 hover:bg-surface-dark/30 transition-all text-left relative overflow-hidden",
-                      simulation?.id === item.id ? "bg-surface-dark/50 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
-                    )}
+        {rightSidebarOpen && (
+          <aside className="flex w-[320px] flex-col border-l border-border-dark bg-background-dark overflow-y-auto custom-scrollbar z-10 animate-in slide-in-from-right duration-300 shadow-2xl">
+            <div className="p-6 border-b border-border-dark/30">
+              <div className="flex justify-between items-start mb-1">
+                <h2 className="text-white text-lg font-bold flex items-center gap-2">
+                  <History size={18} className="text-primary" />
+                  Past Simulations
+                </h2>
+                <div className="flex gap-1">
+                  <button 
+                    onClick={handleCollapseAllHistory}
+                    title="Minimize All"
+                    className="p-1.5 text-text-secondary hover:text-white transition-colors rounded-md hover:bg-surface-dark"
                   >
-                    {/* Header: Always visible */}
-                    <div 
-                      onClick={() => handleLoadSimulation(item.id)}
-                      className="p-4 cursor-pointer flex justify-between items-start group"
-                    >
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
-                          <span className="text-white font-black text-base group-hover:text-primary transition-colors tracking-tight">{item.asset_ticker}</span>
-                          <span className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
-                            item.total_return_percent >= 0 ? "bg-primary/10 text-primary" : "bg-red-400/10 text-red-400"
-                          )}>
-                            {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-text-secondary text-[10px] font-mono flex items-center gap-1">
-                            <Clock size={10} />
-                            {new Date(item.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                          <span className="text-text-secondary opacity-30 text-[10px]">•</span>
-                          <span className="text-text-secondary text-[10px] font-medium opacity-70 line-clamp-1">{item.asset_name}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-1">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm(item.id);
-                          }}
-                          className="p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCollapsedHistory(prev => ({ ...prev, [item.id]: !prev[item.id] }));
-                          }}
-                          className="p-2 text-text-secondary hover:text-white transition-colors"
-                        >
-                          <div className={cn("transition-transform duration-200", collapsedHistory[item.id] ? "-rotate-90" : "rotate-0")}>
-                            <ChevronDown size={14} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Details: Collapsible */}
-                    {!collapsedHistory[item.id] && (
-                      <div className="px-4 pb-4 animate-in slide-in-from-top-1 duration-200">
-                        <div className="grid grid-cols-2 gap-y-3 gap-x-4 bg-background-dark/40 rounded-xl p-3 border border-border-dark/20 shadow-inner">
-                          <div className="flex flex-col">
-                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span>
-                            <span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Net Profit</span>
-                            <span className={cn("text-xs font-bold", item.net_profit >= 0 ? "text-primary" : "text-red-400")}>
-                              ${item.net_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Fees Impact</span>
-                            <span className="text-red-400 text-xs font-medium">
-                              {((item.total_fees / (item.final_value + item.total_fees)) * 100).toFixed(1)}%
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">vs Baseline</span>
-                            <span className="text-primary text-xs font-black flex items-center gap-0.5">
-                              <TrendingUp size={10} />
-                              +{item.smart_vs_baseline_diff}%
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex justify-between items-center opacity-60">
-                          <span className="text-text-secondary text-[10px] flex items-center gap-1.5 font-medium">
-                            <Calendar size={12} className="opacity-50" />
-                            {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
-                          </span>
-                          <div className="size-5 rounded-full bg-background-dark flex items-center justify-center border border-border-dark">
-                            <ArrowUpRight size={10} className="text-text-secondary" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                    <ChevronDown size={16} className="rotate-180" />
+                  </button>
+                  <button 
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    title="Delete All"
+                    className="p-1.5 text-text-secondary hover:text-red-400 transition-colors rounded-md hover:bg-red-400/10"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
-        </aside>
+              <p className="text-text-secondary text-[11px]">Recover your previous analyses</p>
+            </div>
+
+            <div className="flex-1">
+              {loadingHistory ? (
+                <div className="p-10 text-center text-text-secondary text-sm">Loading...</div>
+              ) : history.length === 0 ? (
+                <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">No historical data yet</div>
+              ) : (
+                <div className="flex flex-col">
+                  {history.map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "border-b border-border-dark/30 hover:bg-surface-dark/30 transition-all text-left relative overflow-hidden",
+                        simulation?.id === item.id ? "bg-surface-dark/50 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
+                      )}
+                    >
+                      {/* Header: Always visible */}
+                      <div 
+                        onClick={() => handleLoadSimulation(item.id)}
+                        className="p-4 cursor-pointer flex justify-between items-start group"
+                      >
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-black text-base group-hover:text-primary transition-colors tracking-tight">{item.asset_ticker}</span>
+                            <span className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
+                              item.total_return_percent >= 0 ? "bg-primary/10 text-primary" : "bg-red-400/10 text-red-400"
+                            )}>
+                              {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-text-secondary text-[10px] font-mono flex items-center gap-1">
+                              <Clock size={10} />
+                              {new Date(item.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span className="text-text-secondary opacity-30 text-[10px]">•</span>
+                            <span className="text-text-secondary text-[10px] font-medium opacity-70 line-clamp-1">{item.asset_name}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm(item.id);
+                            }}
+                            className="p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCollapsedHistory(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                            }}
+                            className="p-2 text-text-secondary hover:text-white transition-colors"
+                          >
+                            <div className={cn("transition-transform duration-200", collapsedHistory[item.id] ? "-rotate-90" : "rotate-0")}>
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Details: Collapsible */}
+                      {!collapsedHistory[item.id] && (
+                        <div className="px-4 pb-4 animate-in slide-in-from-top-1 duration-200">
+                          <div className="grid grid-cols-2 gap-y-3 gap-x-4 bg-background-dark/40 rounded-xl p-3 border border-border-dark/20 shadow-inner">
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span>
+                              <span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Net Profit</span>
+                              <span className={cn("text-xs font-bold", item.net_profit >= 0 ? "text-primary" : "text-red-400")}>
+                                ${item.net_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Fees Impact</span>
+                              <span className="text-red-400 text-xs font-medium">
+                                {((item.total_fees / (item.final_value + item.total_fees)) * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">vs Baseline</span>
+                              <span className="text-primary text-xs font-black flex items-center gap-0.5">
+                                <TrendingUp size={10} />
+                                +{item.smart_vs_baseline_diff}%
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex justify-between items-center opacity-60">
+                            <span className="text-text-secondary text-[10px] flex items-center gap-1.5 font-medium">
+                              <Calendar size={12} className="opacity-50" />
+                              {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
+                            </span>
+                            <div className="size-5 rounded-full bg-background-dark flex items-center justify-center border border-border-dark">
+                              <ArrowUpRight size={10} className="text-text-secondary" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );
