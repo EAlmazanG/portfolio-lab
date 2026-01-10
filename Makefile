@@ -1,75 +1,106 @@
-.PHONY: dev prod stop clean logs test venv cli help list
+.PHONY: help venv-setup dev-up dev-down prod-up prod-down backend-cli backend-test dev-logs shell
 
-# Variables
+# --- High Level Commands ---
+start: venv-setup prod-up
+	@echo "Opening Portfolio Lab in your browser..."
+	@sleep 5 && (open http://localhost:3000 || xdg-open http://localhost:3000 || echo "Please open http://localhost:3000 manually.")
+
+portfolio-lab:
+	@:
+
+close: dev-down prod-down
+	@echo "All environments have been shut down."
+
+# --- Variables ---
 VENV = .venv
 PYTHON = $(VENV)/bin/python3
 PIP = $(VENV)/bin/pip
+DB_URL_DEV = postgresql://postgres:postgres@localhost:5433/portfolio_lab
 
-# Default target
+# --- Default ---
 all: help
 
-# List all commands
-list: help
-
-# Help message
+# --- Help ---
 help:
-	@echo "Available commands:"
-	@echo "  make venv    : Setup/Update virtual environment"
-	@echo "  make shell   : Open a new shell with venv activated"
-	@echo "  make dev     : Start development environment (Docker)"
-	@echo "  make stop    : Stop development environment"
-	@echo "  make prod    : Start production environment"
-	@echo "  make clean   : Stop production environment"
-	@echo "  make cli     : Run interactive CLI tool"
-	@echo "  make test    : Run integration tests"
-	@echo "  make logs    : View development logs"
-	@echo "  make list    : List all available commands"
-	@echo "  make activate: Show command to activate venv"
+	@echo "Portfolio Lab - Project Management Commands"
+	@echo "-------------------------------------------"
+	@echo "Quick Start:"
+	@echo "  make start        : The 'magic' command. Sets up everything and opens the browser"
+	@echo "  make close        : Stop everything (dev and prod)"
 	@echo ""
-	@echo "To activate venv manually: source .venv/bin/activate"
+	@echo "Environment:"
+	@echo "  make venv-setup   : Create/update virtual environment and install dependencies"
+	@echo "  make shell        : Start a new shell session with virtual environment activated"
+	@echo ""
+	@echo "Development (Docker):"
+	@echo "  make dev-up       : Start development containers (Backend, Frontend, DB)"
+	@echo "  make dev-down     : Stop and remove development containers"
+	@echo "  make dev-logs     : Follow development container logs"
+	@echo ""
+	@echo "Production (Docker):"
+	@echo "  make prod-up      : Start production containers"
+	@echo "  make prod-down    : Stop and remove production containers"
+	@echo ""
+	@echo "Backend Tools:"
+	@echo "  make backend-cli  : Run the interactive Python CLI tool"
+	@echo "  make backend-test : Run backend integration tests"
+	@echo ""
+	@echo "Manual Activation: source $(VENV)/bin/activate"
 
-# Environment
-venv:
+# --- Setup ---
+venv-setup:
+	@echo "Setting up virtual environment in $(VENV)..."
 	@test -d $(VENV) || python3 -m venv $(VENV)
 	@$(PIP) install --upgrade pip
 	@$(PIP) install -r backend/requirements.txt
-	@echo "Venv updated. Source it with: source $(VENV)/bin/activate"
+	@echo "\n✅ Virtual environment is ready."
+	@echo "Run 'make shell' to enter the environment or 'source $(VENV)/bin/activate' manually."
 
-activate:
-	@echo "Run this command to activate the virtual environment:"
-	@echo "source $(VENV)/bin/activate"
-
-shell:
-	@echo "Entering shell with venv activated (type 'exit' to leave)..."
-	@bash --rcfile <(echo "source ~/.bashrc; source $(VENV)/bin/activate") || \
-	 zsh -c "source $(VENV)/bin/activate; exec zsh" || \
-	 $(SHELL)
-
-# Development
-dev:
+# --- Development ---
+dev-up:
+	@echo "Launching development environment..."
 	@./scripts/ops/dev_up.sh
 
-stop:
+dev-start: dev-up
+
+dev-down:
+	@echo "Stopping development environment..."
 	@./scripts/ops/dev_down.sh
 
-# Production
-prod:
-	@./scripts/ops/prod_up.sh
+dev-stop: dev-down
 
-clean:
-	@./scripts/ops/prod_down.sh
-
-# CLI Tool
-cli:
-	@export PYTHONPATH=$(PYTHONPATH):$(shell pwd) && \
-	 export DATABASE_URL=postgresql://postgres:postgres@localhost:5433/portfolio_lab && \
-	 $(PYTHON) backend/cli.py
-
-# Utilities
-logs:
+dev-logs:
 	@docker-compose -f docker-compose.dev.yml logs -f
 
-test:
-	@export PYTHONPATH=$(PYTHONPATH):$(shell pwd) && \
-	 export DATABASE_URL=postgresql://postgres:postgres@localhost:5433/portfolio_lab && \
+# --- Production ---
+prod-up:
+	@echo "Launching production environment..."
+	@./scripts/ops/prod_up.sh
+
+prod-start: prod-up
+
+prod-down:
+	@echo "Stopping production environment..."
+	@./scripts/ops/prod_down.sh
+
+prod-stop: prod-down
+
+# --- Backend Operations ---
+backend-cli:
+	@echo "Starting Backend CLI..."
+	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
+	 export DATABASE_URL=$(DB_URL_DEV) && \
+	 $(PYTHON) backend/cli.py
+
+backend-test:
+	@echo "Running Integration Tests..."
+	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
+	 export DATABASE_URL=$(DB_URL_DEV) && \
 	 $(PYTHON) tests/integration/test_infrastructure.py
+
+# --- Interactive Shell ---
+shell:
+	@echo "Entering subshell with environment activated. Type 'exit' to return."
+	@zsh -c "source $(VENV)/bin/activate; exec zsh -i" || \
+	 bash -c "source $(VENV)/bin/activate; exec bash -i" || \
+	 ( . $(VENV)/bin/activate && $(SHELL) -i )
