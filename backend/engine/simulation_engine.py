@@ -295,9 +295,12 @@ class SimulationEngine:
                     days_to_next = (next_date - date).days
                 
                 if is_baseline_day:
-                    if signal == 1 and not is_last_baseline_day_of_year: # Overbought and not last day: wait
-                        s_pending_amount += periodic_amount
+                    if signal == 1 and not is_last_baseline_day_of_year: # Overbought and not last day: wait (but respect floor)
+                        buy_floor = periodic_amount * expensive_buy_ratio
+                        base_buy_amount = buy_floor
+                        s_pending_amount += (periodic_amount - buy_floor)
                         s_next_idx += 1
+                        should_buy_today = buy_floor > 0
                     else: # Neutral, Oversold or Last Day: buy now
                         base_buy_amount = periodic_amount + s_pending_amount
                         s_pending_amount = 0
@@ -328,8 +331,8 @@ class SimulationEngine:
                     else:
                         if signal == -1: # Oversold: buy MORE
                             actual_buy_amount = base_buy_amount * sizing_multiplier
-                        elif signal == 1: # Overbought: buy LESS (but at least expensive_buy_ratio)
-                            actual_buy_amount = base_buy_amount * max(expensive_buy_ratio, 1.0 / sizing_multiplier)
+                        elif signal == 1: # Overbought: buy LESS (exactly the floor)
+                            actual_buy_amount = base_buy_amount * expensive_buy_ratio
                         
                         # Ensure we don't exceed the annual budget
                         # (Leave at least periodic_amount for each remaining baseline day of the year)

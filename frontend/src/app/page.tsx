@@ -565,43 +565,43 @@ export default function AssetSimulationPage() {
 
           {/* 3. Fees Section */}
           <div className="border-b border-border-dark/30">
-            <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">FEES & COMMISSIONS</span>
-              <button
-                onClick={() => setIsFeesEnabled(!isFeesEnabled)}
-                className={cn(
-                  "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all",
-                  isFeesEnabled 
-                    ? "bg-red-400/10 text-red-400 border border-red-400/20" 
-                    : "bg-surface-dark text-text-secondary border border-border-dark"
-                )}
-              >
-                {isFeesEnabled ? "ENABLED" : "DISABLED"}
-              </button>
-            </div>
-            {isFeesEnabled && (
-              <>
             <div 
               onClick={() => setCollapsedSections(prev => ({ ...prev, section3: !prev.section3 }))}
               className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
             >
               <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
                 <CreditCard size={14} className="text-primary" />
-                    3. FEES & COMMISSIONS
+                3. FEES & COMMISSIONS
               </h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFeesEnabled(!isFeesEnabled);
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all",
+                    isFeesEnabled 
+                      ? "bg-red-400/10 text-red-400 border border-red-400/20" 
+                      : "bg-surface-dark text-text-secondary border border-border-dark"
+                  )}
+                >
+                  {isFeesEnabled ? "ENABLED" : "DISABLED"}
+                </button>
               <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section3 && "-rotate-90")}>
                 <ChevronDown size={14} />
+                </div>
               </div>
             </div>
 
-            {!collapsedSections.section3 && (
+            {isFeesEnabled && !collapsedSections.section3 && (
               <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
                     <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
-                          step="0.1" 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                      step="0.1" 
                       type="number" 
                       value={config.commission_fee_percent}
                       onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
@@ -610,7 +610,7 @@ export default function AssetSimulationPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
                     <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
                       step="0.1" 
                       type="number" 
                       value={config.minimum_fee_per_trade}
@@ -620,8 +620,8 @@ export default function AssetSimulationPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
                     <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
-                          step="0.1" 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                      step="0.1" 
                       type="number" 
                       value={config.maintenance_fee_annual_percent}
                       onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
@@ -629,43 +629,41 @@ export default function AssetSimulationPage() {
                   </div>
                 </div>
               </div>
-                )}
-              </>
             )}
           </div>
 
           {/* 4. Smart Features Section */}
           <div className="border-b border-border-dark/30">
-            <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">SMART FEATURES</span>
-              <button
-                onClick={() => setIsSmartDcaEnabled(!isSmartDcaEnabled)}
-                className={cn(
-                  "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all",
-                  isSmartDcaEnabled 
-                    ? "bg-primary/10 text-primary border border-primary/20" 
-                    : "bg-surface-dark text-text-secondary border border-border-dark"
-                )}
-              >
-                {isSmartDcaEnabled ? "ENABLED" : "DISABLED"}
-              </button>
-            </div>
-            {isSmartDcaEnabled && (
-              <>
             <div 
               onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
               className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
             >
               <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
                 <BrainCircuit size={14} className="text-primary" />
-                    4. SMART FEATURES
+                4. SMART FEATURES
               </h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsSmartDcaEnabled(!isSmartDcaEnabled);
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all",
+                    isSmartDcaEnabled 
+                      ? "bg-primary/10 text-primary border border-primary/20" 
+                      : "bg-surface-dark text-text-secondary border border-border-dark"
+                  )}
+                >
+                  {isSmartDcaEnabled ? "ENABLED" : "DISABLED"}
+                </button>
               <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
                 <ChevronDown size={14} />
+                </div>
               </div>
             </div>
 
-            {!collapsedSections.section4 && (
+            {isSmartDcaEnabled && !collapsedSections.section4 && (
               <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
                       {/* Indicator Selection */}
                       <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
@@ -743,6 +741,34 @@ export default function AssetSimulationPage() {
                         </div>
                       </div>
 
+                {/* Common Feature: Minimum Buy Ratio (Floor) */}
+                <div className="bg-surface-dark/50 rounded-xl p-4 border border-border-active/30">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-white font-bold text-xs uppercase tracking-wider">Safety Floor</span>
+                      <span className="text-text-secondary text-[10px]">Min. purchase even if overbought</span>
+                    </div>
+                    <div className="px-2 py-1 rounded bg-primary/10 text-primary text-[10px] font-bold">
+                      {(config.expensive_buy_ratio! * 100).toFixed(0)}%
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-[10px] text-text-secondary font-bold uppercase">
+                      <span>0% Skip</span>
+                      <span>100% Constant</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.05" 
+                      value={config.expensive_buy_ratio}
+                      onChange={(e) => setConfig({ ...config, expensive_buy_ratio: Number(e.target.value) })}
+                      className="w-full" 
+                    />
+                  </div>
+                </div>
+
                 {/* Feature 1: Dynamic Timing */}
                 <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
                   <div className="flex justify-between items-center mb-4">
@@ -807,10 +833,10 @@ export default function AssetSimulationPage() {
                     </div>
                   </div>
                   
-                  <div className="space-y-1 mb-4">
+                  <div className="space-y-1">
                     <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-text-secondary">
-                      <span>Max Sizing (Oversold)</span>
-                      <span className="text-primary">{config.sizing_multiplier}x Multiplier</span>
+                      <span>Max Multiplier (Oversold)</span>
+                      <span className="text-primary">{config.sizing_multiplier}x</span>
                     </div>
                     <input 
                       type="range" 
@@ -822,26 +848,8 @@ export default function AssetSimulationPage() {
                       className="w-full" 
                     />
                   </div>
-
-                  <div className="space-y-1 pt-4 border-t border-border-dark/30">
-                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-text-secondary">
-                      <span>Min Sizing (Overbought)</span>
-                      <span className="text-primary">{(config.expensive_buy_ratio! * 100).toFixed(0)}% Floor</span>
-                    </div>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="1" 
-                      step="0.05" 
-                      value={config.expensive_buy_ratio}
-                      onChange={(e) => setConfig({ ...config, expensive_buy_ratio: Number(e.target.value) })}
-                      className="w-full" 
-                    />
-                  </div>
                 </div>
               </div>
-                  )}
-              </>
             )}
           </div>
 

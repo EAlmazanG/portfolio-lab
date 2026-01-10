@@ -1112,6 +1112,9 @@ video {
   --tw-border-opacity: 1;
   border-color: rgb(100 116 139 / var(--tw-border-opacity, 1));
 }
+.border-border-active\/30 {
+  border-color: rgb(59 84 67 / 0.3);
+}
 .border-l-primary {
   --tw-border-opacity: 1;
   border-left-color: rgb(19 236 91 / var(--tw-border-opacity, 1));
