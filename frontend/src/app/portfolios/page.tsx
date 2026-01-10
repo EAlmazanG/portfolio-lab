@@ -39,6 +39,7 @@ import {
   ToggleLeft,
   ToggleRight
 } from "lucide-react";
+import Header from "../../components/Header";
 import { 
   getAssets, 
   getPortfolios, 
@@ -425,28 +426,7 @@ export default function PortfolioBuilderPage() {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
-      {/* Top Navigation */}
-      <header className="flex items-center justify-between border-b border-border-dark px-6 py-3 flex-shrink-0 z-20 bg-background-dark">
-        <div className="flex items-center gap-4 text-white">
-          <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-            <LineChartIcon size={20} />
-          </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-tight hidden sm:block">Portfolio-Lab</h2>
-        </div>
-
-        <div className="flex flex-1 justify-end items-center gap-4">
-          <div className="hidden md:flex items-center gap-6 border-l border-border-dark pl-6">
-            <div className="flex items-center gap-6">
-              <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="/">Asset</a>
-              <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="/portfolios">Portfolios</a>
-              <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
-            </div>
-            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
-             <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" alt="Profile" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden relative">
