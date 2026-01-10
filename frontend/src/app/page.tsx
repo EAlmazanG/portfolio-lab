@@ -961,6 +961,7 @@ export default function AssetSimulationPage() {
                             interval={Math.floor(simulation.results.portfolio_history.length / 5)}
                           />
                           <YAxis 
+                            yAxisId="growthAxis"
                             stroke="#9db9a6" 
                             fontSize={10} 
                             tickLine={false} 
@@ -975,6 +976,7 @@ export default function AssetSimulationPage() {
                           />
                           {isSmartDcaEnabled && visibleSeries.smart && (
                             <Area 
+                              yAxisId="growthAxis"
                               type="monotone" 
                               dataKey="smart_value" 
                               stroke="#13ec5b" 
@@ -986,6 +988,7 @@ export default function AssetSimulationPage() {
                           )}
                           {visibleSeries.baseline && (
                             <Area 
+                              yAxisId="growthAxis"
                               type="monotone" 
                               dataKey="baseline_value" 
                               stroke="#94a3b8" 
@@ -996,6 +999,7 @@ export default function AssetSimulationPage() {
                           )}
                           {visibleSeries.invested && (
                             <Area 
+                              yAxisId="growthAxis"
                               type="monotone" 
                               dataKey="invested" 
                               stroke="#64748b" 
@@ -1135,13 +1139,21 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={simulation.results.portfolio_history} syncId="portfolioCharts" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <ComposedChart 
+                          data={simulation.results.portfolio_history.map(p => ({
+                            date: p.date,
+                            open: p.open,
+                            high: p.high,
+                            low: p.low,
+                            close: p.close
+                          }))} 
+                          syncId="portfolioCharts" 
+                          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                        >
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                          <XAxis 
-                            dataKey="date" 
-                            hide={true}
-                          />
+                          <XAxis dataKey="date" hide={true} />
                           <YAxis 
+                            yAxisId="priceAxis"
                             orientation="right"
                             stroke="#9db9a6" 
                             fontSize={10} 
@@ -1149,19 +1161,21 @@ export default function AssetSimulationPage() {
                             axisLine={false}
                             domain={[
                               (dataMin: number) => {
-                                const valid = simulation.results.portfolio_history.filter(p => (p.low || 0) > 0);
-                                if (valid.length === 0) return dataMin;
-                                const min = Math.min(...valid.map(p => p.low));
-                                return min * 0.98;
+                                const validPrices = simulation.results.portfolio_history
+                                  .filter(p => (p.low || 0) > 0)
+                                  .map(p => p.low);
+                                if (validPrices.length === 0) return dataMin;
+                                return Math.min(...validPrices) * 0.95;
                               },
                               (dataMax: number) => {
-                                const valid = simulation.results.portfolio_history.filter(p => (p.high || 0) > 0);
-                                if (valid.length === 0) return dataMax;
-                                const max = Math.max(...valid.map(p => p.high));
-                                return max * 1.02;
+                                const validPrices = simulation.results.portfolio_history
+                                  .filter(p => (p.high || 0) > 0)
+                                  .map(p => p.high);
+                                if (validPrices.length === 0) return dataMax;
+                                return Math.max(...validPrices) * 1.05;
                               }
                             ]}
-                            tickFormatter={(value) => `$${value.toLocaleString()}`}
+                            tickFormatter={(value) => `$${Math.round(value).toLocaleString()}`}
                           />
                           <Tooltip 
                             contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
@@ -1190,12 +1204,13 @@ export default function AssetSimulationPage() {
                           />
                           {visibleSeries.price && (
                             <Bar 
+                              yAxisId="priceAxis"
                               dataKey="high" 
                               fill="none" 
                               stroke="none"
                               isAnimationActive={false}
                               shape={(props: any) => {
-                                const { x, y, width, payload } = props;
+                                const { x, width, payload } = props;
                                 if (!props.yAxis?.scale || !payload || !(payload.open > 0)) return null;
                                 
                                 const isUp = payload.close >= payload.open;
@@ -1259,6 +1274,7 @@ export default function AssetSimulationPage() {
                             }}
                           />
                           <YAxis 
+                            yAxisId="contribAxis"
                             orientation="right"
                             stroke="#9db9a6" 
                             fontSize={10} 
@@ -1272,9 +1288,9 @@ export default function AssetSimulationPage() {
                             labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
                             formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name === 's_contribution' ? 'Smart DCA' : 'Standard DCA']}
                           />
-                          <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          <Bar yAxisId="contribAxis" dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                           {isSmartDcaEnabled && (
-                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                            <Bar yAxisId="contribAxis" dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                           )}
                           <Brush 
                             dataKey="date" 
@@ -1286,11 +1302,7 @@ export default function AssetSimulationPage() {
                               const date = new Date(str);
                               return `${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
                             }}
-                          >
-                            <AreaChart>
-                              <Area dataKey="close" stroke="#13ec5b" fill="#13ec5b" fillOpacity={0.1} />
-                        </AreaChart>
-                          </Brush>
+                          />
                         </ComposedChart>
                       </ResponsiveContainer>
                     </div>
