@@ -17,6 +17,7 @@ async def get_portfolios():
             id=p.id,
             name=p.name,
             description=p.description,
+            is_favorite=p.is_favorite,
             asset_count=len(p.assets),
             created_at=p.created_at
         ) for p in portfolios
@@ -42,3 +43,11 @@ async def delete_portfolio(portfolio_id: int):
     if not success:
         raise HTTPException(status_code=404, detail="Portfolio not found")
     return {"status": "success"}
+
+@router.patch("/{portfolio_id}/favorite")
+async def toggle_portfolio_favorite(portfolio_id: int):
+    try:
+        is_fav = PortfolioService.toggle_favorite(portfolio_id)
+        return {"is_favorite": is_fav}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -19,11 +19,22 @@ import {
   Settings as SettingsIcon,
   History,
   Star,
-  Info
+  Info,
+  CheckCircle2,
+  BarChart2,
+  Activity,
+  Calendar
 } from "lucide-react";
-import { getAssets, getPortfolios, createPortfolio, deletePortfolio } from "../../lib/api";
+import { 
+  getAssets, 
+  getPortfolios, 
+  createPortfolio, 
+  deletePortfolio, 
+  getPortfolio,
+  togglePortfolioFavorite 
+} from "../../lib/api";
 import { Asset } from "../../types/simulation";
-import { PortfolioListItem, PortfolioCreate } from "../../types/portfolio";
+import { Portfolio, PortfolioListItem, PortfolioCreate } from "../../types/portfolio";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
@@ -32,10 +43,14 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const COLORS = ['#13ec5b', '#3af578', '#6ef99c', '#9efcc0', '#cfffe4', '#0ea541', '#097a2d'];
+
 export default function PortfolioBuilderPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
@@ -44,8 +59,8 @@ export default function PortfolioBuilderPage() {
   // New Portfolio State
   const [newPortfolio, setNewPortfolio] = useState<PortfolioCreate>({
     name: "",
-    description: "",
-    assets: []
+    assets: [],
+    is_favorite: false
   });
 
   useEffect(() => {
@@ -55,23 +70,31 @@ export default function PortfolioBuilderPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Explicitly catch and log errors for debugging
-      const assetsData = await getAssets().catch(err => {
-        console.error("Error fetching assets:", err);
-        return [];
-      });
-      const portfoliosData = await getPortfolios().catch(err => {
-        console.error("Error fetching portfolios:", err);
-        return [];
-      });
+      console.log("Fetching assets and portfolios...");
+      const [assetsData, portfoliosData] = await Promise.all([
+        getAssets().catch(e => { console.error("Assets fetch failed:", e); return []; }),
+        getPortfolios().catch(e => { console.error("Portfolios fetch failed:", e); return []; })
+      ]);
       
-      console.log("Loaded assets:", assetsData.length);
-      setAssets(assetsData);
-      setPortfolios(portfoliosData);
+      console.log("Assets received:", assetsData?.length || 0);
+      setAssets(assetsData || []);
+      setPortfolios(portfoliosData || []);
     } catch (error) {
-      console.error("Failed to load data:", error);
+      console.error("Critical error in loadData:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPortfolioDetails = async (id: number) => {
+    setLoadingDetails(true);
+    try {
+      const details = await getPortfolio(id);
+      setSelectedPortfolio(details);
+    } catch (error) {
+      console.error("Failed to load portfolio details:", error);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -81,8 +104,6 @@ export default function PortfolioBuilderPage() {
 
   const handleAddAsset = (asset: Asset) => {
     if (newPortfolio.assets.find(a => a.asset_id === asset.id)) return;
-    
-    // Check if we already have 100%
     if (totalWeight >= 100) return;
 
     setNewPortfolio({
@@ -99,17 +120,10 @@ export default function PortfolioBuilderPage() {
   };
 
   const handleWeightChange = (assetId: number, newWeightPct: number) => {
-    // Current weight of this asset
     const currentAsset = newPortfolio.assets.find(a => a.asset_id === assetId);
     const currentWeightPct = (currentAsset?.weight || 0) * 100;
-    
-    // Weight of other assets
     const otherAssetsWeightPct = totalWeight - currentWeightPct;
-    
-    // Max weight allowed for this asset to not exceed 100% total
     const maxAllowedWeightPct = Math.max(0, 100 - otherAssetsWeightPct);
-    
-    // Cap the new weight
     const finalWeightPct = Math.min(newWeightPct, maxAllowedWeightPct);
 
     setNewPortfolio({
@@ -131,35 +145,51 @@ export default function PortfolioBuilderPage() {
     }
 
     try {
-      await createPortfolio(newPortfolio);
+      const created = await createPortfolio(newPortfolio);
       setShowCreateModal(false);
-      setNewPortfolio({ name: "", description: "", assets: [] });
+      setNewPortfolio({ name: "", assets: [], is_favorite: false });
       loadData();
+      loadPortfolioDetails(created.id);
     } catch (error) {
       console.error("Failed to save portfolio:", error);
-      alert("Failed to save portfolio");
+      alert("Failed to save portfolio. Please ensure the backend is running and the database is migrated.");
     }
   };
 
-  const handleDeletePortfolio = async (id: number) => {
+  const handleDeletePortfolio = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
     if (!confirm("Are you sure you want to delete this portfolio?")) return;
     try {
       await deletePortfolio(id);
+      if (selectedPortfolio?.id === id) setSelectedPortfolio(null);
       loadData();
     } catch (error) {
       console.error("Failed to delete portfolio:", error);
     }
   };
 
-  const filteredAssets = useMemo(() => 
-    assets.filter(a => 
+  const handleToggleFavorite = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    try {
+      const isFav = await togglePortfolioFavorite(id);
+      setPortfolios(prev => prev.map(p => p.id === id ? { ...p, is_favorite: isFav } : p));
+      if (selectedPortfolio?.id === id) {
+        setSelectedPortfolio({ ...selectedPortfolio, is_favorite: isFav });
+      }
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+    }
+  };
+
+  const filteredAssets = useMemo(() => {
+    if (!assets) return [];
+    return assets.filter(a => 
       a.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  , [assets, searchQuery]);
+    );
+  }, [assets, searchQuery]);
 
-  // Chart Data
-  const chartData = useMemo(() => {
+  const modalChartData = useMemo(() => {
     return newPortfolio.assets
       .filter(pa => pa.weight > 0)
       .map(pa => {
@@ -171,7 +201,16 @@ export default function PortfolioBuilderPage() {
       });
   }, [newPortfolio.assets, assets]);
 
-  const COLORS = ['#13ec5b', '#3af578', '#6ef99c', '#9efcc0', '#cfffe4', '#0ea541', '#097a2d'];
+  const selectedPortfolioChartData = useMemo(() => {
+    if (!selectedPortfolio) return [];
+    return selectedPortfolio.assets.map(pa => {
+      // pa.asset is expected here based on Portfolio schema returning assets with detail
+      return {
+        name: pa.asset?.ticker || "Unknown",
+        value: pa.weight * 100
+      };
+    });
+  }, [selectedPortfolio]);
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
@@ -234,27 +273,47 @@ export default function PortfolioBuilderPage() {
               <div className="p-6 pb-2">
                 <div className="flex flex-col gap-1 mb-4">
                   <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left">My Portfolios</h1>
-                  <p className="text-text-secondary text-sm">Select or manage your carteras.</p>
+                  <p className="text-text-secondary text-sm">Select or manage your portfolios.</p>
                 </div>
               </div>
 
-              <div className="p-6 pt-0 space-y-4">
+              <div className="p-6 pt-0 space-y-3">
                 {portfolios.map(portfolio => (
-                  <div key={portfolio.id} className="bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-all group relative cursor-pointer">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeletePortfolio(portfolio.id);
-                      }}
-                      className="absolute top-2 right-2 p-1.5 text-text-secondary hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-1.5 bg-primary/10 rounded-lg text-primary">
-                        <PieChartIcon size={18} />
+                  <div 
+                    key={portfolio.id} 
+                    onClick={() => loadPortfolioDetails(portfolio.id)}
+                    className={cn(
+                      "bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-all group relative cursor-pointer",
+                      selectedPortfolio?.id === portfolio.id && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "p-1.5 rounded-lg transition-colors",
+                          selectedPortfolio?.id === portfolio.id ? "bg-primary text-background-dark" : "bg-primary/10 text-primary"
+                        )}>
+                          <PieChartIcon size={18} />
+                        </div>
+                        <h3 className="font-bold text-sm">{portfolio.name}</h3>
                       </div>
-                      <h3 className="font-bold text-sm">{portfolio.name}</h3>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button 
+                          onClick={(e) => handleToggleFavorite(e, portfolio.id)}
+                          className={cn(
+                            "p-1.5 rounded-lg transition-all",
+                            portfolio.is_favorite ? "text-yellow-400 bg-yellow-400/10" : "text-text-secondary hover:text-white hover:bg-surface-light"
+                          )}
+                        >
+                          <Star size={14} fill={portfolio.is_favorite ? "currentColor" : "none"} />
+                        </button>
+                        <button 
+                          onClick={(e) => handleDeletePortfolio(e, portfolio.id)}
+                          className="p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase font-bold tracking-wider">
                       <span>{portfolio.asset_count} Assets</span>
@@ -274,33 +333,130 @@ export default function PortfolioBuilderPage() {
           </div>
         </aside>
 
-        {/* Main Content: Builder */}
+        {/* Main Content: Portfolio View */}
         <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
           {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 flex items-center justify-center p-6 lg:p-10 z-10 custom-scrollbar">
-            <div className="text-center max-w-md animate-in fade-in zoom-in duration-700">
-              <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group mx-auto">
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
-                <PieChartIcon size={48} className="text-primary relative z-10" />
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
+            {selectedPortfolio ? (
+              <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
+                <header className="flex justify-between items-start mb-12">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h1 className="text-4xl font-black text-white tracking-tight">{selectedPortfolio.name}</h1>
+                      <button 
+                        onClick={(e) => handleToggleFavorite(e, selectedPortfolio.id)}
+                        className={cn(
+                          "p-2 rounded-xl transition-all border",
+                          selectedPortfolio.is_favorite 
+                            ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
+                            : "bg-surface-dark border-border-dark text-text-secondary hover:text-white"
+                        )}
+                      >
+                        <Star size={20} fill={selectedPortfolio.is_favorite ? "currentColor" : "none"} />
+                      </button>
+                    </div>
+                    <p className="text-text-secondary flex items-center gap-2 font-medium">
+                      <Calendar size={14} className="text-primary" />
+                      Created on {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => window.location.href = `/simulate-portfolio?id=${selectedPortfolio.id}`}
+                      className="px-6 py-3 bg-primary text-background-dark font-black uppercase tracking-widest rounded-xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
+                    >
+                      <LineChartIcon size={18} />
+                      Simulate Strategy
+                    </button>
+                  </div>
+                </header>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Allocation Table */}
+                  <div className="bg-surface-dark border border-border-active/30 rounded-2xl p-6 shadow-sm">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-text-secondary mb-6 flex items-center gap-2">
+                      <LayoutIcon size={16} className="text-primary" />
+                      Asset Allocation
+                    </h3>
+                    <div className="space-y-4">
+                      {selectedPortfolio.assets.map((pa, idx) => (
+                        <div key={pa.id} className="flex items-center justify-between p-4 bg-background-dark/50 rounded-xl border border-border-dark/50 group hover:border-primary/30 transition-all">
+                          <div className="flex items-center gap-4">
+                            <div className="size-10 rounded-lg flex items-center justify-center font-black text-xs border border-border-dark" style={{ color: COLORS[idx % COLORS.length] }}>
+                              {pa.asset?.ticker}
+                            </div>
+                            <div>
+                              <p className="font-bold text-white">{pa.asset?.name}</p>
+                              <p className="text-[10px] text-text-secondary uppercase font-black tracking-widest">{pa.asset?.asset_type}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-black text-primary">{(pa.weight * 100).toFixed(0)}%</p>
+                            <div className="w-24 h-1 bg-surface-light rounded-full mt-1 overflow-hidden">
+                              <div className="h-full bg-primary" style={{ width: `${pa.weight * 100}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Composition Chart */}
+                  <div className="bg-surface-dark border border-border-active/30 rounded-2xl p-6 flex flex-col shadow-sm">
+                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-text-secondary mb-6 flex items-center gap-2">
+                      <PieChartIcon size={16} className="text-primary" />
+                      Composition
+                    </h3>
+                    <div className="flex-1 min-h-[350px] relative">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={selectedPortfolioChartData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={80}
+                            outerRadius={120}
+                            paddingAngle={8}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {selectedPortfolioChartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: '#1a1f1b', border: '1px solid #2d352f', borderRadius: '12px' }}
+                            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-10px]">
+                        <span className="text-4xl font-black text-primary">{selectedPortfolio.assets.length}</span>
+                        <span className="text-[10px] text-text-secondary uppercase font-bold tracking-widest">Assets</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <h2 className="text-3xl font-bold text-white mb-3">Build Your Portfolio</h2>
-              <p className="text-text-secondary mb-8 leading-relaxed">
-                Create a diversified strategy by combining multiple assets and defining their target weights. 
-                Start by clicking the <span className="text-primary font-bold">New Portfolio</span> button in the sidebar.
-              </p>
-              <button 
-                onClick={() => setShowCreateModal(true)}
-                className="px-8 py-3 bg-primary text-background-dark font-bold rounded-xl transition-all hover:bg-[#3af578] shadow-[0_0_20px_rgba(19,236,91,0.2)] active:scale-[0.98]"
-              >
-                Get Started
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
+                <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group mx-auto">
+                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
+                  <PieChartIcon size={48} className="text-primary relative z-10" />
+                </div>
+                <h2 className="text-3xl font-bold text-white mb-3">Portfolio Explorer</h2>
+                <p className="text-text-secondary max-w-sm leading-relaxed mx-auto">
+                  Select a portfolio from the list to view its composition or create a new one to start building your strategy.
+                </p>
+              </div>
+            )}
           </div>
         </main>
 
-        {/* Right Sidebar: History Placeholder */}
+        {/* Right Sidebar: Analytics */}
         <aside className={cn(
           "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
           rightSidebarOpen ? "w-[320px]" : "w-0 border-l-0"
@@ -322,14 +478,14 @@ export default function PortfolioBuilderPage() {
           )}>
             <div className="p-6 border-b border-border-dark/30">
               <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                <History size={18} className="text-primary" />
-                Portfolio History
+                <BarChart2 size={18} className="text-primary" />
+                Performance Metrics
               </h2>
-              <p className="text-text-secondary text-[11px] mt-1">Simulations history coming soon.</p>
+              <p className="text-text-secondary text-[11px] mt-1">Aggregated strategy analytics.</p>
             </div>
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <History size={48} className="text-text-secondary opacity-10 mb-4" />
-              <p className="text-text-secondary text-sm">Portfolio simulations will be listed here once implemented.</p>
+              <Activity size={48} className="text-text-secondary opacity-10 mb-4" />
+              <p className="text-text-secondary text-sm px-4">Performance data for the selected portfolio will appear here after simulation.</p>
             </div>
           </div>
         </aside>
@@ -338,19 +494,23 @@ export default function PortfolioBuilderPage() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-border-dark flex items-center gap-8 bg-background-dark/50">
-              <div className="flex-1 flex items-center gap-4">
-                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                  <Plus size={24} />
+            <div className="p-6 border-b border-border-dark flex items-center justify-between bg-background-dark/50">
+              <div className="flex items-center gap-6 flex-1">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    <PlusCircle size={20} />
+                  </div>
+                  <h2 className="text-xl font-bold whitespace-nowrap tracking-tight">Build Portfolio</h2>
                 </div>
-                <div className="flex-1 flex items-center gap-4">
-                  <h2 className="text-2xl font-bold whitespace-nowrap">Build Portfolio</h2>
+                <div className="h-8 w-px bg-border-dark"></div>
+                <div className="flex-1 flex items-center gap-3">
+                  <span className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Name:</span>
                   <input 
                     type="text"
                     placeholder="Enter portfolio name..."
-                    className="flex-1 bg-surface-dark border border-border-active rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-lg font-bold text-white placeholder:text-text-secondary/30"
+                    className="bg-transparent border-b border-border-active py-1 px-0 focus:outline-none focus:border-primary text-sm font-bold text-white placeholder:text-text-secondary/20 min-w-[300px]"
                     value={newPortfolio.name}
                     onChange={(e) => setNewPortfolio({...newPortfolio, name: e.target.value})}
                     autoFocus
@@ -368,12 +528,12 @@ export default function PortfolioBuilderPage() {
             {/* Modal Content */}
             <div className="flex-1 overflow-hidden flex">
               {/* Asset Selector */}
-              <div className="w-1/3 border-r border-border-dark flex flex-col p-6 bg-background-dark/10">
+              <div className="w-1/4 border-r border-border-dark flex flex-col p-6 bg-background-dark/10">
                 <div className="relative mb-6">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={18} />
                   <input 
                     type="text"
-                    placeholder="Search assets (BTC, AAPL, SPY...)"
+                    placeholder="Search assets..."
                     className="w-full bg-surface-light border border-border-dark rounded-lg py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -385,7 +545,7 @@ export default function PortfolioBuilderPage() {
                       <RefreshCcw size={24} className="animate-spin mb-4" />
                       <p className="text-xs">Loading assets...</p>
                     </div>
-                  ) : filteredAssets.length > 0 ? (
+                  ) : assets.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2">
                       {filteredAssets.map(asset => {
                           const isSelected = newPortfolio.assets.find(a => a.asset_id === asset.id);
@@ -405,25 +565,24 @@ export default function PortfolioBuilderPage() {
                                   )}
                               >
                                   <div>
-                                      <div className="font-bold">{asset.ticker}</div>
-                                      <div className="text-xs text-text-secondary">{asset.name}</div>
+                                      <div className="font-bold text-sm">{asset.ticker}</div>
+                                      <div className="text-[10px] text-text-secondary line-clamp-1">{asset.name}</div>
                                   </div>
-                                  {!isSelected && <PlusCircle size={18} className={cn(totalWeight >= 100 ? "text-text-secondary" : "text-primary")} />}
+                                  {!isSelected && <PlusCircle size={16} className={cn(totalWeight >= 100 ? "text-text-secondary" : "text-primary")} />}
                               </button>
                           );
                       })}
                     </div>
                   ) : (
                     <div className="text-center py-20 text-text-secondary">
-                      <Search size={32} className="mx-auto mb-4 opacity-10" />
-                      <p className="text-xs italic">No assets found matching "{searchQuery}"</p>
+                      <p className="text-xs italic">No assets found.</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Portfolio Config */}
-              <div className="w-1/3 flex flex-col p-6 border-r border-border-dark overflow-y-auto custom-scrollbar">
+              {/* Allocation Config */}
+              <div className="w-2/4 flex flex-col p-6 border-r border-border-dark overflow-y-auto custom-scrollbar">
                 <label className="text-xs font-bold uppercase text-text-secondary mb-4 flex items-center gap-2">
                   <LayoutIcon size={14} className="text-primary" />
                   Target Allocations
@@ -434,7 +593,10 @@ export default function PortfolioBuilderPage() {
                     return (
                       <div key={pa.asset_id} className="bg-surface-dark border border-border-active/30 rounded-xl p-4 animate-in slide-in-from-left-2 duration-300">
                         <div className="flex justify-between items-center mb-3">
-                          <span className="font-bold text-primary">{asset?.ticker}</span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-black text-primary">{asset?.ticker}</span>
+                            <span className="text-[10px] text-text-secondary font-bold truncate max-w-[200px]">{asset?.name}</span>
+                          </div>
                           <button 
                             onClick={() => handleRemoveAsset(pa.asset_id)}
                             className="text-text-secondary hover:text-red-400 p-1 hover:bg-red-400/10 rounded-lg transition-all"
@@ -452,10 +614,10 @@ export default function PortfolioBuilderPage() {
                             value={pa.weight * 100}
                             onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
                           />
-                          <div className="w-16 flex items-center bg-surface-light rounded-lg px-2 py-1 border border-border-dark focus-within:border-primary/50 transition-colors">
+                          <div className="w-20 flex items-center bg-surface-light rounded-lg px-2 py-1.5 border border-border-dark focus-within:border-primary/50 transition-colors">
                             <input 
                               type="number"
-                              className="bg-transparent w-full text-right text-sm focus:outline-none font-bold"
+                              className="bg-transparent w-full text-right text-sm focus:outline-none font-black"
                               value={Math.round(pa.weight * 100)}
                               onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
                             />
@@ -467,88 +629,85 @@ export default function PortfolioBuilderPage() {
                   })}
 
                   {newPortfolio.assets.length === 0 && (
-                    <div className="text-center py-20 text-text-secondary text-sm border border-dashed border-border-dark rounded-2xl flex flex-col items-center justify-center gap-4">
+                    <div className="text-center py-20 text-text-secondary text-sm border border-dashed border-border-dark rounded-2xl flex flex-col items-center justify-center gap-4 h-full">
                       <div className="p-4 bg-surface-dark rounded-full">
                         <Plus size={32} className="opacity-20" />
                       </div>
-                      <p className="max-w-[200px] leading-relaxed">Add assets from the search on the left to start building.</p>
+                      <p className="max-w-[200px] leading-relaxed">Select assets from the left panel to define your strategy.</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Composition Chart & Summary */}
-              <div className="w-1/3 flex flex-col p-6 bg-background-dark/30">
+              {/* Composition Summary */}
+              <div className="w-1/4 flex flex-col p-6 bg-background-dark/30">
                 <label className="text-xs font-bold uppercase text-text-secondary mb-6 flex items-center gap-2">
                   <PieChartIcon size={14} className="text-primary" />
-                  Portfolio Composition
+                  Live Preview
                 </label>
                 
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[300px] relative">
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[250px] relative">
                   {newPortfolio.assets.length > 0 && totalWeight > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={chartData}
+                          data={modalChartData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
+                          innerRadius={50}
+                          outerRadius={80}
                           paddingAngle={5}
                           dataKey="value"
                           stroke="none"
                         >
-                          {chartData.map((entry, index) => (
+                          {modalChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
                         <RechartsTooltip 
                           contentStyle={{ backgroundColor: '#1a1f1b', border: '1px solid #2d352f', borderRadius: '12px' }}
-                          itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                          itemStyle={{ color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
                         />
-                        <Legend iconType="circle" />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="text-center text-text-secondary opacity-20">
-                      <PieChartIcon size={80} className="mx-auto mb-4" />
-                      <p className="text-sm font-bold italic uppercase tracking-widest">No Data to Display</p>
+                    <div className="text-center text-text-secondary opacity-10">
+                      <PieChartIcon size={64} className="mx-auto" />
                     </div>
                   )}
 
-                  {/* Center Text for total pct */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-20px]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-10px]">
                     <span className={cn(
-                      "text-3xl font-black tabular-nums transition-colors",
+                      "text-2xl font-black tabular-nums transition-colors",
                       Math.abs(totalWeight - 100) < 0.01 ? "text-primary" : "text-white"
                     )}>
                       {Math.round(totalWeight)}%
                     </span>
-                    <span className="text-[9px] text-text-secondary uppercase font-bold tracking-widest">Allocated</span>
+                    <span className="text-[8px] text-text-secondary uppercase font-bold tracking-widest">Total</span>
                   </div>
                 </div>
 
                 <div className="mt-6 pt-6 border-t border-border-dark">
                   <div className="flex justify-between items-center mb-6">
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-bold uppercase text-text-secondary">Status</span>
+                      <span className="text-[9px] font-bold uppercase text-text-secondary">Validation</span>
                       <span className={cn(
-                          "text-sm font-black uppercase tracking-wider",
+                          "text-xs font-black uppercase tracking-wider",
                           Math.abs(totalWeight - 100) < 0.01 ? "text-primary" : "text-red-400"
                       )}>
-                        {Math.abs(totalWeight - 100) < 0.01 ? "Ready to Save" : "Incomplete (100% Required)"}
+                        {Math.abs(totalWeight - 100) < 0.01 ? "Complete" : "Required 100%"}
                       </span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-[10px] font-bold uppercase text-text-secondary">Total Assets</span>
-                      <span className="text-sm font-black text-white">{newPortfolio.assets.length}</span>
+                      <span className="text-[9px] font-bold uppercase text-text-secondary">Assets</span>
+                      <span className="text-xs font-black text-white">{newPortfolio.assets.length}</span>
                     </div>
                   </div>
                   
                   {Math.abs(totalWeight - 100) > 0.01 && newPortfolio.assets.length > 0 && (
-                    <div className="flex items-center gap-2 text-red-400 text-[10px] mb-4 bg-red-400/10 p-3 rounded-xl border border-red-400/20 font-bold uppercase tracking-tight">
+                    <div className="flex items-center gap-2 text-red-400 text-[10px] mb-4 bg-red-400/10 p-3 rounded-xl border border-red-400/20 font-bold uppercase">
                         <AlertCircle size={14} className="shrink-0" />
-                        Allocations must sum exactly 100%
+                        Allocations must be 100%
                     </div>
                   )}
 

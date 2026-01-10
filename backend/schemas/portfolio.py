@@ -11,13 +11,18 @@ class PortfolioAssetCreate(PortfolioAssetBase):
 
 class PortfolioAsset(PortfolioAssetBase):
     id: int
+    asset: Optional["AssetSimpleResponse"] = None
     
     class Config:
         from_attributes = True
 
+from backend.schemas.simulation import AssetSimpleResponse
+PortfolioAsset.model_rebuild()
+
 class PortfolioBase(BaseModel):
     name: str
     description: Optional[str] = None
+    is_favorite: bool = False
 
 class PortfolioCreate(PortfolioBase):
     assets: List[PortfolioAssetCreate]
@@ -40,6 +45,7 @@ class PortfolioListItem(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    is_favorite: bool
     asset_count: int
     created_at: datetime
 
