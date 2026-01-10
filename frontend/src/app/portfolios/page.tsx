@@ -55,6 +55,7 @@ export default function PortfolioBuilderPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
   
   // New Portfolio State
   const [newPortfolio, setNewPortfolio] = useState<PortfolioCreate>({
@@ -70,17 +71,18 @@ export default function PortfolioBuilderPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log("Fetching assets and portfolios...");
-      const [assetsData, portfoliosData] = await Promise.all([
-        getAssets().catch(e => { console.error("Assets fetch failed:", e); return []; }),
-        getPortfolios().catch(e => { console.error("Portfolios fetch failed:", e); return []; })
-      ]);
+      console.log("Fetching assets and portfolios from API...");
       
-      console.log("Assets received:", assetsData?.length || 0);
+      const assetsData = await getAssets();
+      console.log("Assets fetched successfully:", assetsData?.length || 0);
       setAssets(assetsData || []);
+
+      const portfoliosData = await getPortfolios();
+      console.log("Portfolios fetched successfully:", portfoliosData?.length || 0);
       setPortfolios(portfoliosData || []);
+      
     } catch (error) {
-      console.error("Critical error in loadData:", error);
+      console.error("Critical error loading data:", error);
     } finally {
       setLoading(false);
     }
@@ -275,10 +277,36 @@ export default function PortfolioBuilderPage() {
                   <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left">My Portfolios</h1>
                   <p className="text-text-secondary text-sm">Select or manage your portfolios.</p>
                 </div>
+
+                {/* Tabs */}
+                <div className="flex gap-4 border-b border-border-dark/30 mb-4">
+                  <button 
+                    onClick={() => setActiveTab("all")}
+                    className={cn(
+                      "pb-2 text-xs font-bold uppercase tracking-widest transition-all relative",
+                      activeTab === "all" ? "text-primary" : "text-text-secondary hover:text-white"
+                    )}
+                  >
+                    All
+                    {activeTab === "all" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary animate-in fade-in duration-300"></div>}
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab("favorites")}
+                    className={cn(
+                      "pb-2 text-xs font-bold uppercase tracking-widest transition-all relative",
+                      activeTab === "favorites" ? "text-primary" : "text-text-secondary hover:text-white"
+                    )}
+                  >
+                    Favorites
+                    {activeTab === "favorites" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary animate-in fade-in duration-300"></div>}
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 pt-0 space-y-3">
-                {portfolios.map(portfolio => (
+                {portfolios
+                  .filter(p => activeTab === "all" || p.is_favorite)
+                  .map(portfolio => (
                   <div 
                     key={portfolio.id} 
                     onClick={() => loadPortfolioDetails(portfolio.id)}
@@ -505,18 +533,34 @@ export default function PortfolioBuilderPage() {
                   <h2 className="text-xl font-bold whitespace-nowrap tracking-tight">Build Portfolio</h2>
                 </div>
                 <div className="h-8 w-px bg-border-dark"></div>
-                <div className="flex-1 flex items-center gap-3">
+              </div>
+              
+              <div className="flex items-center gap-4 mr-6">
+                <div className="flex items-center gap-3 bg-surface-light/50 px-4 py-2 rounded-xl border border-border-dark focus-within:border-primary/50 transition-all">
                   <span className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Name:</span>
                   <input 
                     type="text"
-                    placeholder="Enter portfolio name..."
-                    className="bg-transparent border-b border-border-active py-1 px-0 focus:outline-none focus:border-primary text-sm font-bold text-white placeholder:text-text-secondary/20 min-w-[300px]"
+                    placeholder="Portfolio Title..."
+                    className="bg-transparent py-0 px-0 focus:outline-none text-sm font-bold text-white placeholder:text-text-secondary/20 min-w-[200px]"
                     value={newPortfolio.name}
                     onChange={(e) => setNewPortfolio({...newPortfolio, name: e.target.value})}
                     autoFocus
                   />
                 </div>
+                <button 
+                  onClick={() => setNewPortfolio({...newPortfolio, is_favorite: !newPortfolio.is_favorite})}
+                  className={cn(
+                    "p-2.5 rounded-xl transition-all border shadow-lg",
+                    newPortfolio.is_favorite 
+                      ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
+                      : "bg-surface-light border-border-dark text-text-secondary hover:text-white"
+                  )}
+                  title={newPortfolio.is_favorite ? "Remove from favorites" : "Add to favorites"}
+                >
+                  <Star size={18} fill={newPortfolio.is_favorite ? "currentColor" : "none"} />
+                </button>
               </div>
+
               <button 
                 onClick={() => setShowCreateModal(false)}
                 className="p-2 hover:bg-surface-light rounded-full transition-all text-text-secondary hover:text-white"

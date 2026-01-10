@@ -45,7 +45,7 @@ class PortfolioListItem(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    is_favorite: bool
+    is_favorite: bool = False
     asset_count: int
     created_at: datetime
 

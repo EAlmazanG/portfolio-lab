@@ -42,7 +42,9 @@ class PortfolioService:
     def get_portfolios() -> List[Portfolio]:
         db = SessionLocal()
         try:
-            return db.query(Portfolio).all()
+            from sqlalchemy.orm import selectinload
+            # Use selectinload to ensure assets are loaded for asset_count calculation
+            return db.query(Portfolio).options(selectinload(Portfolio.assets)).all()
         finally:
             db.close()
 
