@@ -602,11 +602,11 @@ export default function PortfolioBuilderPage() {
                   
                   <div className="flex gap-6 w-full lg:w-auto">
                     <button 
-                      onClick={() => window.location.href = `/simulate-portfolio?id=${selectedPortfolio.id}`}
+                      onClick={() => window.location.href = `/portfolio-analysis?id=${selectedPortfolio.id}`}
                       className="flex-1 lg:flex-none px-10 py-5 bg-primary text-background-dark font-black uppercase tracking-wider rounded-[24px] hover:bg-[#3af578] transition-all flex items-center justify-center gap-4 shadow-xl active:scale-[0.98] group text-sm"
                     >
                       <LineChartIcon size={22} className="group-hover:scale-110 transition-transform" />
-                      Run Simulation
+                      Run Analysis
                     </button>
                   </div>
                 </header>

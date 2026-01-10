@@ -46,7 +46,8 @@ import {
   getPortfolios, 
   getPortfolio,
   runPortfolioSimulation,
-  getPortfolioSimulationHistory
+  getPortfolioSimulationHistory,
+  getAssetHistory
 } from "../../lib/api";
 import { Portfolio, PortfolioListItem } from "../../types/portfolio";
 import { 
@@ -56,6 +57,7 @@ import {
   AssetSimulationConfig
 } from "../../types/portfolio_simulation";
 import Header from "../../components/Header";
+import { usePathname, useSearchParams } from "next/navigation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { 
@@ -82,6 +84,7 @@ function cn(...inputs: ClassValue[]) {
 const COLORS = ['#13ec5b', '#3af578', '#6ef99c', '#9efcc0', '#cfffe4', '#0ea541', '#097a2d'];
 
 export default function PortfolioAnalysisPage() {
+  const searchParams = useSearchParams();
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
   const [selectedPortfolioDetails, setSelectedPortfolioDetails] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(false);
@@ -92,6 +95,8 @@ export default function PortfolioAnalysisPage() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [isRebalancingEnabled, setIsRebalancingEnabled] = useState(false);
+  const [previewData, setPreviewData] = useState<{date: string, value: number}[]>([]);
+  const [loadingPreview, setLoadingPreview] = useState(false);
 
   // Form state
   const [config, setConfig] = useState<PortfolioSimulationConfig>({
@@ -109,7 +114,52 @@ export default function PortfolioAnalysisPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+    const portfolioId = searchParams.get('id');
+    if (portfolioId) {
+      handlePortfolioChange(Number(portfolioId));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (selectedPortfolioDetails && !simulation) {
+      loadPreview();
+    }
+  }, [selectedPortfolioDetails, simulation, config.start_date, config.end_date]);
+
+  const loadPreview = async () => {
+    if (!selectedPortfolioDetails) return;
+    setLoadingPreview(true);
+    try {
+      const histories = await Promise.all(
+        selectedPortfolioDetails.assets.map(async (pa) => {
+          const data = await getAssetHistory(pa.asset_id, config.start_date, config.end_date);
+          return { weight: pa.weight, data };
+        })
+      );
+
+      if (histories.length > 0 && histories[0].data.length > 0) {
+        const dates = histories[0].data.map(d => d.date);
+        const indexValues = dates.map(date => {
+          let weightedValue = 0;
+          histories.forEach(h => {
+            const dayData = h.data.find(d => d.date === date);
+            if (dayData && h.data.length > 0) {
+              const firstPrice = h.data[0].price;
+              const currentPrice = dayData.price;
+              const normalizedPrice = (currentPrice / firstPrice) * 100;
+              weightedValue += normalizedPrice * h.weight;
+            }
+          });
+          return { date, value: weightedValue };
+        });
+        setPreviewData(indexValues);
+      }
+    } catch (error) {
+      console.error("Error loading preview:", error);
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -634,6 +684,131 @@ export default function PortfolioAnalysisPage() {
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+            ) : selectedPortfolioDetails ? (
+              <div className="max-w-[1400px] mx-auto space-y-10 animate-in fade-in slide-in-from-top-4 duration-500">
+                {/* Preview Header */}
+                <div className="bg-surface-dark/40 border border-border-active/20 p-8 rounded-[32px] backdrop-blur-sm">
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                    <div>
+                      <h2 className="text-3xl font-black text-white tracking-tight mb-2">Strategy Architect: {selectedPortfolioDetails.name}</h2>
+                      <p className="text-text-secondary text-sm font-medium opacity-60">Review your portfolio framework before executing the deep analysis simulation.</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                       <div className="flex flex-col items-end">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Total Framework Assets</span>
+                          <span className="text-3xl font-black text-white">{selectedPortfolioDetails.assets.length}</span>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                  {/* Price Index Preview */}
+                  <div className="bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-white flex items-center gap-3">
+                        <TrendingUp size={18} className="text-primary" />
+                        Portfolio Price Index (1Y)
+                      </h3>
+                    </div>
+                    <div className="h-[350px]">
+                      {loadingPreview ? (
+                        <div className="h-full flex flex-col items-center justify-center gap-4">
+                          <RefreshCcw size={32} className="animate-spin text-primary opacity-40" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary">Syncing historical data...</span>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={previewData}>
+                            <defs>
+                              <linearGradient id="colorPreview" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#13ec5b" stopOpacity={0.1}/>
+                                <stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
+                            <XAxis 
+                              dataKey="date" 
+                              hide
+                            />
+                            <YAxis 
+                              hide
+                              domain={['dataMin - 5', 'dataMax + 5']}
+                            />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }}
+                              itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: '900' }}
+                              labelStyle={{ display: 'none' }}
+                              formatter={(val: number) => [val.toFixed(2), "Price Index"]}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="value" 
+                              stroke="#13ec5b" 
+                              strokeWidth={3}
+                              fillOpacity={1} 
+                              fill="url(#colorPreview)" 
+                              animationDuration={2000}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Weight Distribution Preview */}
+                  <div className="bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-white mb-8 flex items-center gap-3">
+                      <PieChart size={18} className="text-primary" />
+                      Target Allocation
+                    </h3>
+                    <div className="h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={selectedPortfolioDetails.assets.map((pa, idx) => ({
+                              name: pa.asset?.ticker || "Unknown",
+                              value: pa.weight * 100
+                            }))}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={80}
+                            outerRadius={110}
+                            paddingAngle={8}
+                            dataKey="value"
+                            stroke="none"
+                            label={({ name, value }) => `${name} (${value.toFixed(0)}%)`}
+                          >
+                            {selectedPortfolioDetails.assets.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center pt-10">
+                   <div className="flex flex-col items-center gap-6 max-w-md text-center">
+                      <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                         <Play size={32} fill="currentColor" className="ml-1" />
+                      </div>
+                      <h4 className="text-xl font-black text-white">Ready to Simulate?</h4>
+                      <p className="text-text-secondary text-sm font-medium opacity-60 leading-relaxed">
+                        Execute the historical backtest to analyze how this strategy would have performed using Smart DCA features compared to a regular investment schedule.
+                      </p>
+                      <button 
+                        onClick={handleRunSimulation}
+                        className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-wider rounded-2xl hover:bg-[#3af578] transition-all shadow-xl shadow-primary/10 active:scale-95 text-sm mt-4"
+                      >
+                        Launch Deep Analysis
+                      </button>
+                   </div>
                 </div>
               </div>
             ) : (
