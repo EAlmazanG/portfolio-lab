@@ -15,8 +15,6 @@ class AssetSimulationConfig(BaseModel):
     ma_period_short: int = Field(default=50, ge=1)
     ma_period_long: int = Field(default=200, ge=1)
     expensive_buy_ratio: float = Field(default=0.0, ge=0.0, le=1.0)
-    commission_fee_percent: float = Field(default=0.0, ge=0)
-    minimum_fee_per_trade: float = Field(default=0.0, ge=0)
 
 class PortfolioSimulationCreate(BaseModel):
     """Request schema for running a portfolio simulation."""
@@ -27,8 +25,15 @@ class PortfolioSimulationCreate(BaseModel):
     base_amount: float = Field(gt=0)
     frequency: str = Field(pattern="^(daily|weekly|monthly|bi-monthly)$")
     investment_mode: str = Field(default="per_contribution", pattern="^(annual|per_contribution)$")
+    
+    # Global Fees
+    commission_fee_percent: float = Field(default=0.0, ge=0)
+    minimum_fee_per_trade: float = Field(default=0.0, ge=0)
+    maintenance_fee_annual_percent: float = Field(default=0.0, ge=0)
+    
     rebalancing_mode: str = Field(default="none", pattern="^(none|periodic|contribution)$")
     rebalancing_interval_months: int = Field(default=6, ge=1)
+    
     # Per-asset configuration overrides
     asset_configs: Dict[int, AssetSimulationConfig] = {}
     is_favorite: bool = Field(default=False)

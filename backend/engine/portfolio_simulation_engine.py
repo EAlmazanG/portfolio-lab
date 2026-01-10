@@ -62,11 +62,9 @@ class PortfolioSimulationEngine:
             # Use initial capital logic
             asset_initial_capital = 0.0
             if pa.current_amount and pa.current_amount > 0:
-                # If specific amounts are defined, use them
                 asset_initial_capital = float(pa.current_amount)
             elif self.portfolio.initial_capital and self.portfolio.initial_capital > 0:
-                # If only total capital is defined, distribute by target weight
-                asset_initial_capital = float(self.portfolio.initial_capital * asset_weight)
+                asset_initial_capital = float(self.portfolio.initial_capital) * float(asset_weight)
             
             # The periodic amount for this asset is its weight * total base_amount
             asset_base_amount = config.base_amount * asset_weight
@@ -74,25 +72,29 @@ class PortfolioSimulationEngine:
             engine = self.asset_engines[asset_id]
             
             # Run the single asset simulation
-            result = engine.run_baseline_dca(
-                base_amount=asset_base_amount,
-                frequency=config.frequency,
-                initial_capital=asset_initial_capital,
-                investment_mode=config.investment_mode,
-                commission_percent=asset_config.commission_fee_percent,
-                minimum_fee_per_trade=asset_config.minimum_fee_per_trade,
-                maintenance_fee_annual_percent=0, # TBD
-                dynamic_timing_enabled=asset_config.dynamic_timing_enabled,
-                timing_aggressiveness=asset_config.timing_aggressiveness,
-                dynamic_sizing_enabled=asset_config.dynamic_sizing_enabled,
-                sizing_multiplier=asset_config.sizing_multiplier,
-                smart_indicator=asset_config.smart_indicator,
-                rsi_threshold_low=asset_config.rsi_threshold_low,
-                rsi_threshold_high=asset_config.rsi_threshold_high,
-                ma_period_short=asset_config.ma_period_short,
-                ma_period_long=asset_config.ma_period_long,
-                expensive_buy_ratio=asset_config.expensive_buy_ratio
-            )
+            try:
+                result = engine.run_baseline_dca(
+                    base_amount=float(asset_base_amount),
+                    frequency=config.frequency,
+                    initial_capital=float(asset_initial_capital),
+                    investment_mode=config.investment_mode,
+                    commission_percent=float(config.commission_fee_percent),
+                    minimum_fee_per_trade=float(config.minimum_fee_per_trade),
+                    maintenance_fee_annual_percent=float(config.maintenance_fee_annual_percent),
+                    dynamic_timing_enabled=bool(asset_config.dynamic_timing_enabled),
+                    timing_aggressiveness=float(asset_config.timing_aggressiveness),
+                    dynamic_sizing_enabled=bool(asset_config.dynamic_sizing_enabled),
+                    sizing_multiplier=float(asset_config.sizing_multiplier),
+                    smart_indicator=asset_config.smart_indicator,
+                    rsi_threshold_low=float(asset_config.rsi_threshold_low),
+                    rsi_threshold_high=float(asset_config.rsi_threshold_high),
+                    ma_period_short=int(asset_config.ma_period_short),
+                    ma_period_long=int(asset_config.ma_period_long),
+                    expensive_buy_ratio=float(asset_config.expensive_buy_ratio)
+                )
+            except Exception as e:
+                print(f"Error in single asset simulation for {pa.asset.ticker}: {e}")
+                raise e
             asset_results[asset_id] = {
                 "ticker": pa.asset.ticker,
                 "weight": asset_weight,
@@ -124,7 +126,7 @@ class PortfolioSimulationEngine:
                 "total_return_percent": res.total_return_percent,
                 "assets_accumulated": res.total_assets_accumulated,
                 "avg_price": res.avg_purchase_price,
-                "portfolio_history": res.portfolio_history # This includes the asset-specific price history
+                "portfolio_history": res.portfolio_history
             })
 
         return {
@@ -137,14 +139,13 @@ class PortfolioSimulationEngine:
             "fees_percentage": round((total_fees / total_invested * 100), 2) if total_invested > 0 else 0,
             "portfolio_history": portfolio_history,
             "asset_results": formatted_asset_results,
-            "dca_efficiency": 0.0, # TBD for portfolio
-            "avg_purchase_price": 0.0, # Not applicable to portfolio
-            "total_assets_accumulated": 0.0 # Not applicable to portfolio
+            "dca_efficiency": 0.0,
+            "avg_purchase_price": 0.0,
+            "total_assets_accumulated": 0.0
         }
 
     def _aggregate_history(self, asset_results: Dict[int, Any]) -> List[Dict[str, Any]]:
         """Combines individual asset histories into a single portfolio history."""
-        # Get all unique dates from all asset results
         all_dates = set()
         for data in asset_results.values():
             for point in data["result"].portfolio_history:
@@ -152,7 +153,6 @@ class PortfolioSimulationEngine:
         
         sorted_dates = sorted(list(all_dates))
         
-        # Build aggregated history
         agg_history = []
         for date_str in sorted_dates:
             point = {
@@ -163,16 +163,13 @@ class PortfolioSimulationEngine:
                 "cumulative_fees": 0.0,
                 "b_contribution": 0.0,
                 "s_contribution": 0.0,
-                "price": 0.0 # Will use a base 100 index for portfolio price
+                "price": 0.0
             }
             
-            # We'll calculate a portfolio "price" as a weighted index of normalized asset prices
-            # starting at 100
             weighted_normalized_price = 0.0
             
             for asset_id, data in asset_results.items():
                 asset_history = data["result"].portfolio_history
-                # Find matching date in asset history
                 asset_point = next((p for p in asset_history if p["date"] == date_str), None)
                 
                 if asset_point:
@@ -184,12 +181,12 @@ class PortfolioSimulationEngine:
                     point["s_contribution"] += asset_point["s_contribution"]
                     
                     # Normalized price (base 100)
-                    first_price = asset_history[0]["price"]
-                    normalized_price = (asset_point["price"] / first_price * 100) if first_price > 0 else 0
-                    weighted_normalized_price += normalized_price * data["weight"]
+                    if asset_history:
+                        first_price = asset_history[0]["price"]
+                        normalized_price = (asset_point["price"] / first_price * 100) if first_price > 0 else 0
+                        weighted_normalized_price += normalized_price * data["weight"]
 
             point["price"] = round(weighted_normalized_price, 2)
-            # Round other values
             point["invested"] = round(point["invested"], 2)
             point["baseline_value"] = round(point["baseline_value"], 2)
             point["smart_value"] = round(point["smart_value"], 2)
