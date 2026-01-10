@@ -940,7 +940,7 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history} syncId="portfolioCharts" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <AreaChart data={simulation.results.portfolio_history} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <defs>
                             <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
@@ -1134,47 +1134,21 @@ export default function AssetSimulationPage() {
                         onClick={() => setVisibleSeries(prev => ({ ...prev, price: !prev.price }))}
                       >
                         <span className="w-3 h-3 rounded-full bg-blue-400"></span>
-                        <span className="text-xs text-text-secondary">Candlesticks</span>
+                        <span className="text-xs text-text-secondary font-bold">Candles</span>
                       </div>
                     </div>
                     <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart 
-                          data={simulation.results.portfolio_history.map(p => ({
-                            date: p.date,
-                            open: p.open,
-                            high: p.high,
-                            low: p.low,
-                            close: p.close
-                          }))} 
-                          syncId="portfolioCharts" 
-                          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                        >
+                        <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                          <XAxis dataKey="date" hide={true} />
+                          <XAxis dataKey="date" hide />
                           <YAxis 
-                            yAxisId="priceAxis"
                             orientation="right"
                             stroke="#9db9a6" 
                             fontSize={10} 
                             tickLine={false} 
                             axisLine={false}
-                            domain={[
-                              (dataMin: number) => {
-                                const validPrices = simulation.results.portfolio_history
-                                  .filter(p => (p.low || 0) > 0)
-                                  .map(p => p.low);
-                                if (validPrices.length === 0) return dataMin;
-                                return Math.min(...validPrices) * 0.95;
-                              },
-                              (dataMax: number) => {
-                                const validPrices = simulation.results.portfolio_history
-                                  .filter(p => (p.high || 0) > 0)
-                                  .map(p => p.high);
-                                if (validPrices.length === 0) return dataMax;
-                                return Math.max(...validPrices) * 1.05;
-                              }
-                            ]}
+                            domain={['auto', 'auto']}
                             tickFormatter={(value) => `$${Math.round(value).toLocaleString()}`}
                           />
                           <Tooltip 
@@ -1182,7 +1156,6 @@ export default function AssetSimulationPage() {
                             content={({ active, payload, label }) => {
                               if (active && payload && payload.length) {
                                 const data = payload[0].payload;
-                                if (!data || !(data.open > 0)) return null;
                                 return (
                                   <div className="bg-[#1c271f] border border-[#3b5443] p-3 rounded-lg shadow-xl">
                                     <p className="text-[#9db9a6] text-[10px] font-bold mb-2 uppercase">{new Date(label).toLocaleDateString()}</p>
@@ -1204,23 +1177,18 @@ export default function AssetSimulationPage() {
                           />
                           {visibleSeries.price && (
                             <Bar 
-                              yAxisId="priceAxis"
                               dataKey="high" 
                               fill="none" 
-                              stroke="none"
                               isAnimationActive={false}
                               shape={(props: any) => {
-                                const { x, width, payload } = props;
-                                if (!props.yAxis?.scale || !payload || !(payload.open > 0)) return null;
-                                
+                                const { x, width, payload, yAxis } = props;
+                                if (!yAxis?.scale || !payload || !(payload.open > 0)) return null;
                                 const isUp = payload.close >= payload.open;
                                 const color = isUp ? "#13ec5b" : "#f87171";
-                                
-                                const openY = props.yAxis.scale(payload.open);
-                                const closeY = props.yAxis.scale(payload.close);
-                                const highY = props.yAxis.scale(payload.high);
-                                const lowY = props.yAxis.scale(payload.low);
-                                
+                                const openY = yAxis.scale(payload.open);
+                                const closeY = yAxis.scale(payload.close);
+                                const highY = yAxis.scale(payload.high);
+                                const lowY = yAxis.scale(payload.low);
                                 return (
                                   <g key={`candle-${payload.date}`}>
                                     <line x1={x + width / 2} y1={highY} x2={x + width / 2} y2={lowY} stroke={color} strokeWidth={1} />
@@ -1234,6 +1202,49 @@ export default function AssetSimulationPage() {
                       </ResponsiveContainer>
                     </div>
                   </div>
+
+                  {/* Smart Indicator Chart */}
+                  {isSmartDcaEnabled && (
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-350">
+                      <div className="flex flex-col mb-4">
+                        <h3 className="text-white text-sm font-bold flex items-center gap-2 uppercase tracking-wider">
+                          <BrainCircuit size={16} className="text-primary" />
+                          {config.smart_indicator} Indicator
+                        </h3>
+                        <p className="text-text-secondary text-[10px]">Technical analysis used for trade decisions</p>
+                      </div>
+                      <div className="w-full h-[120px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                            <XAxis dataKey="date" hide />
+                            <YAxis 
+                              orientation="right"
+                              stroke="#9db9a6" 
+                              fontSize={10} 
+                              tickLine={false} 
+                              axisLine={false}
+                              domain={config.smart_indicator === 'RSI' ? [0, 100] : ['auto', 'auto']}
+                              tickFormatter={(value) => value.toFixed(1)}
+                            />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                              itemStyle={{ fontSize: '11px', color: '#13ec5b' }}
+                              labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '10px' }}
+                              formatter={(value: any) => [value.toFixed(4), config.smart_indicator]}
+                            />
+                            <Line type="monotone" dataKey="indicator_value" stroke="#13ec5b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                            {config.smart_indicator === 'RSI' && (
+                              <>
+                                <Line dataKey={() => config.rsi_threshold_low} stroke="#f87171" strokeDasharray="3 3" dot={false} strokeWidth={1} opacity={0.3} />
+                                <Line dataKey={() => config.rsi_threshold_high} stroke="#f87171" strokeDasharray="3 3" dot={false} strokeWidth={1} opacity={0.3} />
+                              </>
+                            )}
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Contributions Timeline Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-400">
@@ -1260,7 +1271,7 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={simulation.results.portfolio_history} syncId="portfolioCharts" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
                           <XAxis 
                             dataKey="date" 
@@ -1274,7 +1285,6 @@ export default function AssetSimulationPage() {
                             }}
                           />
                           <YAxis 
-                            yAxisId="contribAxis"
                             orientation="right"
                             stroke="#9db9a6" 
                             fontSize={10} 
@@ -1288,9 +1298,9 @@ export default function AssetSimulationPage() {
                             labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
                             formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name === 's_contribution' ? 'Smart DCA' : 'Standard DCA']}
                           />
-                          <Bar yAxisId="contribAxis" dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                           {isSmartDcaEnabled && (
-                            <Bar yAxisId="contribAxis" dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                           )}
                           <Brush 
                             dataKey="date" 
@@ -1298,10 +1308,7 @@ export default function AssetSimulationPage() {
                             stroke="#3b5443" 
                             fill="#0b0f0c"
                             travellerWidth={10}
-                            tickFormatter={(str) => {
-                              const date = new Date(str);
-                              return `${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
-                            }}
+                            tickFormatter={() => ""}
                           />
                         </ComposedChart>
                       </ResponsiveContainer>

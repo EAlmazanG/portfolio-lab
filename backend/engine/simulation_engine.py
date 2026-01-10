@@ -329,6 +329,7 @@ class SimulationEngine:
                 "low": round(float(row['low']), 2),
                 "close": round(float(row['close']), 2),
                 "price": round(float(row['close']), 2),
+                "indicator_value": round(float(row['indicator_value']), 4) if 'indicator_value' in row else 0.0,
                 "invested": round(float(s_invested), 2),
                 "baseline_value": round(float(b_assets * row['close']), 2),
                 "smart_value": round(float(s_assets * row['close']), 2),
