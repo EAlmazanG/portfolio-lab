@@ -56,6 +56,9 @@ class SimulationEngine:
             df = pd.DataFrame([
                 {
                     "date": d.date,
+                    "open": d.open,
+                    "high": d.high,
+                    "low": d.low,
                     "close": d.close,
                     "adj_close": d.adj_close
                 } for d in data
@@ -203,6 +206,9 @@ class SimulationEngine:
             date = indicator_df.index[i]
             row = indicator_df.iloc[i]
             
+            b_contribution = 0.0
+            s_contribution = 0.0
+            
             # --- YEAR TRANSITION ---
             if date.year > current_year:
                 # Force invest any remaining budget from the PREVIOUS year if any (should be near 0 if logic is correct)
@@ -212,6 +218,7 @@ class SimulationEngine:
                         s_assets += (annual_budget_remaining - fee) / indicator_df.iloc[i-1]['close']
                         s_fees += fee
                         s_invested += annual_budget_remaining
+                        s_contribution += annual_budget_remaining
                 
                 current_year = date.year
                 annual_budget_remaining = get_annual_baseline_total(current_year)
@@ -232,6 +239,7 @@ class SimulationEngine:
                 b_invested += periodic_amount
                 b_fees += fee
                 b_next_idx += 1
+                b_contribution = periodic_amount
 
             # --- SMART BUY LOGIC ---
             signal = 0
@@ -311,15 +319,22 @@ class SimulationEngine:
                         s_invested += actual_buy_amount
                         s_fees += fee
                         annual_budget_remaining -= actual_buy_amount
+                        s_contribution += actual_buy_amount
             
             # Record history
             portfolio_history.append({
                 "date": date.strftime("%Y-%m-%d"),
+                "open": round(float(row['open']), 2),
+                "high": round(float(row['high']), 2),
+                "low": round(float(row['low']), 2),
+                "close": round(float(row['close']), 2),
                 "price": round(float(row['close']), 2),
                 "invested": round(float(s_invested), 2),
                 "baseline_value": round(float(b_assets * row['close']), 2),
                 "smart_value": round(float(s_assets * row['close']), 2),
-                "cumulative_fees": round(float(s_fees), 2)
+                "cumulative_fees": round(float(s_fees), 2),
+                "b_contribution": round(float(b_contribution), 2),
+                "s_contribution": round(float(s_contribution), 2)
             })
 
         # --- FINAL RESULTS ---

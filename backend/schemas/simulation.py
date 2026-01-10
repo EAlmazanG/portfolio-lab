@@ -36,11 +36,17 @@ class SimulationCreate(SimulationBase):
 class PortfolioPoint(BaseModel):
     """Single point in portfolio history."""
     date: str
+    open: float = 0.0
+    high: float = 0.0
+    low: float = 0.0
+    close: float = 0.0
     price: float
     invested: float
     baseline_value: float
     smart_value: float
     cumulative_fees: float
+    b_contribution: float = 0.0
+    s_contribution: float = 0.0
 
 
 class SimulationResultSchema(BaseModel):

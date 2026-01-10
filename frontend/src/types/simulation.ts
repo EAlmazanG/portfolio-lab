@@ -7,11 +7,17 @@ export interface Asset {
 
 export interface PortfolioPoint {
   date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
   price: number;
   invested: number;
   baseline_value: number;
   smart_value: number;
   cumulative_fees: number;
+  b_contribution: number;
+  s_contribution: number;
 }
 
 export interface SimulationResults {

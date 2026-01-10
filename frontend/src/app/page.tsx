@@ -59,7 +59,10 @@ import {
   Area,
   BarChart,
   Bar,
-  Cell
+  Cell,
+  ComposedChart,
+  Brush,
+  Line
 } from "recharts";
 
 function cn(...inputs: ClassValue[]) {
@@ -338,11 +341,11 @@ export default function AssetSimulationPage() {
         <div className="flex flex-1 justify-end items-center gap-4">
           <div className="hidden md:flex items-center gap-6 border-l border-border-dark pl-6">
             <div className="flex items-center gap-6">
-              <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Asset</a>
-              <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
-            </div>
-            <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
-               <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" alt="Profile" className="w-full h-full object-cover" />
+            <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Asset</a>
+            <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
+          </div>
+          <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
+             <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" alt="Profile" className="w-full h-full object-cover" />
             </div>
           </div>
         </div>
@@ -372,17 +375,17 @@ export default function AssetSimulationPage() {
             leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
-                <button 
-                  onClick={handleNewSimulation}
-                  className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
-                >
-                  <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
-                  New Simulation
-                </button>
-              </div>
+          <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
+            <button 
+              onClick={handleNewSimulation}
+              className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
+            >
+              <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
+              New Simulation
+            </button>
+          </div>
 
-              <div className="p-6 pb-2">
+          <div className="p-6 pb-2">
                 <div className="flex items-center justify-between mb-1">
                   <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left">Configuration</h1>
                   <button
@@ -398,237 +401,237 @@ export default function AssetSimulationPage() {
                   </button>
                 </div>
                 <p className="text-text-secondary text-sm">Set up your {isSmartDcaEnabled ? 'smart' : 'baseline'} DCA parameters.</p>
+          </div>
+
+          {/* 1. Asset & Dates Section */}
+          <div className="border-b border-border-dark/30">
+            <div 
+              onClick={() => setCollapsedSections(prev => ({ ...prev, section1: !prev.section1 }))}
+              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+            >
+              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                <Layout size={14} className="text-primary" />
+                1. Asset & Timeline
+              </h3>
+              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section1 && "-rotate-90")}>
+                <ChevronDown size={14} />
               </div>
-
-              {/* 1. Asset & Dates Section */}
-              <div className="border-b border-border-dark/30">
-                <div 
-                  onClick={() => setCollapsedSections(prev => ({ ...prev, section1: !prev.section1 }))}
-                  className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-                >
-                  <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                    <Layout size={14} className="text-primary" />
-                    1. Asset & Timeline
-                  </h3>
-                  <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section1 && "-rotate-90")}>
-                    <ChevronDown size={14} />
-                  </div>
-                </div>
-                
-                {!collapsedSections.section1 && (
-                  <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
-                    <div className="flex flex-col gap-2">
-                      <label className="text-white text-[13px] font-medium opacity-80">Target Asset</label>
-                      <div className="relative">
-                        <select 
-                          className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm font-normal cursor-pointer"
-                          value={config.asset_id}
-                          onChange={(e) => {
-                            const newId = Number(e.target.value);
-                            setConfig({ ...config, asset_id: newId });
-                            if (newId === 0) {
-                              setAssetPreviewData([]);
-                              setSimulation(null);
-                            } else if (!simulation) {
-                              loadAssetPreview(newId);
-                            } else {
-                              // If changing asset after simulation, revert to preview mode
-                              setSimulation(null);
-                              loadAssetPreview(newId);
-                            }
-                          }}
-                        >
-                          <option value={0} disabled>Select an asset...</option>
-                          {assets.map((asset) => (
-                            <option key={asset.id} value={asset.id}>
-                              {asset.name} ({asset.ticker})
-                            </option>
-                          ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                          <ChevronDown size={14} />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[13px] font-medium opacity-80">Start Date</label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
-                          type="date" 
-                          value={config.start_date}
-                          onChange={(e) => {
-                            setConfig({ ...config, start_date: e.target.value });
-                            if (!simulation) loadAssetPreview(config.asset_id);
-                          }}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[13px] font-medium opacity-80">End Date</label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
-                          type="date" 
-                          value={config.end_date}
-                          onChange={(e) => {
-                            setConfig({ ...config, end_date: e.target.value });
-                            if (!simulation) loadAssetPreview(config.asset_id);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Capital & Investment Section */}
-              <div className="border-b border-border-dark/30">
-                <div 
-                  onClick={() => setCollapsedSections(prev => ({ ...prev, section2: !prev.section2 }))}
-                  className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-                >
-                  <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                    <Coins size={14} className="text-primary" />
-                    2. Capital & Strategy
-                  </h3>
-                  <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section2 && "-rotate-90")}>
-                    <ChevronDown size={14} />
-                  </div>
-                </div>
-
-                {!collapsedSections.section2 && (
-                  <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
-                          type="number" 
-                          value={config.initial_capital}
-                          onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[13px] font-medium opacity-80">Investment Mode</label>
-                        <div className="relative">
-                          <select 
-                            className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-[12px] cursor-pointer"
-                            value={config.investment_mode}
-                            onChange={(e) => setConfig({ ...config, investment_mode: e.target.value as any })}
-                          >
-                            <option value="per_contribution">Fixed Amount</option>
-                            <option value="annual">Annual Budget</option>
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                            <ChevronDown size={14} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[13px] font-medium opacity-80">Frequency</label>
-                        <div className="relative">
-                          <select 
-                            className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm cursor-pointer"
-                            value={config.frequency}
-                            onChange={(e) => setConfig({ ...config, frequency: e.target.value as any })}
-                          >
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                            <ChevronDown size={14} />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[13px] font-medium opacity-80">
-                          {config.investment_mode === "annual" ? "Annual ($)" : "Trade ($)"}
-                        </label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
-                          type="number" 
-                          value={config.base_amount}
-                          onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 3. Fees Section */}
-              <div className="border-b border-border-dark/30">
-                <div 
-                  onClick={() => setCollapsedSections(prev => ({ ...prev, section3: !prev.section3 }))}
-                  className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-                >
-                  <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                    <CreditCard size={14} className="text-primary" />
-                    3. Commissions & Fees
-                  </h3>
-                  <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section3 && "-rotate-90")}>
-                    <ChevronDown size={14} />
-                  </div>
-                </div>
-
-                {!collapsedSections.section3 && (
-                  <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                          step="0.01" 
-                          type="number" 
-                          value={config.commission_fee_percent}
-                          onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                          step="0.1" 
-                          type="number" 
-                          value={config.minimum_fee_per_trade}
-                          onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Number(e.target.value) })}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
-                        <input 
-                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                          step="0.01" 
-                          type="number" 
-                          value={config.maintenance_fee_annual_percent}
-                          onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 4. Smart Optimization Section */}
-              {isSmartDcaEnabled && (
-                <div className="border-b border-border-dark/30">
-                  <div 
-                    onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
-                    className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-                  >
-                    <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                      <BrainCircuit size={14} className="text-primary" />
-                      4. Smart Optimization
-                    </h3>
-                    <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
+            </div>
+            
+            {!collapsedSections.section1 && (
+              <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex flex-col gap-2">
+                  <label className="text-white text-[13px] font-medium opacity-80">Target Asset</label>
+                  <div className="relative">
+                    <select 
+                      className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm font-normal cursor-pointer"
+                      value={config.asset_id}
+                      onChange={(e) => {
+                        const newId = Number(e.target.value);
+                        setConfig({ ...config, asset_id: newId });
+                        if (newId === 0) {
+                          setAssetPreviewData([]);
+                          setSimulation(null);
+                        } else if (!simulation) {
+                          loadAssetPreview(newId);
+                        } else {
+                          // If changing asset after simulation, revert to preview mode
+                          setSimulation(null);
+                          loadAssetPreview(newId);
+                        }
+                      }}
+                    >
+                      <option value={0} disabled>Select an asset...</option>
+                      {assets.map((asset) => (
+                        <option key={asset.id} value={asset.id}>
+                          {asset.name} ({asset.ticker})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
                       <ChevronDown size={14} />
                     </div>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[13px] font-medium opacity-80">Start Date</label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
+                      type="date" 
+                      value={config.start_date}
+                      onChange={(e) => {
+                        setConfig({ ...config, start_date: e.target.value });
+                        if (!simulation) loadAssetPreview(config.asset_id);
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[13px] font-medium opacity-80">End Date</label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
+                      type="date" 
+                      value={config.end_date}
+                      onChange={(e) => {
+                        setConfig({ ...config, end_date: e.target.value });
+                        if (!simulation) loadAssetPreview(config.asset_id);
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
-                  {!collapsedSections.section4 && (
-                    <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
+          {/* 2. Capital & Investment Section */}
+          <div className="border-b border-border-dark/30">
+            <div 
+              onClick={() => setCollapsedSections(prev => ({ ...prev, section2: !prev.section2 }))}
+              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+            >
+              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                <Coins size={14} className="text-primary" />
+                2. Capital & Strategy
+              </h3>
+              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section2 && "-rotate-90")}>
+                <ChevronDown size={14} />
+              </div>
+            </div>
+
+            {!collapsedSections.section2 && (
+              <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                      type="number" 
+                      value={config.initial_capital}
+                      onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[13px] font-medium opacity-80">Investment Mode</label>
+                    <div className="relative">
+                      <select 
+                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-[12px] cursor-pointer"
+                        value={config.investment_mode}
+                        onChange={(e) => setConfig({ ...config, investment_mode: e.target.value as any })}
+                      >
+                        <option value="per_contribution">Fixed Amount</option>
+                        <option value="annual">Annual Budget</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                        <ChevronDown size={14} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[13px] font-medium opacity-80">Frequency</label>
+                    <div className="relative">
+                      <select 
+                        className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm cursor-pointer"
+                        value={config.frequency}
+                        onChange={(e) => setConfig({ ...config, frequency: e.target.value as any })}
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                        <ChevronDown size={14} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[13px] font-medium opacity-80">
+                      {config.investment_mode === "annual" ? "Annual ($)" : "Trade ($)"}
+                    </label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                      type="number" 
+                      value={config.base_amount}
+                      onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Fees Section */}
+          <div className="border-b border-border-dark/30">
+            <div 
+              onClick={() => setCollapsedSections(prev => ({ ...prev, section3: !prev.section3 }))}
+              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+            >
+              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                <CreditCard size={14} className="text-primary" />
+                3. Commissions & Fees
+              </h3>
+              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section3 && "-rotate-90")}>
+                <ChevronDown size={14} />
+              </div>
+            </div>
+
+            {!collapsedSections.section3 && (
+              <div className="px-6 pb-5 flex flex-col gap-4 animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                      step="0.01" 
+                      type="number" 
+                      value={config.commission_fee_percent}
+                      onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                      step="0.1" 
+                      type="number" 
+                      value={config.minimum_fee_per_trade}
+                      onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
+                    <input 
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                      step="0.01" 
+                      type="number" 
+                      value={config.maintenance_fee_annual_percent}
+                      onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. Smart Optimization Section */}
+              {isSmartDcaEnabled && (
+          <div className="border-b border-border-dark/30">
+            <div 
+              onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
+              className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+            >
+              <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                <BrainCircuit size={14} className="text-primary" />
+                4. Smart Optimization
+              </h3>
+              <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
+                <ChevronDown size={14} />
+              </div>
+            </div>
+
+            {!collapsedSections.section4 && (
+              <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
                       {/* Indicator Selection */}
                       <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
                         <div className="flex flex-col gap-3">
@@ -701,101 +704,101 @@ export default function AssetSimulationPage() {
                         </div>
                       </div>
 
-                      {/* Feature 1: Dynamic Timing */}
-                      <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="flex flex-col">
-                            <span className="text-white font-medium text-sm">Dynamic Timing</span>
-                            <span className="text-text-secondary text-xs">Adjust buy timing on volatility</span>
-                          </div>
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfig({ ...config, dynamic_timing_enabled: !config.dynamic_timing_enabled });
-                            }}
-                            className={cn(
-                              "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
-                              config.dynamic_timing_enabled ? "bg-primary" : "bg-border-dark"
-                            )}
-                          >
-                            <span className={cn(
-                              "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                              config.dynamic_timing_enabled ? "translate-x-5" : "translate-x-0"
-                            )} />
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex justify-between text-xs text-text-secondary">
-                            <span>Conservative</span>
-                            <span className="text-primary font-bold">Aggressive ({config.timing_aggressiveness})</span>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="0" 
-                            max="1" 
-                            step="0.05" 
-                            value={config.timing_aggressiveness}
-                            onChange={(e) => setConfig({ ...config, timing_aggressiveness: Number(e.target.value) })}
-                            className="w-full" 
-                          />
-                        </div>
-                      </div>
+                {/* Feature 1: Dynamic Timing */}
+                <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-white font-medium text-sm">Dynamic Timing</span>
+                      <span className="text-text-secondary text-xs">Adjust buy timing on volatility</span>
+                    </div>
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfig({ ...config, dynamic_timing_enabled: !config.dynamic_timing_enabled });
+                      }}
+                      className={cn(
+                        "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
+                        config.dynamic_timing_enabled ? "bg-primary" : "bg-border-dark"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                        config.dynamic_timing_enabled ? "translate-x-5" : "translate-x-0"
+                      )} />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-xs text-text-secondary">
+                      <span>Conservative</span>
+                      <span className="text-primary font-bold">Aggressive ({config.timing_aggressiveness})</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.05" 
+                      value={config.timing_aggressiveness}
+                      onChange={(e) => setConfig({ ...config, timing_aggressiveness: Number(e.target.value) })}
+                      className="w-full" 
+                    />
+                  </div>
+                </div>
 
-                      {/* Feature 2: Dynamic Sizing */}
-                      <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="flex flex-col">
-                            <span className="text-white font-medium text-sm">Dynamic Sizing</span>
-                            <span className="text-text-secondary text-xs">Increase amount on dips</span>
-                          </div>
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfig({ ...config, dynamic_sizing_enabled: !config.dynamic_sizing_enabled });
-                            }}
-                            className={cn(
-                              "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
-                              config.dynamic_sizing_enabled ? "bg-primary" : "bg-border-dark"
-                            )}
-                          >
-                            <span className={cn(
-                              "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                              config.dynamic_sizing_enabled ? "translate-x-5" : "translate-x-0"
-                            )} />
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex justify-between text-xs text-text-secondary">
-                            <span>1.0x</span>
-                            <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
-                          </div>
-                          <input 
-                            type="range" 
-                            min="1" 
-                            max="5" 
-                            step="0.1" 
-                            value={config.sizing_multiplier}
-                            onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
-                            className="w-full" 
-                          />
-                        </div>
-                      </div>
+                {/* Feature 2: Dynamic Sizing */}
+                <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-white font-medium text-sm">Dynamic Sizing</span>
+                      <span className="text-text-secondary text-xs">Increase amount on dips</span>
+                    </div>
+                    <div 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfig({ ...config, dynamic_sizing_enabled: !config.dynamic_sizing_enabled });
+                      }}
+                      className={cn(
+                        "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
+                        config.dynamic_sizing_enabled ? "bg-primary" : "bg-border-dark"
+                      )}
+                    >
+                      <span className={cn(
+                        "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                        config.dynamic_sizing_enabled ? "translate-x-5" : "translate-x-0"
+                      )} />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-xs text-text-secondary">
+                      <span>1.0x</span>
+                      <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="5" 
+                      step="0.1" 
+                      value={config.sizing_multiplier}
+                      onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
+                      className="w-full" 
+                    />
+                  </div>
+                </div>
                     </div>
                   )}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
 
             {/* Sticky Run Button */}
             <div className="p-6 border-t border-border-dark bg-background-dark sticky bottom-0 z-20">
-              <button 
-                onClick={handleRunSimulation}
-                disabled={loading}
+            <button 
+              onClick={handleRunSimulation}
+              disabled={loading}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-4 text-background-dark text-lg font-bold leading-normal hover:bg-[#3af578] transition-all shadow-[0_0_20px_rgba(19,236,91,0.3)] active:scale-[0.98] disabled:opacity-50"
-              >
+            >
                 {loading ? <RefreshCcw size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" />}
-                Run Simulation
-              </button>
+                  Run Simulation
+            </button>
             </div>
           </div>
         </aside>
@@ -831,29 +834,29 @@ export default function AssetSimulationPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500 delay-75">
                   {/* Card 1: Smart DCA */}
                   {isSmartDcaEnabled && (
-                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <TrendingUp size={64} className="text-primary" />
-                      </div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-text-secondary text-sm font-medium">Total Return (Smart DCA)</p>
-                        <div className="group/info relative cursor-help">
-                          <Info size={14} className="text-text-secondary" />
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                            Total return percentage including the smart strategies applied over the invested capital.
-                          </div>
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                      <TrendingUp size={64} className="text-primary" />
+                    </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-text-secondary text-sm font-medium">Total Return (Smart DCA)</p>
+                      <div className="group/info relative cursor-help">
+                        <Info size={14} className="text-text-secondary" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
+                          Total return percentage including the smart strategies applied over the invested capital.
                         </div>
                       </div>
-                      <div className="flex items-baseline gap-2">
-                        <h3 className={cn("text-3xl font-bold", simulation.results.total_return_percent >= 0 ? "text-white" : "text-red-400")}>
-                          {simulation.results.total_return_percent > 0 ? "+" : ""}{simulation.results.total_return_percent}%
-                        </h3>
-                        <span className="text-primary text-sm font-bold bg-primary/10 px-2 py-0.5 rounded-full flex items-center">
-                          <TrendingUp size={12} className="mr-1" /> { (simulation.results.total_return_percent - simulation.results.baseline_return_percent).toFixed(1) }% vs Base
-                        </span>
-                      </div>
-                      <p className="text-text-secondary/60 text-xs mt-3">Final Value: ${simulation.results.final_value.toLocaleString()}</p>
                     </div>
+                    <div className="flex items-baseline gap-2">
+                      <h3 className={cn("text-3xl font-bold", simulation.results.total_return_percent >= 0 ? "text-white" : "text-red-400")}>
+                        {simulation.results.total_return_percent > 0 ? "+" : ""}{simulation.results.total_return_percent}%
+                      </h3>
+                      <span className="text-primary text-sm font-bold bg-primary/10 px-2 py-0.5 rounded-full flex items-center">
+                        <TrendingUp size={12} className="mr-1" /> { (simulation.results.total_return_percent - simulation.results.baseline_return_percent).toFixed(1) }% vs Base
+                      </span>
+                    </div>
+                    <p className="text-text-secondary/60 text-xs mt-3">Final Value: ${simulation.results.final_value.toLocaleString()}</p>
+                  </div>
                   )}
 
                   {/* Card 2: Baseline */}
@@ -911,13 +914,13 @@ export default function AssetSimulationPage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                         {isSmartDcaEnabled && (
-                          <div 
-                            className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.smart && "opacity-30")}
-                            onClick={() => setVisibleSeries(prev => ({ ...prev, smart: !prev.smart }))}
-                          >
-                            <span className="w-3 h-3 rounded-full bg-primary"></span>
-                            <span className="text-xs text-white">Smart DCA</span>
-                          </div>
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.smart && "opacity-30")}
+                          onClick={() => setVisibleSeries(prev => ({ ...prev, smart: !prev.smart }))}
+                        >
+                          <span className="w-3 h-3 rounded-full bg-primary"></span>
+                          <span className="text-xs text-white">Smart DCA</span>
+                        </div>
                         )}
                         <div 
                           className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.baseline && "opacity-30")}
@@ -937,7 +940,7 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history}>
+                        <AreaChart data={simulation.results.portfolio_history} syncId="portfolioCharts" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <defs>
                             <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
@@ -975,7 +978,7 @@ export default function AssetSimulationPage() {
                               type="monotone" 
                               dataKey="smart_value" 
                               stroke="#13ec5b" 
-                              strokeWidth={3} 
+                              strokeWidth={3}
                               fillOpacity={1} 
                               fill="url(#gradientSmart)" 
                               name="Smart DCA"
@@ -1115,24 +1118,24 @@ export default function AssetSimulationPage() {
                   {/* Asset Price Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-300">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                      <h3 className="text-white text-sm font-bold opacity-70 italic">Asset Price Reference</h3>
+                      <div className="flex flex-col">
+                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
+                          <Activity size={18} className="text-blue-400" />
+                          Asset Price Reference
+                        </h3>
+                        <p className="text-text-secondary text-[11px]">Daily OHLC price action</p>
+                      </div>
                       <div 
                         className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.price && "opacity-30")}
                         onClick={() => setVisibleSeries(prev => ({ ...prev, price: !prev.price }))}
                       >
                         <span className="w-3 h-3 rounded-full bg-blue-400"></span>
-                        <span className="text-xs text-text-secondary">Asset Price</span>
+                        <span className="text-xs text-text-secondary">Candlesticks</span>
                       </div>
                     </div>
-                    <div className="w-full h-[150px]">
+                    <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history}>
-                          <defs>
-                            <linearGradient id="gradientPrice" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.1}/>
-                              <stop offset="100%" stopColor="#60a5fa" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
+                        <ComposedChart data={simulation.results.portfolio_history} syncId="portfolioCharts" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
                           <XAxis 
                             dataKey="date" 
@@ -1140,30 +1143,155 @@ export default function AssetSimulationPage() {
                           />
                           <YAxis 
                             orientation="right"
-                            stroke="#60a5fa" 
+                            stroke="#9db9a6" 
                             fontSize={10} 
                             tickLine={false} 
                             axisLine={false}
+                            domain={[
+                              (dataMin: number) => {
+                                const valid = simulation.results.portfolio_history.filter(p => (p.low || 0) > 0);
+                                if (valid.length === 0) return dataMin;
+                                const min = Math.min(...valid.map(p => p.low));
+                                return min * 0.98;
+                              },
+                              (dataMax: number) => {
+                                const valid = simulation.results.portfolio_history.filter(p => (p.high || 0) > 0);
+                                if (valid.length === 0) return dataMax;
+                                const max = Math.max(...valid.map(p => p.high));
+                                return max * 1.02;
+                              }
+                            ]}
                             tickFormatter={(value) => `$${value.toLocaleString()}`}
                           />
                           <Tooltip 
                             contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
-                            itemStyle={{ fontSize: '11px', padding: '2px 0' }}
-                            labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '10px' }}
-                            formatter={(value: any) => [`$${value.toLocaleString()}`, "Price"]}
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                if (!data || !(data.open > 0)) return null;
+                                return (
+                                  <div className="bg-[#1c271f] border border-[#3b5443] p-3 rounded-lg shadow-xl">
+                                    <p className="text-[#9db9a6] text-[10px] font-bold mb-2 uppercase">{new Date(label).toLocaleDateString()}</p>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                      <span className="text-text-secondary text-[10px]">Open:</span>
+                                      <span className="text-white text-[10px] font-mono">${data.open?.toLocaleString()}</span>
+                                      <span className="text-text-secondary text-[10px]">High:</span>
+                                      <span className="text-white text-[10px] font-mono">${data.high?.toLocaleString()}</span>
+                                      <span className="text-text-secondary text-[10px]">Low:</span>
+                                      <span className="text-white text-[10px] font-mono">${data.low?.toLocaleString()}</span>
+                                      <span className="text-text-secondary text-[10px]">Close:</span>
+                                      <span className="text-white text-[10px] font-mono">${data.close?.toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
                           />
                           {visibleSeries.price && (
-                            <Area 
-                              type="monotone" 
-                              dataKey="price" 
-                              stroke="#60a5fa" 
-                              strokeWidth={1}
-                              fillOpacity={1} 
-                              fill="url(#gradientPrice)" 
-                              name="Asset Price"
+                            <Bar 
+                              dataKey="high" 
+                              fill="none" 
+                              stroke="none"
+                              isAnimationActive={false}
+                              shape={(props: any) => {
+                                const { x, y, width, payload } = props;
+                                if (!props.yAxis?.scale || !payload || !(payload.open > 0)) return null;
+                                
+                                const isUp = payload.close >= payload.open;
+                                const color = isUp ? "#13ec5b" : "#f87171";
+                                
+                                const openY = props.yAxis.scale(payload.open);
+                                const closeY = props.yAxis.scale(payload.close);
+                                const highY = props.yAxis.scale(payload.high);
+                                const lowY = props.yAxis.scale(payload.low);
+                                
+                                return (
+                                  <g key={`candle-${payload.date}`}>
+                                    <line x1={x + width / 2} y1={highY} x2={x + width / 2} y2={lowY} stroke={color} strokeWidth={1} />
+                                    <rect x={x} y={Math.min(openY, closeY)} width={width} height={Math.max(Math.abs(openY - closeY), 1)} fill={color} />
+                                  </g>
+                                );
+                              }}
                             />
                           )}
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Contributions Timeline Chart */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-400">
+                    <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                      <div className="flex flex-col">
+                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
+                          <Coins size={18} className="text-primary" />
+                          Contributions Timeline
+                        </h3>
+                        <p className="text-text-secondary text-[11px]">Compare exact contribution amounts and timing</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        {isSmartDcaEnabled && (
+                          <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-sm bg-primary"></span>
+                            <span className="text-xs text-white">Smart Contribution</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-sm bg-slate-400/30 border border-slate-400/50"></span>
+                          <span className="text-xs text-text-secondary">Standard Contribution</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={simulation.results.portfolio_history} syncId="portfolioCharts" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(str) => {
+                              const date = new Date(str);
+                              return `${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
+                            }}
+                          />
+                          <YAxis 
+                            orientation="right"
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => `$${value}`}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                            itemStyle={{ fontSize: '12px', padding: '2px 0' }}
+                            labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
+                            formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name === 's_contribution' ? 'Smart DCA' : 'Standard DCA']}
+                          />
+                          <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          {isSmartDcaEnabled && (
+                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          )}
+                          <Brush 
+                            dataKey="date" 
+                            height={40} 
+                            stroke="#3b5443" 
+                            fill="#0b0f0c"
+                            travellerWidth={10}
+                            tickFormatter={(str) => {
+                              const date = new Date(str);
+                              return `${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
+                            }}
+                          >
+                            <AreaChart>
+                              <Area dataKey="close" stroke="#13ec5b" fill="#13ec5b" fillOpacity={0.1} />
                         </AreaChart>
+                          </Brush>
+                        </ComposedChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
@@ -1192,12 +1320,12 @@ export default function AssetSimulationPage() {
                             </div>
                           </div>
                         </div>
-                    <div className="flex gap-4 text-sm font-medium">
-                      <span className="text-slate-400" title="Standard DCA">${ simulation.results.baseline_avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
+                        <div className="flex gap-4 text-sm font-medium">
+                          <span className="text-slate-400" title="Standard DCA">${ simulation.results.baseline_avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
                       {isSmartDcaEnabled && (
-                        <span className="text-primary" title="Smart DCA">${ simulation.results.avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
+                          <span className="text-primary" title="Smart DCA">${ simulation.results.avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
                       )}
-                    </div>
+                        </div>
                       </div>
                       <div className="flex justify-between items-center pb-2 border-b border-border-dark flex-wrap gap-2">
                         <div className="flex items-center gap-2">
@@ -1409,12 +1537,12 @@ export default function AssetSimulationPage() {
             "flex flex-col h-full min-w-[320px] transition-opacity duration-300",
             rightSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
-            <div className="p-6 border-b border-border-dark/30">
+          <div className="p-6 border-b border-border-dark/30">
               <div className="flex justify-between items-start mb-1">
-                <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                  <History size={18} className="text-primary" />
-                  Past Simulations
-                </h2>
+            <h2 className="text-white text-lg font-bold flex items-center gap-2">
+              <History size={18} className="text-primary" />
+              Past Simulations
+            </h2>
                 <div className="flex gap-1">
                   <button 
                     onClick={handleCollapseAllHistory}
@@ -1433,116 +1561,116 @@ export default function AssetSimulationPage() {
                 </div>
               </div>
               <p className="text-text-secondary text-[11px]">Recover your previous analyses</p>
-            </div>
+          </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {loadingHistory ? (
-                <div className="p-10 text-center text-text-secondary text-sm">Loading...</div>
-              ) : history.length === 0 ? (
-                <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">No historical data yet</div>
-              ) : (
-                <div className="flex flex-col">
-                  {history.map((item) => (
-                    <div
-                      key={item.id}
-                      className={cn(
-                        "border-b border-border-dark/30 hover:bg-surface-dark/30 transition-all text-left relative overflow-hidden",
-                        simulation?.id === item.id ? "bg-surface-dark/50 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
-                      )}
+            {loadingHistory ? (
+              <div className="p-10 text-center text-text-secondary text-sm">Loading...</div>
+            ) : history.length === 0 ? (
+              <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">No historical data yet</div>
+            ) : (
+              <div className="flex flex-col">
+                {history.map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "border-b border-border-dark/30 hover:bg-surface-dark/30 transition-all text-left relative overflow-hidden",
+                      simulation?.id === item.id ? "bg-surface-dark/50 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
+                    )}
+                  >
+                    {/* Header: Always visible */}
+                    <div 
+                      onClick={() => handleLoadSimulation(item.id)}
+                      className="p-4 cursor-pointer flex justify-between items-start group"
                     >
-                      {/* Header: Always visible */}
-                      <div 
-                        onClick={() => handleLoadSimulation(item.id)}
-                        className="p-4 cursor-pointer flex justify-between items-start group"
-                      >
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="text-white font-black text-base group-hover:text-primary transition-colors tracking-tight">{item.asset_ticker}</span>
-                            <span className={cn(
-                              "text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
-                              item.total_return_percent >= 0 ? "bg-primary/10 text-primary" : "bg-red-400/10 text-red-400"
-                            )}>
-                              {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-text-secondary text-[10px] font-mono flex items-center gap-1">
-                              <Clock size={10} />
-                              {new Date(item.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            <span className="text-text-secondary opacity-30 text-[10px]">•</span>
-                            <span className="text-text-secondary text-[10px] font-medium opacity-70 line-clamp-1">{item.asset_name}</span>
-                          </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-black text-base group-hover:text-primary transition-colors tracking-tight">{item.asset_ticker}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider",
+                            item.total_return_percent >= 0 ? "bg-primary/10 text-primary" : "bg-red-400/10 text-red-400"
+                          )}>
+                            {item.total_return_percent > 0 ? "+" : ""}{item.total_return_percent}%
+                          </span>
                         </div>
-                        
-                        <div className="flex items-center gap-1">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirm(item.id);
-                            }}
-                            className="p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                          <div 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCollapsedHistory(prev => ({ ...prev, [item.id]: !prev[item.id] }));
-                            }}
-                            className="p-2 text-text-secondary hover:text-white transition-colors"
-                          >
-                            <div className={cn("transition-transform duration-200", collapsedHistory[item.id] ? "-rotate-90" : "rotate-0")}>
-                              <ChevronDown size={14} />
-                            </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-text-secondary text-[10px] font-mono flex items-center gap-1">
+                            <Clock size={10} />
+                            {new Date(item.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span className="text-text-secondary opacity-30 text-[10px]">•</span>
+                          <span className="text-text-secondary text-[10px] font-medium opacity-70 line-clamp-1">{item.asset_name}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(item.id);
+                          }}
+                          className="p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCollapsedHistory(prev => ({ ...prev, [item.id]: !prev[item.id] }));
+                          }}
+                          className="p-2 text-text-secondary hover:text-white transition-colors"
+                        >
+                          <div className={cn("transition-transform duration-200", collapsedHistory[item.id] ? "-rotate-90" : "rotate-0")}>
+                            <ChevronDown size={14} />
                           </div>
                         </div>
                       </div>
+                    </div>
 
-                      {/* Details: Collapsible */}
-                      {!collapsedHistory[item.id] && (
-                        <div className="px-4 pb-4 animate-in slide-in-from-top-1 duration-200">
-                          <div className="grid grid-cols-2 gap-y-3 gap-x-4 bg-background-dark/40 rounded-xl p-3 border border-border-dark/20 shadow-inner">
-                            <div className="flex flex-col">
-                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span>
-                              <span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Net Profit</span>
-                              <span className={cn("text-xs font-bold", item.net_profit >= 0 ? "text-primary" : "text-red-400")}>
-                                ${item.net_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Fees Impact</span>
-                              <span className="text-red-400 text-xs font-medium">
-                                {((item.total_fees / (item.final_value + item.total_fees)) * 100).toFixed(1)}%
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">vs Baseline</span>
-                              <span className="text-primary text-xs font-black flex items-center gap-0.5">
-                                <TrendingUp size={10} />
-                                +{item.smart_vs_baseline_diff}%
-                              </span>
-                            </div>
+                    {/* Details: Collapsible */}
+                    {!collapsedHistory[item.id] && (
+                      <div className="px-4 pb-4 animate-in slide-in-from-top-1 duration-200">
+                        <div className="grid grid-cols-2 gap-y-3 gap-x-4 bg-background-dark/40 rounded-xl p-3 border border-border-dark/20 shadow-inner">
+                          <div className="flex flex-col">
+                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span>
+                            <span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
                           </div>
-
-                          <div className="mt-3 flex justify-between items-center opacity-60">
-                            <span className="text-text-secondary text-[10px] flex items-center gap-1.5 font-medium">
-                              <Calendar size={12} className="opacity-50" />
-                              {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
+                          <div className="flex flex-col">
+                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Net Profit</span>
+                            <span className={cn("text-xs font-bold", item.net_profit >= 0 ? "text-primary" : "text-red-400")}>
+                              ${item.net_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                             </span>
-                            <div className="size-5 rounded-full bg-background-dark flex items-center justify-center border border-border-dark">
-                              <ArrowUpRight size={10} className="text-text-secondary" />
-                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Fees Impact</span>
+                            <span className="text-red-400 text-xs font-medium">
+                              {((item.total_fees / (item.final_value + item.total_fees)) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">vs Baseline</span>
+                            <span className="text-primary text-xs font-black flex items-center gap-0.5">
+                              <TrendingUp size={10} />
+                              +{item.smart_vs_baseline_diff}%
+                            </span>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+
+                        <div className="mt-3 flex justify-between items-center opacity-60">
+                          <span className="text-text-secondary text-[10px] flex items-center gap-1.5 font-medium">
+                            <Calendar size={12} className="opacity-50" />
+                            {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
+                          </span>
+                          <div className="size-5 rounded-full bg-background-dark flex items-center justify-center border border-border-dark">
+                            <ArrowUpRight size={10} className="text-text-secondary" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             </div>
           </div>
         </aside>
