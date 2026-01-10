@@ -31,7 +31,8 @@ import {
   Coins,
   History,
   Plus,
-  RefreshCcw
+  RefreshCcw,
+  Star
 } from "lucide-react";
 import { 
   getAssets, 
@@ -40,6 +41,7 @@ import {
   getSimulationDetails,
   deleteSimulation,
   deleteAllSimulations,
+  toggleFavorite,
   getAssetHistory
 } from "../lib/api";
 import { 
@@ -76,6 +78,7 @@ export default function AssetSimulationPage() {
   const [simulation, setSimulation] = useState<SimulationResponse | null>(null);
   const [history, setHistory] = useState<SimulationHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeHistoryTab, setActiveHistoryTab] = useState<'all' | 'favorites'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const [collapsedHistory, setCollapsedHistory] = useState<Record<number, boolean>>({});
@@ -170,16 +173,30 @@ export default function AssetSimulationPage() {
     setCollapsedHistory(allCollapsed);
   };
 
+  const handleToggleFavorite = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    try {
+      const isFav = await toggleFavorite(id);
+      setHistory(prev => prev.map(item => 
+        item.id === id ? { ...item, is_favorite: isFav } : item
+      ));
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+    }
+  };
+
   const handleDeleteAllSimulations = async () => {
     try {
-      await deleteAllSimulations();
+      await deleteAllSimulations(
+        activeHistoryTab === 'favorites',
+        activeHistoryTab === 'all'
+      );
       setSimulation(null);
-      setHistory([]);
       setShowDeleteAllConfirm(false);
-      loadHistory(); // Reload to be absolutely sure
+      loadHistory();
     } catch (error) {
-      console.error("Error deleting all simulations:", error);
-      alert("Error deleting all simulations.");
+      console.error("Error deleting simulations:", error);
+      alert("Error deleting simulations.");
     }
   };
 
@@ -284,9 +301,13 @@ export default function AssetSimulationPage() {
             <div className="size-16 rounded-full bg-red-400/10 flex items-center justify-center text-red-400 mx-auto mb-6">
               <Trash2 size={32} />
             </div>
-            <h3 className="text-xl font-bold text-white text-center mb-2">Clear All History?</h3>
+            <h3 className="text-xl font-bold text-white text-center mb-2">
+              {activeHistoryTab === 'favorites' ? 'Clear Favorites?' : 'Clear Non-Favorites?'}
+            </h3>
             <p className="text-text-secondary text-sm text-center mb-8">
-              This will permanently delete all {history.length} simulations in your history. This action cannot be undone.
+              {activeHistoryTab === 'favorites' 
+                ? `This will permanently delete all your ${history.filter(i => i.is_favorite).length} favorite simulations. This action cannot be undone.` 
+                : `This will permanently delete all ${history.filter(i => !i.is_favorite).length} non-favorite simulations. Your favorites will be kept safe.`}
             </p>
             <div className="flex gap-3">
               <button 
@@ -1652,14 +1673,37 @@ export default function AssetSimulationPage() {
                   </button>
                   <button 
                     onClick={() => setShowDeleteAllConfirm(true)}
-                    title="Delete All"
+                    title={activeHistoryTab === 'favorites' ? "Delete Favorites" : "Delete All"}
                     className="p-1.5 text-text-secondary hover:text-red-400 transition-colors rounded-md hover:bg-red-400/10"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
-              <p className="text-text-secondary text-[11px]">Recover your previous analyses</p>
+              <p className="text-text-secondary text-[11px] mb-4">Recover your previous analyses</p>
+              
+              {/* History Tabs */}
+              <div className="flex bg-surface-dark/50 p-1 rounded-lg border border-border-active/30">
+                <button
+                  onClick={() => setActiveHistoryTab('all')}
+                  className={cn(
+                    "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all",
+                    activeHistoryTab === 'all' ? "bg-primary text-background-dark shadow-lg" : "text-text-secondary hover:text-white"
+                  )}
+                >
+                  All ({history.length})
+                </button>
+                <button
+                  onClick={() => setActiveHistoryTab('favorites')}
+                  className={cn(
+                    "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all flex items-center justify-center gap-1.5",
+                    activeHistoryTab === 'favorites' ? "bg-primary text-background-dark shadow-lg" : "text-text-secondary hover:text-white"
+                  )}
+                >
+                  <Star size={10} fill={activeHistoryTab === 'favorites' ? "currentColor" : "none"} />
+                  Favorites ({history.filter(i => i.is_favorite).length})
+                </button>
+              </div>
           </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -1667,9 +1711,15 @@ export default function AssetSimulationPage() {
               <div className="p-10 text-center text-text-secondary text-sm">Loading...</div>
             ) : history.length === 0 ? (
               <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">No historical data yet</div>
+            ) : history.filter(item => activeHistoryTab === 'all' || item.is_favorite).length === 0 ? (
+              <div className="p-10 text-center text-text-secondary text-sm opacity-50 italic">
+                {activeHistoryTab === 'favorites' ? 'No favorites yet. Click the star on any simulation to add it!' : 'No historical data yet'}
+              </div>
             ) : (
               <div className="flex flex-col">
-                {history.map((item) => (
+                {history
+                  .filter(item => activeHistoryTab === 'all' || item.is_favorite)
+                  .map((item) => (
                   <div
                     key={item.id}
                     className={cn(
@@ -1702,7 +1752,17 @@ export default function AssetSimulationPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
+                        <button 
+                          onClick={(e) => handleToggleFavorite(e, item.id)}
+                          className={cn(
+                            "p-2 transition-all rounded-full hover:bg-primary/10",
+                            item.is_favorite ? "text-primary" : "text-text-secondary hover:text-primary"
+                          )}
+                          title={item.is_favorite ? "Remove from Favorites" : "Add to Favorites"}
+                        >
+                          <Star size={14} fill={item.is_favorite ? "currentColor" : "none"} />
+                        </button>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();

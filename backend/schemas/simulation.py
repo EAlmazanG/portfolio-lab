@@ -27,6 +27,7 @@ class SimulationBase(BaseModel):
     ma_period_short: int = Field(default=50, ge=1)
     ma_period_long: int = Field(default=200, ge=1)
     expensive_buy_ratio: float = Field(default=0.0, ge=0.0, le=1.0)
+    is_favorite: bool = Field(default=False)
 
 
 class SimulationCreate(SimulationBase):
@@ -100,6 +101,7 @@ class SimulationHistoryItem(BaseModel):
     total_fees: float
     total_return_percent: float
     smart_vs_baseline_diff: float
+    is_favorite: bool
     created_at: datetime
 
     class Config:

@@ -87,6 +87,7 @@ class SimulationService:
                         "total_fees": round(float(result.total_fees or 0.0), 2),
                         "total_return_percent": result.total_return_percent,
                         "smart_vs_baseline_diff": round(float(smart_vs_baseline), 2),
+                        "is_favorite": bool(sim.is_favorite),
                         "created_at": sim.created_at
                     })
             return history
@@ -125,7 +126,8 @@ class SimulationService:
                 rsi_threshold_high=sim.rsi_threshold_high or 70.0,
                 ma_period_short=sim.ma_period_short or 50,
                 ma_period_long=sim.ma_period_long or 200,
-                expensive_buy_ratio=sim.expensive_buy_ratio or 0.0
+                expensive_buy_ratio=sim.expensive_buy_ratio or 0.0,
+                is_favorite=bool(sim.is_favorite)
             )
             
             result_schema = SimulationResultSchema(
@@ -224,7 +226,8 @@ class SimulationService:
                     rsi_threshold_high=data.rsi_threshold_high,
                     ma_period_short=data.ma_period_short,
                     ma_period_long=data.ma_period_long,
-                    expensive_buy_ratio=data.expensive_buy_ratio
+                    expensive_buy_ratio=data.expensive_buy_ratio,
+                    is_favorite=data.is_favorite
                 )
                 db.add(sim)
                 db.commit()
@@ -273,14 +276,40 @@ class SimulationService:
             db.close()
 
     @staticmethod
-    def delete_all_simulations():
-        """Deletes all simulations and their results."""
+    def toggle_favorite(simulation_id: int):
+        """Toggles the favorite status of a simulation."""
         db = SessionLocal()
         try:
-            # Delete results first to avoid foreign key issues
-            from backend.models.simulation import SimulationResult
-            db.query(SimulationResult).delete()
-            db.query(Simulation).delete()
+            sim = db.query(Simulation).filter(Simulation.id == simulation_id).first()
+            if not sim:
+                raise ValueError("Simulation not found")
+            sim.is_favorite = not sim.is_favorite
             db.commit()
+            return sim.is_favorite
+        finally:
+            db.close()
+
+    @staticmethod
+    def delete_all_simulations(favorites_only: bool = False, non_favorites_only: bool = False):
+        """Deletes simulations based on their favorite status."""
+        db = SessionLocal()
+        try:
+            from backend.models.simulation import SimulationResult
+            
+            query = db.query(Simulation)
+            if favorites_only:
+                query = query.filter(Simulation.is_favorite == True)
+            elif non_favorites_only:
+                query = query.filter(Simulation.is_favorite == False)
+
+            sims_to_delete = query.all()
+            sim_ids = [s.id for s in sims_to_delete]
+
+            if sim_ids:
+                # Delete results first
+                db.query(SimulationResult).filter(SimulationResult.simulation_id.in_(sim_ids)).delete(synchronize_session=False)
+                # Then delete simulations
+                db.query(Simulation).filter(Simulation.id.in_(sim_ids)).delete(synchronize_session=False)
+                db.commit()
         finally:
             db.close()

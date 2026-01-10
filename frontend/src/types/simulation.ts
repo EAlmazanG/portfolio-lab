@@ -61,6 +61,7 @@ export interface SimulationConfig {
   ma_period_short?: number;
   ma_period_long?: number;
   expensive_buy_ratio?: number;
+  is_favorite?: boolean;
 }
 
 export interface SimulationResponse {
@@ -82,5 +83,6 @@ export interface SimulationHistoryItem {
   total_fees: number;
   total_return_percent: number;
   smart_vs_baseline_diff: number;
+  is_favorite: boolean;
   created_at: string;
 }

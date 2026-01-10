@@ -71,10 +71,22 @@ async def delete_simulation(simulation_id: int):
 
 
 @router.delete("/all/delete", tags=["simulations"])
-async def delete_all_simulations():
-    """Delete all past simulations."""
+async def delete_all_simulations(favorites_only: bool = False, non_favorites_only: bool = False):
+    """Delete past simulations based on favorite status."""
     try:
-        SimulationService.delete_all_simulations()
-        return {"status": "all deleted"}
+        SimulationService.delete_all_simulations(favorites_only, non_favorites_only)
+        return {"status": "deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@router.patch("/{simulation_id}/favorite", tags=["simulations"])
+async def toggle_favorite(simulation_id: int):
+    """Toggle favorite status."""
+    try:
+        is_fav = SimulationService.toggle_favorite(simulation_id)
+        return {"is_favorite": is_fav}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
