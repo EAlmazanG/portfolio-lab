@@ -433,7 +433,7 @@ export default function PortfolioBuilderPage() {
         {/* Sidebar: Saved Portfolios */}
         <aside className={cn(
           "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          leftSidebarOpen ? "w-full max-w-[320px]" : "w-0 border-r-0"
+          leftSidebarOpen ? "w-full max-w-[420px]" : "w-0 border-r-0"
         )}>
           {/* Toggle Handle Left */}
           <button 
@@ -447,14 +447,14 @@ export default function PortfolioBuilderPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[320px] transition-opacity duration-300",
+            "flex flex-col h-full min-w-[420px] transition-opacity duration-300",
             leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <div className="p-5 border-b border-border-dark/30 bg-background-dark/50">
                 <button 
                   onClick={() => { setIsEditing(false); setNewPortfolio({name: "", initial_capital: 0, assets: [], is_favorite: false}); setShowCreateModal(true); setShowCurrentAmounts(false); }}
-                  className="w-full py-2.5 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group text-[11px] uppercase tracking-wider"
+                  className="w-full py-2.5 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group text-xs uppercase tracking-wider"
                 >
                   <Plus size={16} className="text-primary group-hover:scale-110 transition-transform" />
                   New Portfolio
@@ -463,15 +463,15 @@ export default function PortfolioBuilderPage() {
 
               <div className="p-5 pb-2">
                 <div className="flex flex-col gap-1 mb-4">
-                  <h1 className="text-white tracking-tight text-xl font-bold leading-tight text-left">My Portfolios</h1>
-                  <p className="text-text-secondary text-[10px] uppercase font-bold tracking-widest opacity-60">Saved strategies</p>
+                  <h1 className="text-white tracking-tight text-2xl font-bold leading-tight text-left">My Portfolios</h1>
+                  <p className="text-text-secondary text-[11px] uppercase font-bold tracking-widest opacity-60">Saved strategies</p>
                 </div>
 
                 <div className="flex gap-5 border-b border-border-dark/30 mb-5">
                   <button 
                     onClick={() => setActiveTab("all")}
                     className={cn(
-                      "pb-2 text-[10px] font-black uppercase tracking-widest transition-all relative",
+                      "pb-2 text-[11px] font-black uppercase tracking-widest transition-all relative",
                       activeTab === "all" ? "text-primary" : "text-text-secondary hover:text-white"
                     )}
                   >
@@ -481,7 +481,7 @@ export default function PortfolioBuilderPage() {
                   <button 
                     onClick={() => setActiveTab("favorites")}
                     className={cn(
-                      "pb-2 text-[10px] font-black uppercase tracking-widest transition-all relative",
+                      "pb-2 text-[11px] font-black uppercase tracking-widest transition-all relative",
                       activeTab === "favorites" ? "text-primary" : "text-text-secondary hover:text-white"
                     )}
                   >
@@ -511,7 +511,7 @@ export default function PortfolioBuilderPage() {
                         )}>
                           <PieChartIcon size={14} />
                         </div>
-                        <h3 className="font-bold text-xs truncate max-w-[140px]">{portfolio.name}</h3>
+                        <h3 className="font-bold text-sm truncate max-w-[300px]">{portfolio.name}</h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button 
@@ -531,9 +531,9 @@ export default function PortfolioBuilderPage() {
                         </button>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center text-[9px] text-text-secondary uppercase font-bold tracking-widest">
+                    <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase font-bold tracking-widest">
                       <span className="bg-surface-light px-1.5 py-0.5 rounded">{portfolio.asset_count} Assets</span>
-                      <span className="flex items-center gap-1"><DollarSign size={8} className="text-primary" />{portfolio.initial_capital?.toLocaleString()}</span>
+                      <span className="flex items-center gap-1"><DollarSign size={10} className="text-primary" />{portfolio.initial_capital?.toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
@@ -541,7 +541,7 @@ export default function PortfolioBuilderPage() {
                 {portfolios.length === 0 && !loading && (
                   <div className="py-10 text-center bg-surface-dark/30 border border-dashed border-border-dark rounded-xl text-text-secondary">
                     <PieChartIcon size={20} className="mx-auto mb-2 opacity-20" />
-                    <p className="text-[9px] px-5 font-bold uppercase tracking-widest opacity-40 leading-relaxed">No frameworks archived</p>
+                    <p className="text-[11px] px-5 font-bold uppercase tracking-widest opacity-40 leading-relaxed">No frameworks archived</p>
                   </div>
                 )}
               </div>
