@@ -26,6 +26,7 @@ class SimulationBase(BaseModel):
     rsi_threshold_high: float = Field(default=70.0, ge=0, le=100)
     ma_period_short: int = Field(default=50, ge=1)
     ma_period_long: int = Field(default=200, ge=1)
+    expensive_buy_ratio: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class SimulationCreate(SimulationBase):

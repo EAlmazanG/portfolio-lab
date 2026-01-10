@@ -103,7 +103,8 @@ class SimulationService:
                 rsi_threshold_low=sim.rsi_threshold_low or 30.0,
                 rsi_threshold_high=sim.rsi_threshold_high or 70.0,
                 ma_period_short=sim.ma_period_short or 50,
-                ma_period_long=sim.ma_period_long or 200
+                ma_period_long=sim.ma_period_long or 200,
+                expensive_buy_ratio=sim.expensive_buy_ratio or 0.0
             )
             
             result_schema = SimulationResultSchema(
@@ -156,7 +157,8 @@ class SimulationService:
             rsi_threshold_low=data.rsi_threshold_low,
             rsi_threshold_high=data.rsi_threshold_high,
             ma_period_short=data.ma_period_short,
-            ma_period_long=data.ma_period_long
+            ma_period_long=data.ma_period_long,
+            expensive_buy_ratio=data.expensive_buy_ratio
         )
         
         result_schema = SimulationResultSchema(
@@ -200,7 +202,8 @@ class SimulationService:
                     rsi_threshold_low=data.rsi_threshold_low,
                     rsi_threshold_high=data.rsi_threshold_high,
                     ma_period_short=data.ma_period_short,
-                    ma_period_long=data.ma_period_long
+                    ma_period_long=data.ma_period_long,
+                    expensive_buy_ratio=data.expensive_buy_ratio
                 )
                 db.add(sim)
                 db.commit()

@@ -129,7 +129,8 @@ class SimulationEngine:
         rsi_threshold_low: float = 30.0,
         rsi_threshold_high: float = 70.0,
         ma_period_short: int = 50,
-        ma_period_long: int = 200
+        ma_period_long: int = 200,
+        expensive_buy_ratio: float = 0.0
     ) -> DCAResult:
         """
         Runs a full simulation including baseline and smart DCA.
@@ -327,8 +328,8 @@ class SimulationEngine:
                     else:
                         if signal == -1: # Oversold: buy MORE
                             actual_buy_amount = base_buy_amount * sizing_multiplier
-                        elif signal == 1: # Overbought: buy LESS
-                            actual_buy_amount = base_buy_amount * (1.0 / sizing_multiplier)
+                        elif signal == 1: # Overbought: buy LESS (but at least expensive_buy_ratio)
+                            actual_buy_amount = base_buy_amount * max(expensive_buy_ratio, 1.0 / sizing_multiplier)
                         
                         # Ensure we don't exceed the annual budget
                         # (Leave at least periodic_amount for each remaining baseline day of the year)

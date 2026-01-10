@@ -42,6 +42,7 @@ class Simulation(Base):
     rsi_threshold_high = Column(Float, default=70.0)
     ma_period_short = Column(Integer, default=50)
     ma_period_long = Column(Integer, default=200)
+    expensive_buy_ratio = Column(Float, default=0.0) # New parameter
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -58,6 +58,7 @@ export interface SimulationConfig {
   rsi_threshold_high?: number;
   ma_period_short?: number;
   ma_period_long?: number;
+  expensive_buy_ratio?: number;
 }
 
 export interface SimulationResponse {

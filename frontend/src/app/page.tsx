@@ -120,6 +120,7 @@ export default function AssetSimulationPage() {
     rsi_threshold_high: 70,
     ma_period_short: 50,
     ma_period_long: 200,
+    expensive_buy_ratio: 0.2,
   });
 
   const loadHistory = async () => {
@@ -230,6 +231,7 @@ export default function AssetSimulationPage() {
         rsi_threshold_high: details.config.rsi_threshold_high || 70,
         ma_period_short: details.config.ma_period_short || 50,
         ma_period_long: details.config.ma_period_long || 200,
+        expensive_buy_ratio: details.config.expensive_buy_ratio || 0.0,
         dynamic_timing_enabled: !!details.config.dynamic_timing_enabled,
         dynamic_sizing_enabled: !!details.config.dynamic_sizing_enabled,
       } as any);
@@ -695,7 +697,7 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
-                                  step="1"
+                                  step="5"
                                   value={config.rsi_threshold_low}
                                   onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
                                 />
@@ -705,7 +707,7 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
-                                  step="1"
+                                  step="5"
                                   value={config.rsi_threshold_high}
                                   onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
                                 />
@@ -721,7 +723,7 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
-                                  step="1"
+                                  step="5"
                                   value={config.ma_period_short}
                                   onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
                                 />
@@ -731,7 +733,7 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
-                                  step="1"
+                                  step="5"
                                   value={config.ma_period_long}
                                   onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
                                 />
@@ -786,7 +788,7 @@ export default function AssetSimulationPage() {
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex flex-col">
                       <span className="text-white font-medium text-sm">Dynamic Sizing</span>
-                      <span className="text-text-secondary text-xs">Increase amount on dips</span>
+                      <span className="text-text-secondary text-xs">Adjust volume based on signals</span>
                     </div>
                     <div 
                       onClick={(e) => {
@@ -804,10 +806,11 @@ export default function AssetSimulationPage() {
                       )} />
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-xs text-text-secondary">
-                      <span>1.0x</span>
-                      <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
+                  
+                  <div className="space-y-1 mb-4">
+                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-text-secondary">
+                      <span>Max Sizing (Oversold)</span>
+                      <span className="text-primary">{config.sizing_multiplier}x Multiplier</span>
                     </div>
                     <input 
                       type="range" 
@@ -816,6 +819,22 @@ export default function AssetSimulationPage() {
                       step="0.1" 
                       value={config.sizing_multiplier}
                       onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
+                      className="w-full" 
+                    />
+                  </div>
+
+                  <div className="space-y-1 pt-4 border-t border-border-dark/30">
+                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-text-secondary">
+                      <span>Min Sizing (Overbought)</span>
+                      <span className="text-primary">{(config.expensive_buy_ratio! * 100).toFixed(0)}% Floor</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0" 
+                      max="1" 
+                      step="0.05" 
+                      value={config.expensive_buy_ratio}
+                      onChange={(e) => setConfig({ ...config, expensive_buy_ratio: Number(e.target.value) })}
                       className="w-full" 
                     />
                   </div>
