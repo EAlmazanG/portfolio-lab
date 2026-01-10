@@ -671,7 +671,7 @@ export default function PortfolioAnalysisPage() {
                           tickLine={false} 
                           tick={{fill: '#666', fontSize: 10, fontWeight: 'bold'}}
                           minTickGap={80}
-                          tickFormatter={(val) => new Date(val).toLocaleDateString("en-US", {month: 'short', year: '2d'})}
+                          tickFormatter={(val) => new Date(val).toLocaleDateString("en-US", {month: 'short', year: '2-digit'})}
                         />
                         <YAxis 
                           axisLine={false} 
