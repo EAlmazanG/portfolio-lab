@@ -277,6 +277,9 @@ class SimulationService:
         """Deletes all simulations and their results."""
         db = SessionLocal()
         try:
+            # Delete results first to avoid foreign key issues
+            from backend.models.simulation import SimulationResult
+            db.query(SimulationResult).delete()
             db.query(Simulation).delete()
             db.commit()
         finally:

@@ -39,6 +39,7 @@ import {
   getSimulationHistory, 
   getSimulationDetails,
   deleteSimulation,
+  deleteAllSimulations,
   getAssetHistory
 } from "../lib/api";
 import { 
@@ -171,16 +172,11 @@ export default function AssetSimulationPage() {
 
   const handleDeleteAllSimulations = async () => {
     try {
-      // In a real app, we might have a single endpoint for this.
-      // For now, let's delete them one by one or suggest adding a backend endpoint.
-      // But looking at current API, we only have deleteSimulation(id).
-      // Let's do it sequentially for now but inform about efficiency.
-      for (const item of history) {
-        await deleteSimulation(item.id);
-      }
+      await deleteAllSimulations();
       setSimulation(null);
       setHistory([]);
       setShowDeleteAllConfirm(false);
+      loadHistory(); // Reload to be absolutely sure
     } catch (error) {
       console.error("Error deleting all simulations:", error);
       alert("Error deleting all simulations.");
