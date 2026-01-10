@@ -501,8 +501,9 @@ export default function AssetSimulationPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[13px] font-medium opacity-80">Initial Capital ($)</label>
                     <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm custom-number-input"
                       type="number" 
+                      step="1000"
                       value={config.initial_capital}
                       onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
                     />
@@ -548,8 +549,9 @@ export default function AssetSimulationPage() {
                       {config.investment_mode === "annual" ? "Annual ($)" : "Trade ($)"}
                     </label>
                     <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm"
+                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm custom-number-input"
                       type="number" 
+                      step="50"
                       value={config.base_amount}
                       onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
                     />
@@ -562,7 +564,7 @@ export default function AssetSimulationPage() {
           {/* 3. Fees Section */}
           <div className="border-b border-border-dark/30">
             <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Fees & Commissions</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">FEES & COMMISSIONS</span>
               <button
                 onClick={() => setIsFeesEnabled(!isFeesEnabled)}
                 className={cn(
@@ -572,7 +574,7 @@ export default function AssetSimulationPage() {
                     : "bg-surface-dark text-text-secondary border border-border-dark"
                 )}
               >
-                {isFeesEnabled ? "Enabled" : "Disabled"}
+                {isFeesEnabled ? "ENABLED" : "DISABLED"}
               </button>
             </div>
             {isFeesEnabled && (
@@ -583,7 +585,7 @@ export default function AssetSimulationPage() {
             >
               <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
                 <CreditCard size={14} className="text-primary" />
-                3. Commissions & Fees
+                    3. FEES & COMMISSIONS
               </h3>
               <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section3 && "-rotate-90")}>
                 <ChevronDown size={14} />
@@ -596,8 +598,8 @@ export default function AssetSimulationPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
                     <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                      step="0.01" 
+                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                          step="0.1" 
                       type="number" 
                       value={config.commission_fee_percent}
                       onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
@@ -606,7 +608,7 @@ export default function AssetSimulationPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
                     <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
+                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
                       step="0.1" 
                       type="number" 
                       value={config.minimum_fee_per_trade}
@@ -616,8 +618,8 @@ export default function AssetSimulationPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
                     <input 
-                      className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm"
-                      step="0.01" 
+                          className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                          step="0.1" 
                       type="number" 
                       value={config.maintenance_fee_annual_percent}
                       onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
@@ -630,10 +632,10 @@ export default function AssetSimulationPage() {
             )}
           </div>
 
-          {/* 4. Smart Optimization Section */}
+          {/* 4. Smart Features Section */}
           <div className="border-b border-border-dark/30">
             <div className="px-6 pt-4 pb-2 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Smart Features</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">SMART FEATURES</span>
               <button
                 onClick={() => setIsSmartDcaEnabled(!isSmartDcaEnabled)}
                 className={cn(
@@ -643,7 +645,7 @@ export default function AssetSimulationPage() {
                     : "bg-surface-dark text-text-secondary border border-border-dark"
                 )}
               >
-                {isSmartDcaEnabled ? "Enabled" : "Disabled"}
+                {isSmartDcaEnabled ? "ENABLED" : "DISABLED"}
               </button>
             </div>
             {isSmartDcaEnabled && (
@@ -654,7 +656,7 @@ export default function AssetSimulationPage() {
             >
               <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
                 <BrainCircuit size={14} className="text-primary" />
-                4. Smart Optimization
+                    4. SMART FEATURES
               </h3>
               <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
                 <ChevronDown size={14} />
@@ -691,8 +693,9 @@ export default function AssetSimulationPage() {
                               <div className="flex flex-col gap-1.5">
                                 <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Oversold (Buy)</label>
                                 <input 
-                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  step="1"
                                   value={config.rsi_threshold_low}
                                   onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
                                 />
@@ -700,8 +703,9 @@ export default function AssetSimulationPage() {
                               <div className="flex flex-col gap-1.5">
                                 <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Overbought (Sell)</label>
                                 <input 
-                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  step="1"
                                   value={config.rsi_threshold_high}
                                   onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
                                 />
@@ -715,8 +719,9 @@ export default function AssetSimulationPage() {
                               <div className="flex flex-col gap-1.5">
                                 <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
                                 <input 
-                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  step="1"
                                   value={config.ma_period_short}
                                   onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
                                 />
@@ -724,8 +729,9 @@ export default function AssetSimulationPage() {
                               <div className="flex flex-col gap-1.5">
                                 <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Long Period</label>
                                 <input 
-                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  step="1"
                                   value={config.ma_period_long}
                                   onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
                                 />
@@ -1324,8 +1330,8 @@ export default function AssetSimulationPage() {
                             {simulation.results.fees_percentage}%
                           </div>
                           <div>
-                            <p className="text-white text-xs font-bold">Coste de Comisiones</p>
-                            <p className="text-text-secondary text-[10px]">Las comisiones han reducido tu rentabilidad total en un {simulation.results.fees_percentage}%.</p>
+                            <p className="text-white text-xs font-bold">Commission Costs</p>
+                            <p className="text-text-secondary text-[10px]">Fees have reduced your total return by {simulation.results.fees_percentage}%.</p>
                           </div>
                         </div>
                       </div>

@@ -52,3 +52,28 @@ input[type=range]::-webkit-slider-runnable-track {
 input[type=range]:focus {
   outline: none;
 }
+
+/* Custom Number Input Spinners Styling */
+.custom-number-input::-webkit-inner-spin-button,
+.custom-number-input::-webkit-outer-spin-button {
+  opacity: 1;
+  cursor: pointer;
+  filter: invert(1) brightness(2);
+  height: 24px;
+}
+
+.custom-number-input {
+  -moz-appearance: textfield;
+}
+
+/* Date Input Calendar Icon Styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 5px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

@@ -1093,8 +1093,11 @@ video {
 .border-primary\/10 {
   border-color: rgb(19 236 91 / 0.1);
 }
-.border-primary\/30 {
-  border-color: rgb(19 236 91 / 0.3);
+.border-primary\/20 {
+  border-color: rgb(19 236 91 / 0.2);
+}
+.border-red-400\/20 {
+  border-color: rgb(248 113 113 / 0.2);
 }
 .border-red-400\/30 {
   border-color: rgb(248 113 113 / 0.3);
@@ -1105,12 +1108,6 @@ video {
 .border-slate-500 {
   --tw-border-opacity: 1;
   border-color: rgb(100 116 139 / var(--tw-border-opacity, 1));
-}
-.border-primary\/20 {
-  border-color: rgb(19 236 91 / 0.2);
-}
-.border-red-400\/20 {
-  border-color: rgb(248 113 113 / 0.2);
 }
 .border-l-primary {
   --tw-border-opacity: 1;
@@ -1256,10 +1253,6 @@ video {
 .py-0\.5 {
   padding-top: 0.125rem;
   padding-bottom: 0.125rem;
-}
-.py-1 {
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
 }
 .py-3 {
   padding-top: 0.75rem;
@@ -1644,6 +1637,31 @@ input[type=range]::-webkit-slider-runnable-track {
 
 input[type=range]:focus {
   outline: none;
+}
+
+/* Custom Number Input Spinners Styling */
+.custom-number-input::-webkit-inner-spin-button,
+.custom-number-input::-webkit-outer-spin-button {
+  opacity: 1;
+  cursor: pointer;
+  filter: invert(1) brightness(2);
+  height: 24px;
+}
+
+.custom-number-input {
+  -moz-appearance: textfield;
+}
+
+/* Date Input Calendar Icon Styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 5px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
 
 .hover\:border-primary:hover {
