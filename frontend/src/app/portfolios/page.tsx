@@ -29,7 +29,8 @@ import {
   Clock,
   ArrowRight,
   TrendingDown,
-  Maximize2
+  Maximize2,
+  Edit3
 } from "lucide-react";
 import { 
   getAssets, 
@@ -58,6 +59,22 @@ import {
   CartesianGrid
 } from "recharts";
 
+// Temporary until lib/api.ts can be edited
+async function updatePortfolio(id: number, portfolio: Partial<PortfolioCreate>): Promise<Portfolio> {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+  const response = await fetch(`${API_URL}/portfolios/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(portfolio),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to update portfolio");
+  }
+  return response.json();
+}
+
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -68,7 +85,15 @@ const METRIC_INFO = {
   concentration: "The Herfindahl-Hirschman Index (HHI) measures portfolio concentration. A lower value indicates better diversification across assets.",
   maxWeight: "The percentage allocated to your largest single position. High concentration increases exposure to specific asset risks.",
   avgWeight: "The mathematical average allocation across all assets in the portfolio.",
-  portfolioIndex: "A simulated index representing the portfolio's historical price performance based on current target weights."
+  portfolioIndex: "A simulated index representing the portfolio's historical price performance based on current target weights.",
+  assetBreakdown: "Detailed list of assets within the portfolio, showing their individual weight and current price trend.",
+  distribution: "A visual representation of how your total capital is distributed across all selected assets.",
+  lastUpdate: "The time when the portfolio configuration and historical prices were last synchronized with the database.",
+  assetTrend: "Historical 1-year price performance for this specific asset.",
+  riskAnalysis: "Calculated risk profile based on asset volatility and concentration levels.",
+  strategicView: "The long-term objective and market positioning of this strategy.",
+  volatilityTag: "Indicates this asset has historically higher price swings (standard deviation).",
+  coreTag: "Indicates this is a fundamental building block of your long-term strategy."
 };
 
 export default function PortfolioBuilderPage() {
@@ -78,6 +103,7 @@ export default function PortfolioBuilderPage() {
   const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
@@ -138,23 +164,23 @@ export default function PortfolioBuilderPage() {
       );
 
       // Align dates and calculate weighted index
-      const dates = histories[0].data.map(d => d.date);
-      const indexValues = dates.map(date => {
-        let weightedValue = 0;
-        histories.forEach(h => {
-          const dayData = h.data.find(d => d.date === date);
-          if (dayData && h.data.length > 0) {
-            // Normalize to start at 100
-            const firstPrice = h.data[0].price;
-            const currentPrice = dayData.price;
-            const normalizedPrice = (currentPrice / firstPrice) * 100;
-            weightedValue += normalizedPrice * h.weight;
-          }
+      if (histories.length > 0 && histories[0].data.length > 0) {
+        const dates = histories[0].data.map(d => d.date);
+        const indexValues = dates.map(date => {
+          let weightedValue = 0;
+          histories.forEach(h => {
+            const dayData = h.data.find(d => d.date === date);
+            if (dayData && h.data.length > 0) {
+              const firstPrice = h.data[0].price;
+              const currentPrice = dayData.price;
+              const normalizedPrice = (currentPrice / firstPrice) * 100;
+              weightedValue += normalizedPrice * h.weight;
+            }
+          });
+          return { date, value: weightedValue };
         });
-        return { date, value: weightedValue };
-      });
-
-      setPortfolioIndexData(indexValues);
+        setPortfolioIndexData(indexValues);
+      }
     } catch (error) {
       console.error("Failed to load portfolio index:", error);
     } finally {
@@ -244,15 +270,36 @@ export default function PortfolioBuilderPage() {
     }
 
     try {
-      const created = await createPortfolio(newPortfolio);
+      let result;
+      if (isEditing && selectedPortfolio) {
+        result = await updatePortfolio(selectedPortfolio.id, newPortfolio);
+      } else {
+        result = await createPortfolio(newPortfolio);
+      }
+      
       setShowCreateModal(false);
+      setIsEditing(false);
       setNewPortfolio({ name: "", assets: [], is_favorite: false });
       loadData();
-      loadPortfolioDetails(created.id);
+      loadPortfolioDetails(result.id);
     } catch (error) {
       console.error("Failed to save portfolio:", error);
       alert("Failed to save portfolio.");
     }
+  };
+
+  const handleEditClick = () => {
+    if (!selectedPortfolio) return;
+    setNewPortfolio({
+      name: selectedPortfolio.name,
+      is_favorite: selectedPortfolio.is_favorite,
+      assets: selectedPortfolio.assets.map(pa => ({
+        asset_id: pa.asset_id,
+        weight: pa.weight
+      }))
+    });
+    setIsEditing(true);
+    setShowCreateModal(true);
   };
 
   const handleDeletePortfolio = async (e: React.MouseEvent, id: number) => {
@@ -323,8 +370,8 @@ export default function PortfolioBuilderPage() {
 
   const renderInfoIcon = (text: string) => (
     <div className="group relative cursor-help shrink-0">
-      <Info size={14} className="text-text-secondary hover:text-white transition-colors" />
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-surface-dark border border-border-active rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] text-[10px] leading-relaxed font-bold text-white text-center pointer-events-none">
+      <Info size={12} className="text-text-secondary hover:text-white transition-colors" />
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 p-3 bg-surface-dark border border-border-active rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] text-[10px] leading-relaxed font-bold text-white text-center pointer-events-none backdrop-blur-md">
         {text}
         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-surface-dark"></div>
       </div>
@@ -361,7 +408,7 @@ export default function PortfolioBuilderPage() {
         {/* Sidebar: Saved Portfolios */}
         <aside className={cn(
           "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          leftSidebarOpen ? "w-full max-w-[400px]" : "w-0 border-r-0"
+          leftSidebarOpen ? "w-full max-w-[320px]" : "w-0 border-r-0"
         )}>
           {/* Toggle Handle Left */}
           <button 
@@ -375,31 +422,31 @@ export default function PortfolioBuilderPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[400px] transition-opacity duration-300",
+            "flex flex-col h-full min-w-[320px] transition-opacity duration-300",
             leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
+              <div className="p-5 border-b border-border-dark/30 bg-background-dark/50">
                 <button 
-                  onClick={() => setShowCreateModal(true)}
-                  className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
+                  onClick={() => { setIsEditing(false); setNewPortfolio({name: "", assets: [], is_favorite: false}); setShowCreateModal(true); }}
+                  className="w-full py-2.5 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group text-sm"
                 >
-                  <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
+                  <Plus size={16} className="text-primary group-hover:scale-110 transition-transform" />
                   New Portfolio
                 </button>
               </div>
 
-              <div className="p-6 pb-2">
+              <div className="p-5 pb-2">
                 <div className="flex flex-col gap-1 mb-4">
-                  <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left">My Portfolios</h1>
-                  <p className="text-text-secondary text-sm">Select or manage your portfolios.</p>
+                  <h1 className="text-white tracking-tight text-xl font-bold leading-tight text-left">My Portfolios</h1>
+                  <p className="text-text-secondary text-[11px] uppercase font-bold tracking-widest">Saved strategies</p>
                 </div>
 
                 <div className="flex gap-4 border-b border-border-dark/30 mb-4">
                   <button 
                     onClick={() => setActiveTab("all")}
                     className={cn(
-                      "pb-2 text-xs font-bold uppercase tracking-widest transition-all relative",
+                      "pb-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
                       activeTab === "all" ? "text-primary" : "text-text-secondary hover:text-white"
                     )}
                   >
@@ -409,7 +456,7 @@ export default function PortfolioBuilderPage() {
                   <button 
                     onClick={() => setActiveTab("favorites")}
                     className={cn(
-                      "pb-2 text-xs font-bold uppercase tracking-widest transition-all relative",
+                      "pb-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
                       activeTab === "favorites" ? "text-primary" : "text-text-secondary hover:text-white"
                     )}
                   >
@@ -419,7 +466,7 @@ export default function PortfolioBuilderPage() {
                 </div>
               </div>
 
-              <div className="p-6 pt-0 space-y-3">
+              <div className="p-5 pt-0 space-y-2">
                 {portfolios
                   .filter(p => activeTab === "all" || p.is_favorite)
                   .map(portfolio => (
@@ -427,39 +474,39 @@ export default function PortfolioBuilderPage() {
                     key={portfolio.id} 
                     onClick={() => loadPortfolioDetails(portfolio.id)}
                     className={cn(
-                      "bg-surface-dark border border-border-dark rounded-xl p-4 hover:border-primary/50 transition-all group relative cursor-pointer",
-                      selectedPortfolio?.id === portfolio.id && "border-primary/50 bg-primary/5 ring-1 ring-primary/20"
+                      "bg-surface-dark border border-border-dark rounded-xl p-3 hover:border-primary/50 transition-all group relative cursor-pointer",
+                      selectedPortfolio?.id === portfolio.id && "border-primary/50 bg-primary/5 ring-1 ring-primary/10"
                     )}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
                         <div className={cn(
                           "p-1.5 rounded-lg transition-colors",
                           selectedPortfolio?.id === portfolio.id ? "bg-primary text-background-dark" : "bg-primary/10 text-primary"
                         )}>
-                          <PieChartIcon size={18} />
+                          <PieChartIcon size={14} />
                         </div>
-                        <h3 className="font-bold text-sm truncate max-w-[180px]">{portfolio.name}</h3>
+                        <h3 className="font-bold text-xs truncate max-w-[140px]">{portfolio.name}</h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button 
                           onClick={(e) => handleToggleFavorite(e, portfolio.id)}
                           className={cn(
-                            "p-1.5 rounded-lg transition-all",
+                            "p-1 rounded-lg transition-all",
                             portfolio.is_favorite ? "text-yellow-400 bg-yellow-400/10" : "text-text-secondary hover:text-white hover:bg-surface-light"
                           )}
                         >
-                          <Star size={14} fill={portfolio.is_favorite ? "currentColor" : "none"} />
+                          <Star size={12} fill={portfolio.is_favorite ? "currentColor" : "none"} />
                         </button>
                         <button 
                           onClick={(e) => handleDeletePortfolio(e, portfolio.id)}
-                          className="p-1.5 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                          className="p-1 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase font-bold tracking-wider">
+                    <div className="flex justify-between items-center text-[9px] text-text-secondary uppercase font-bold tracking-widest">
                       <span>{portfolio.asset_count} Assets</span>
                       <span>{new Date(portfolio.created_at).toLocaleDateString()}</span>
                     </div>
@@ -467,9 +514,9 @@ export default function PortfolioBuilderPage() {
                 ))}
 
                 {portfolios.length === 0 && !loading && (
-                  <div className="py-12 text-center bg-surface-dark/30 border border-dashed border-border-dark rounded-xl text-text-secondary">
-                    <PieChartIcon size={32} className="mx-auto mb-3 opacity-20" />
-                    <p className="text-xs px-4">No portfolios created yet.</p>
+                  <div className="py-10 text-center bg-surface-dark/30 border border-dashed border-border-dark rounded-xl text-text-secondary">
+                    <PieChartIcon size={24} className="mx-auto mb-2 opacity-20" />
+                    <p className="text-[10px] px-4 font-bold uppercase tracking-widest">No portfolios</p>
                   </div>
                 )}
               </div>
@@ -481,38 +528,47 @@ export default function PortfolioBuilderPage() {
         <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-12 z-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
             {selectedPortfolio ? (
-              <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
                 {/* Header */}
-                <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12 bg-surface-dark/40 p-8 rounded-3xl border border-border-active/20 backdrop-blur-sm">
+                <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 bg-surface-dark/40 p-8 rounded-3xl border border-border-active/20 backdrop-blur-sm shadow-xl">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-4 mb-3">
-                      <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight truncate max-w-[500px]">{selectedPortfolio.name}</h1>
-                      <button 
-                        onClick={(e) => handleToggleFavorite(e, selectedPortfolio.id)}
-                        className={cn(
-                          "p-2.5 rounded-xl transition-all border shrink-0",
-                          selectedPortfolio.is_favorite 
-                            ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
-                            : "bg-surface-dark border-border-dark text-text-secondary hover:text-white"
-                        )}
-                      >
-                        <Star size={24} fill={selectedPortfolio.is_favorite ? "currentColor" : "none"} />
-                      </button>
+                    <div className="flex items-center gap-5 mb-3">
+                      <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight truncate max-w-[600px]">{selectedPortfolio.name}</h1>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={(e) => handleToggleFavorite(e, selectedPortfolio.id)}
+                          className={cn(
+                            "p-2 rounded-xl transition-all border shrink-0",
+                            selectedPortfolio.is_favorite 
+                              ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
+                              : "bg-surface-dark border-border-dark text-text-secondary hover:text-white"
+                          )}
+                        >
+                          <Star size={20} fill={selectedPortfolio.is_favorite ? "currentColor" : "none"} />
+                        </button>
+                        <button 
+                          onClick={handleEditClick}
+                          className="p-2 rounded-xl border bg-surface-dark border-border-dark text-text-secondary hover:text-white hover:border-primary/50 transition-all shrink-0"
+                          title="Edit portfolio composition"
+                        >
+                          <Edit3 size={20} />
+                        </button>
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-6 text-sm">
-                      <p className="text-text-secondary flex items-center gap-2 font-medium">
+                      <p className="text-text-secondary flex items-center gap-2 font-bold">
                         <Calendar size={16} className="text-primary" />
-                        Created {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                       <div className="h-4 w-px bg-border-dark hidden sm:block"></div>
-                      <p className="text-text-secondary flex items-center gap-2 font-medium">
+                      <p className="text-text-secondary flex items-center gap-2 font-bold">
                         <Layers size={16} className="text-primary" />
-                        {selectedPortfolio.assets.length} Active Assets
+                        {selectedPortfolio.assets.length} Assets
                       </p>
                       <div className="h-4 w-px bg-border-dark hidden sm:block"></div>
-                      <p className={cn("flex items-center gap-2 font-bold uppercase text-[11px] tracking-widest", concentrationLabel.color)}>
+                      <p className={cn("flex items-center gap-2 font-black uppercase text-[10px] tracking-[0.2em]", concentrationLabel.color)}>
                         <Zap size={16} />
                         {concentrationLabel.label}
                       </p>
@@ -522,97 +578,94 @@ export default function PortfolioBuilderPage() {
                   <div className="flex gap-4 w-full lg:w-auto">
                     <button 
                       onClick={() => window.location.href = `/simulate-portfolio?id=${selectedPortfolio.id}`}
-                      className="flex-1 lg:flex-none px-8 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.15em] rounded-2xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-primary/20 active:scale-[0.98] group"
+                      className="flex-1 lg:flex-none px-8 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] group"
                     >
                       <LineChartIcon size={20} className="group-hover:scale-110 transition-transform" />
                       Run Simulation
-                      <ArrowRight size={18} className="opacity-50" />
                     </button>
                   </div>
                 </header>
 
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
-                    <div className="flex items-center justify-between mb-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3 text-text-secondary">
                         <Activity size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Concentration</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">HHI Index</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.concentration)}
                     </div>
-                    <p className="text-2xl font-black text-white">{hhiIndex.toFixed(0)}</p>
-                    <div className="w-full h-1 bg-surface-light rounded-full mt-3 overflow-hidden">
-                       <div className={cn("h-full transition-all duration-1000", hhiIndex < 1500 ? "bg-primary" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")} style={{ width: `${Math.min(100, (hhiIndex / 10000) * 100)}%` }}></div>
+                    <div>
+                      <p className="text-2xl font-black text-white">{hhiIndex.toFixed(0)}</p>
+                      <div className="w-full h-1 bg-surface-light rounded-full mt-4 overflow-hidden">
+                         <div className={cn("h-full transition-all duration-1000", hhiIndex < 1500 ? "bg-primary" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")} style={{ width: `${Math.min(100, (hhiIndex / 10000) * 100)}%` }}></div>
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3 text-text-secondary">
                         <PieChartIcon size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Max Weight</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Max Weight</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.maxWeight)}
                     </div>
-                    <p className="text-2xl font-black text-white">
-                      {Math.max(...selectedPortfolio.assets.map(a => a.weight * 100)).toFixed(0)}%
-                    </p>
-                    <p className="text-[10px] text-text-secondary mt-1 font-bold">
-                      in {selectedPortfolio.assets.find(a => a.weight === Math.max(...selectedPortfolio.assets.map(pa => pa.weight)))?.asset?.ticker}
-                    </p>
+                    <div>
+                      <p className="text-2xl font-black text-white">
+                        {Math.max(...selectedPortfolio.assets.map(a => a.weight * 100)).toFixed(0)}%
+                      </p>
+                      <p className="text-[10px] text-text-secondary mt-2 font-bold tracking-widest uppercase">
+                        in {selectedPortfolio.assets.find(a => a.weight === Math.max(...selectedPortfolio.assets.map(pa => pa.weight)))?.asset?.ticker}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
-                    <div className="flex items-center justify-between mb-2">
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3 text-text-secondary">
                         <Layers size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Avg Weight</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Avg Stake</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.avgWeight)}
                     </div>
-                    <p className="text-2xl font-black text-white">
-                      {(100 / selectedPortfolio.assets.length).toFixed(1)}%
-                    </p>
-                    <p className="text-[10px] text-text-secondary mt-1 font-bold">per asset</p>
-                  </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3 text-text-secondary">
-                        <LineChartIcon size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Perf. Index</span>
-                      </div>
-                      {renderInfoIcon(METRIC_INFO.portfolioIndex)}
+                    <div>
+                      <p className="text-2xl font-black text-white">
+                        {(100 / selectedPortfolio.assets.length).toFixed(1)}%
+                      </p>
+                      <p className="text-[10px] text-text-secondary mt-2 font-bold tracking-widest uppercase">per asset</p>
                     </div>
-                    {loadingIndex ? (
-                      <div className="h-8 flex items-center"><RefreshCcw size={16} className="animate-spin text-text-secondary" /></div>
-                    ) : (
-                      <>
-                        <p className="text-2xl font-black text-white">
-                          {portfolioIndexData.length > 0 ? (portfolioIndexData[portfolioIndexData.length - 1].value).toFixed(1) : "N/A"}
-                        </p>
-                        <p className={cn(
-                          "text-[10px] font-bold mt-1",
-                          portfolioIndexData.length > 0 && portfolioIndexData[portfolioIndexData.length - 1].value >= 100 ? "text-primary" : "text-red-400"
-                        )}>
-                          {portfolioIndexData.length > 0 ? (portfolioIndexData[portfolioIndexData.length - 1].value - 100).toFixed(1) + "%" : ""}
-                        </p>
-                      </>
-                    )}
+                  </div>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <Clock size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Last Update</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.lastUpdate)}
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-white">Today</p>
+                      <p className="text-[10px] text-primary mt-2 font-bold tracking-widest uppercase">Database Sync</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Price Index Chart */}
-                <div className="bg-surface-dark/60 border border-border-active/10 rounded-3xl p-8 shadow-2xl mb-10">
+                {/* Price Index Chart - MOVED UP */}
+                <div className="bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 shadow-xl mb-8">
                   <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-sm font-black uppercase tracking-[0.25em] text-text-secondary flex items-center gap-3">
-                      <TrendingUp size={18} className="text-primary" />
-                      Portfolio Price Performance (Normalized 1Y)
-                    </h3>
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary flex items-center gap-4">
+                        <TrendingUp size={24} className="text-primary" />
+                        Performance Trend (Simulated 1Y)
+                      </h3>
+                      {renderInfoIcon(METRIC_INFO.portfolioIndex)}
+                    </div>
                   </div>
-                  <div className="h-[300px] w-full">
+                  <div className="h-[350px] w-full">
                     {loadingIndex ? (
-                      <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-4">
+                      <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-6">
                         <RefreshCcw size={32} className="animate-spin" />
-                        <p className="text-sm font-bold uppercase tracking-widest">Synthesizing Index...</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Calculating Trends...</p>
                       </div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
@@ -628,28 +681,28 @@ export default function PortfolioBuilderPage() {
                             dataKey="date" 
                             axisLine={false} 
                             tickLine={false} 
-                            tick={{fill: '#666', fontSize: 10}} 
-                            minTickGap={60}
+                            tick={{fill: '#666', fontSize: 11}} 
+                            minTickGap={80}
                             tickFormatter={(str) => new Date(str).toLocaleDateString("en-US", {month: 'short'})}
                           />
                           <YAxis 
                             hide 
-                            domain={['dataMin - 10', 'dataMax + 10']}
+                            domain={['dataMin - 5', 'dataMax + 5']}
                           />
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '12px' }}
-                            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                            labelStyle={{ color: '#666', fontSize: '10px', marginBottom: '4px' }}
-                            formatter={(val: number) => [val.toFixed(2), "Index Value"]}
+                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '16px' }}
+                            itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#666', fontSize: '10px', marginBottom: '8px', fontWeight: 'black', textTransform: 'uppercase' }}
+                            formatter={(val: number) => [val.toFixed(2), "Value"]}
                           />
                           <Area 
                             type="monotone" 
                             dataKey="value" 
                             stroke="#13ec5b" 
-                            strokeWidth={3}
+                            strokeWidth={4}
                             fillOpacity={1} 
                             fill="url(#colorIndex)" 
-                            animationDuration={2000}
+                            animationDuration={2500}
                           />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -657,14 +710,17 @@ export default function PortfolioBuilderPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start mb-12">
                   {/* Assets List */}
-                  <div className="xl:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-3xl p-8 shadow-2xl">
+                  <div className="lg:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 shadow-xl">
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-sm font-black uppercase tracking-[0.25em] text-text-secondary flex items-center gap-3">
-                        <LayoutIcon size={18} className="text-primary" />
-                        Asset Breakdown & Market Trends
-                      </h3>
+                      <div className="flex items-center gap-4">
+                        <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary flex items-center gap-4">
+                          <LayoutIcon size={20} className="text-primary" />
+                          Asset Breakdown
+                        </h3>
+                        {renderInfoIcon(METRIC_INFO.assetBreakdown)}
+                      </div>
                     </div>
                     <div className="space-y-4">
                       {selectedPortfolio.assets.map((pa, idx) => (
@@ -672,82 +728,93 @@ export default function PortfolioBuilderPage() {
                           <div 
                             onClick={() => toggleAssetExpand(pa.asset_id)}
                             className={cn(
-                              "flex items-center justify-between p-6 bg-background-dark/40 rounded-2xl border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300",
-                              expandedAssetId === pa.asset_id && "border-primary/40 bg-background-dark ring-1 ring-primary/10"
+                              "flex items-center justify-between p-6 bg-background-dark/40 rounded-2xl border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300 shadow-sm",
+                              expandedAssetId === pa.asset_id && "border-primary/40 bg-background-dark ring-2 ring-primary/5"
                             )}
                           >
                             <div className="flex items-center gap-6">
-                              <div className="w-20 h-16 rounded-xl flex items-center justify-center font-black text-lg border-2 border-border-dark group-hover:border-primary/30 transition-all shadow-inner relative" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
-                                <span className="z-10">{pa.asset?.ticker}</span>
-                                <div className="absolute inset-0 opacity-[0.03] z-0 flex items-center justify-center">
+                              <div className="w-20 h-16 rounded-xl flex items-center justify-center font-black text-lg border-2 border-border-dark group-hover:border-primary/30 transition-all shadow-inner relative overflow-hidden" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
+                                <span className="z-10 tracking-tighter">{pa.asset?.ticker}</span>
+                                <div className="absolute inset-0 opacity-[0.05] z-0 flex items-center justify-center">
                                   <Maximize2 size={32} />
                                 </div>
                               </div>
-                              <div className="min-w-0">
-                                <p className="font-black text-white text-xl leading-tight truncate group-hover:text-primary transition-colors">{pa.asset?.name}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <span className="text-[10px] text-text-secondary uppercase font-black tracking-widest px-2 py-0.5 bg-surface-light/50 rounded-md">{pa.asset?.asset_type}</span>
-                                  {pa.asset?.ticker.includes("USD") ? (
-                                    <span className="text-[10px] text-primary font-bold flex items-center gap-1"><Zap size={10} /> High Volatility</span>
-                                  ) : (
-                                    <span className="text-[10px] text-yellow-400 font-bold flex items-center gap-1"><Layers size={10} /> Core Holding</span>
-                                  )}
+                              <div className="min-w-0 flex flex-col gap-1.5">
+                                <p className="font-black text-white text-xl leading-none truncate max-w-[300px] group-hover:text-primary transition-colors">{pa.asset?.name}</p>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[9px] text-text-secondary uppercase font-black tracking-[0.15em] px-2.5 py-1 bg-surface-light/50 rounded-lg">{pa.asset?.asset_type}</span>
+                                  <div className="size-1 rounded-full bg-border-dark"></div>
+                                  <div className="flex items-center gap-3">
+                                    {pa.asset?.ticker.includes("USD") ? (
+                                      <div className="flex items-center gap-1.5 group/tag">
+                                        <span className="text-[9px] text-primary font-black flex items-center gap-1.5 uppercase tracking-wider"><Zap size={12} /> Volatility Risk</span>
+                                        {renderInfoIcon(METRIC_INFO.volatilityTag)}
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 group/tag">
+                                        <span className="text-[9px] text-yellow-400 font-black flex items-center gap-1.5 uppercase tracking-wider"><Layers size={12} /> Core Position</span>
+                                        {renderInfoIcon(METRIC_INFO.coreTag)}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center gap-8">
                               <div className="text-right flex flex-col items-end gap-2">
-                                <p className="text-3xl font-black text-primary tabular-nums tracking-tighter">{(pa.weight * 100).toFixed(0)}<span className="text-xs ml-0.5 opacity-60 font-black">%</span></p>
-                                <div className="w-24 h-2 bg-surface-light rounded-full overflow-hidden shadow-inner">
+                                <p className="text-3xl font-black text-primary tabular-nums tracking-tighter leading-none">{(pa.weight * 100).toFixed(0)}<span className="text-sm ml-0.5 opacity-30 font-black">%</span></p>
+                                <div className="w-24 h-1.5 bg-surface-light rounded-full overflow-hidden shadow-inner">
                                   <div className="h-full bg-primary shadow-[0_0_10px_rgba(19,236,91,0.4)] transition-all duration-1000" style={{ width: `${pa.weight * 100}%` }}></div>
                                 </div>
                               </div>
                               <div className={cn("transition-transform duration-300", expandedAssetId === pa.asset_id ? "rotate-180" : "")}>
-                                <ChevronDown size={20} className="text-text-secondary" />
+                                <ChevronDown size={24} className="text-text-secondary opacity-40 group-hover:opacity-100 transition-opacity" />
                               </div>
                             </div>
                           </div>
                           
                           {/* Expanded Chart Area */}
                           {expandedAssetId === pa.asset_id && (
-                            <div className="p-8 bg-background-dark/60 rounded-3xl border border-primary/20 animate-in slide-in-from-top-4 duration-300">
+                            <div className="p-8 bg-background-dark/60 rounded-[32px] border border-primary/20 animate-in slide-in-from-top-4 duration-400 shadow-xl mx-2">
                                <div className="flex items-center justify-between mb-6">
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-4">
                                      <LineChartIcon size={16} className="text-primary" />
-                                     <span className="text-xs font-black uppercase tracking-widest text-white">{pa.asset?.ticker} Price Evolution (1Y)</span>
+                                     <span className="text-xs font-black uppercase tracking-[0.2em] text-white">{pa.asset?.ticker} Price Evolution (1Y)</span>
+                                     {renderInfoIcon(METRIC_INFO.assetTrend)}
                                   </div>
-                                  <div className="flex items-center gap-4 text-[10px] font-bold text-text-secondary">
-                                     <span>Min: ${assetHistories[pa.asset_id] ? Math.min(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span>
-                                     <span>Max: ${assetHistories[pa.asset_id] ? Math.max(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span>
+                                  <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-text-secondary">
+                                     <span className="flex items-center gap-2 border-r border-border-dark pr-6">Min: <span className="text-white">${assetHistories[pa.asset_id] ? Math.min(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span></span>
+                                     <span className="flex items-center gap-2">Max: <span className="text-white">${assetHistories[pa.asset_id] ? Math.max(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span></span>
                                   </div>
                                </div>
-                               <div className="h-[200px] w-full">
+                               <div className="h-[250px] w-full">
                                   {loadingHistory === pa.asset_id ? (
-                                    <div className="h-full flex items-center justify-center"><RefreshCcw className="animate-spin text-primary" size={24} /></div>
+                                    <div className="h-full flex flex-col items-center justify-center gap-4"><RefreshCcw className="animate-spin text-primary" size={32} /></div>
                                   ) : assetHistories[pa.asset_id] ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                       <AreaChart data={assetHistories[pa.asset_id]}>
                                         <defs>
                                           <linearGradient id={`colorPrice-${pa.asset_id}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.2}/>
+                                            <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.25}/>
                                             <stop offset="95%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0}/>
                                           </linearGradient>
                                         </defs>
                                         <XAxis hide dataKey="date" />
                                         <YAxis hide domain={['auto', 'auto']} />
                                         <RechartsTooltip 
-                                          contentStyle={{ backgroundColor: '#0b0f0c', border: 'none', borderRadius: '8px' }}
-                                          itemStyle={{ color: '#fff', fontSize: '10px' }}
+                                          contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #ffffff10', borderRadius: '12px', padding: '12px' }}
+                                          itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
                                           labelStyle={{ display: 'none' }}
+                                          formatter={(val: number) => [`$${val.toLocaleString()}`, "Price"]}
                                         />
                                         <Area 
                                           type="monotone" 
                                           dataKey="price" 
                                           stroke={COLORS[idx % COLORS.length]} 
-                                          strokeWidth={2}
+                                          strokeWidth={3}
                                           fillOpacity={1} 
                                           fill={`url(#colorPrice-${pa.asset_id})`} 
-                                          animationDuration={1500}
+                                          animationDuration={2000}
                                         />
                                       </AreaChart>
                                     </ResponsiveContainer>
@@ -760,70 +827,95 @@ export default function PortfolioBuilderPage() {
                     </div>
                   </div>
 
-                  {/* Composition Summary */}
-                  <div className="xl:col-span-2 bg-surface-dark/60 border border-border-active/10 rounded-3xl p-8 flex flex-col shadow-2xl sticky top-8">
-                    <h3 className="text-sm font-black uppercase tracking-[0.25em] text-text-secondary mb-12 flex items-center gap-3">
-                      <PieChartIcon size={18} className="text-primary" />
-                      Allocation Weights
-                    </h3>
-                    <div className="flex-1 min-h-[450px] relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={selectedPortfolioChartData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={100}
-                            outerRadius={150}
-                            paddingAngle={10}
-                            dataKey="value"
-                            stroke="none"
-                            label={({ name, value }) => `${name} ${value.toFixed(0)}%`}
-                            labelLine={false}
-                          >
-                            {selectedPortfolioChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }}
-                            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: '900' }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mb-6">
-                        <span className="text-6xl font-black text-primary drop-shadow-[0_0_20px_rgba(19,236,91,0.2)] tabular-nums">{selectedPortfolio.assets.length}</span>
-                        <span className="text-[10px] text-text-secondary uppercase font-black tracking-[0.3em]">Total Assets</span>
+                  {/* Distribution Summary - FIXED PIE CHART */}
+                  <div className="lg:col-span-2 flex flex-col gap-8">
+                    {/* Pie Chart Card */}
+                    <div className="bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 flex flex-col shadow-xl min-h-[500px]">
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-4">
+                          <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary flex items-center gap-4">
+                            <PieChartIcon size={20} className="text-primary" />
+                            Distribution
+                          </h3>
+                          {renderInfoIcon(METRIC_INFO.distribution)}
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="mt-8 pt-8 border-t border-border-dark/30 space-y-4">
-                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-text-secondary">
-                          <span>Risk Profile</span>
-                          <span className="text-white">Medium-High</span>
-                       </div>
-                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-text-secondary">
-                          <span>Rebalance Threshold</span>
-                          <span className="text-primary">±5.0%</span>
-                       </div>
+                      
+                      <div className="flex-1 flex flex-col items-center justify-center relative py-6">
+                        <div className="w-full h-[350px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={selectedPortfolioChartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={80}
+                                outerRadius={110}
+                                paddingAngle={8}
+                                dataKey="value"
+                                stroke="none"
+                                label={({ name, value }) => `${name} ${value.toFixed(0)}%`}
+                                labelLine={{ stroke: '#333', strokeWidth: 1 }}
+                                animationDuration={2000}
+                              >
+                                {selectedPortfolioChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <RechartsTooltip 
+                                contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }}
+                                itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
+                          <span className="text-5xl font-black text-primary drop-shadow-[0_0_20px_rgba(19,236,91,0.3)] tabular-nums">{selectedPortfolio.assets.length}</span>
+                          <span className="text-[10px] text-text-secondary uppercase font-black tracking-[0.3em] mt-1">Assets</span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 pt-6 border-t border-border-dark/30 grid grid-cols-2 gap-6">
+                         <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary">Risk Analysis</span>
+                              {renderInfoIcon(METRIC_INFO.riskAnalysis)}
+                            </div>
+                            <span className="text-xs font-black text-white flex items-center gap-2">
+                              <div className="size-2 rounded-full bg-yellow-400"></div>
+                              Aggressive-Medium
+                            </span>
+                         </div>
+                         <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary">Strategic View</span>
+                              {renderInfoIcon(METRIC_INFO.strategicView)}
+                            </div>
+                            <span className="text-xs font-black text-primary flex items-center gap-2">
+                              <TrendingUp size={14} />
+                              Long-term Alpha
+                            </span>
+                         </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-1000">
-                <div className="size-32 rounded-3xl bg-surface-dark border border-border-active flex items-center justify-center mb-10 relative group mx-auto transform rotate-6 hover:rotate-0 transition-transform duration-500">
-                  <div className="absolute inset-0 rounded-3xl bg-primary/20 animate-pulse group-hover:animate-none opacity-20 blur-xl"></div>
+                <div className="size-32 rounded-[32px] bg-surface-dark border border-border-active flex items-center justify-center mb-10 relative group mx-auto transform rotate-6 hover:rotate-0 transition-transform duration-700 shadow-xl">
+                  <div className="absolute inset-0 rounded-[32px] bg-primary/20 animate-pulse group-hover:animate-none opacity-20 blur-2xl"></div>
                   <PieChartIcon size={64} className="text-primary relative z-10" />
                 </div>
                 <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Portfolio Architect</h2>
-                <p className="text-text-secondary max-w-sm leading-relaxed mx-auto font-medium">
-                  Select a portfolio from your collection or construct a new multi-asset strategy to begin your analysis.
+                <p className="text-text-secondary max-w-md leading-relaxed mx-auto font-medium text-sm opacity-80">
+                  Select a strategy from your archive or architect a new multi-asset portfolio.
                 </p>
                 <div className="mt-12">
                   <button 
-                    onClick={() => setShowCreateModal(true)}
-                    className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#3af578] transition-all shadow-2xl shadow-primary/10 active:scale-95"
+                    onClick={() => { setIsEditing(false); setNewPortfolio({name: "", assets: [], is_favorite: false}); setShowCreateModal(true); }}
+                    className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-[#3af578] transition-all shadow-xl shadow-primary/10 active:scale-95 text-sm"
                   >
                     Create New
                   </button>
@@ -836,27 +928,27 @@ export default function PortfolioBuilderPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-surface-dark border border-border-dark rounded-2xl w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-surface-dark border border-border-dark rounded-[32px] w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="p-6 border-b border-border-dark flex items-center justify-between bg-background-dark/50">
-              <div className="flex items-center gap-6 flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                    <PlusCircle size={20} />
+            <div className="p-8 border-b border-border-dark flex items-center justify-between bg-background-dark/50">
+              <div className="flex items-center gap-8 flex-1">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                    <PlusCircle size={24} />
                   </div>
-                  <h2 className="text-xl font-bold whitespace-nowrap tracking-tight">Build Portfolio</h2>
+                  <h2 className="text-xl font-black tracking-tight uppercase">{isEditing ? "Edit Strategy" : "Build Strategy"}</h2>
                 </div>
-                <div className="h-8 w-px bg-border-dark"></div>
+                <div className="h-10 w-px bg-border-dark"></div>
               </div>
               
-              <div className="flex items-center gap-4 mr-6">
-                <div className="flex items-center gap-3 bg-surface-light/50 px-4 py-2 rounded-xl border border-border-dark focus-within:border-primary/50 transition-all">
-                  <span className="text-[10px] font-black uppercase text-text-secondary tracking-widest">Name:</span>
+              <div className="flex items-center gap-6 mr-8">
+                <div className="flex items-center gap-4 bg-surface-light/50 px-6 py-2.5 rounded-2xl border border-border-dark focus-within:border-primary/50 transition-all shadow-inner">
+                  <span className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em]">TITLE:</span>
                   <input 
                     type="text"
-                    placeholder="Portfolio Title..."
-                    className="bg-transparent py-0 px-0 focus:outline-none text-sm font-bold text-white placeholder:text-text-secondary/20 min-w-[200px]"
+                    placeholder="Strategy Name..."
+                    className="bg-transparent py-0 px-0 focus:outline-none text-base font-bold text-white placeholder:text-text-secondary/20 min-w-[300px]"
                     value={newPortfolio.name}
                     onChange={(e) => setNewPortfolio({...newPortfolio, name: e.target.value})}
                     autoFocus
@@ -865,20 +957,20 @@ export default function PortfolioBuilderPage() {
                 <button 
                   onClick={() => setNewPortfolio({...newPortfolio, is_favorite: !newPortfolio.is_favorite})}
                   className={cn(
-                    "p-2.5 rounded-xl transition-all border shadow-lg",
+                    "p-3 rounded-2xl transition-all border shadow-lg",
                     newPortfolio.is_favorite 
                       ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
                       : "bg-surface-light border-border-dark text-text-secondary hover:text-white"
                   )}
                   title={newPortfolio.is_favorite ? "Remove from favorites" : "Add to favorites"}
                 >
-                  <Star size={18} fill={newPortfolio.is_favorite ? "currentColor" : "none"} />
+                  <Star size={20} fill={newPortfolio.is_favorite ? "currentColor" : "none"} />
                 </button>
               </div>
 
               <button 
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 hover:bg-surface-light rounded-full transition-all text-text-secondary hover:text-white"
+                onClick={() => { setShowCreateModal(false); setIsEditing(false); }}
+                className="p-3 hover:bg-surface-light rounded-full transition-all text-text-secondary hover:text-white bg-surface-dark/50 border border-border-dark"
               >
                 <X size={24} />
               </button>
@@ -887,25 +979,25 @@ export default function PortfolioBuilderPage() {
             {/* Modal Content */}
             <div className="flex-1 overflow-hidden flex">
               {/* Asset Selector */}
-              <div className="w-1/4 border-r border-border-dark flex flex-col p-6 bg-background-dark/10">
-                <div className="relative mb-6">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={18} />
+              <div className="w-1/4 border-r border-border-dark flex flex-col p-8 bg-background-dark/10">
+                <div className="relative mb-8">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" size={18} />
                   <input 
                     type="text"
-                    placeholder="Search assets..."
-                    className="w-full bg-surface-light border border-border-dark rounded-lg py-2.5 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                    placeholder="Search Markets..."
+                    className="w-full bg-surface-light border border-border-dark rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-bold shadow-inner"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-text-secondary">
-                      <RefreshCcw size={24} className="animate-spin mb-4" />
-                      <p className="text-xs">Loading assets...</p>
+                    <div className="flex flex-col items-center justify-center py-20 text-text-secondary gap-4">
+                      <RefreshCcw size={24} className="animate-spin" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">Loading Markets...</p>
                     </div>
                   ) : assets.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-3">
                       {filteredAssets.map(asset => {
                           const isSelected = newPortfolio.assets.find(a => a.asset_id === asset.id);
                           const isDisabled = !!isSelected || totalWeight >= 100;
@@ -915,72 +1007,75 @@ export default function PortfolioBuilderPage() {
                                   onClick={() => handleAddAsset(asset)}
                                   disabled={isDisabled}
                                   className={cn(
-                                      "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
+                                      "flex items-center justify-between p-4 rounded-xl border transition-all text-left group shadow-sm",
                                       isSelected 
                                           ? "bg-primary/5 border-primary/20 opacity-50 cursor-not-allowed" 
                                           : totalWeight >= 100
                                             ? "bg-surface-light border-border-dark opacity-30 cursor-not-allowed grayscale"
-                                            : "bg-surface-light border-border-dark hover:border-primary/50 hover:bg-surface-light/80"
+                                            : "bg-surface-light border-border-dark hover:border-primary/50 hover:bg-background-dark"
                                   )}
                               >
-                                  <div>
-                                      <div className="font-bold text-sm">{asset.ticker}</div>
-                                      <div className="text-[10px] text-text-secondary line-clamp-1">{asset.name}</div>
+                                  <div className="min-w-0">
+                                      <div className="font-black text-xs tracking-tight text-white group-hover:text-primary transition-colors">{asset.ticker}</div>
+                                      <div className="text-[9px] text-text-secondary font-bold line-clamp-1 uppercase tracking-widest">{asset.name}</div>
                                   </div>
-                                  {!isSelected && <PlusCircle size={16} className={cn(totalWeight >= 100 ? "text-text-secondary" : "text-primary")} />}
+                                  {!isSelected && <PlusCircle size={16} className={cn("shrink-0 transition-transform group-hover:scale-110", totalWeight >= 100 ? "text-text-secondary" : "text-primary")} />}
                               </button>
                           );
                       })}
                     </div>
                   ) : (
                     <div className="text-center py-20 text-text-secondary">
-                      <p className="text-xs italic">No assets found.</p>
+                      <p className="text-xs font-black uppercase tracking-widest opacity-40">No markets found</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Allocation Config */}
-              <div className="w-2/4 flex flex-col p-6 border-r border-border-dark overflow-y-auto custom-scrollbar">
-                <label className="text-xs font-bold uppercase text-text-secondary mb-4 flex items-center gap-2">
-                  <LayoutIcon size={14} className="text-primary" />
-                  Target Allocations
+              <div className="w-2/4 flex flex-col p-8 border-r border-border-dark overflow-y-auto custom-scrollbar bg-background-dark/5">
+                <label className="text-[10px] font-black uppercase text-text-secondary mb-8 flex items-center gap-4 tracking-[0.3em]">
+                  <LayoutIcon size={18} className="text-primary" />
+                  Blueprint Strategy
                 </label>
-                <div className="space-y-3 flex-1">
+                <div className="space-y-4 flex-1">
                   {newPortfolio.assets.map(pa => {
                     const asset = assets.find(a => a.id === pa.asset_id);
                     return (
-                      <div key={pa.asset_id} className="bg-surface-dark border border-border-active/30 rounded-xl p-4 animate-in slide-in-from-left-2 duration-300">
-                        <div className="flex justify-between items-center mb-3">
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-black text-primary">{asset?.ticker}</span>
-                            <span className="text-[10px] text-text-secondary font-bold truncate max-w-[200px]">{asset?.name}</span>
+                      <div key={pa.asset_id} className="bg-surface-dark/80 border border-border-active/30 rounded-2xl p-6 animate-in slide-in-from-left-4 duration-400 shadow-xl group">
+                        <div className="flex justify-between items-center mb-6">
+                          <div className="flex items-center gap-4">
+                            <span className="font-black text-xl text-primary tracking-tighter">{asset?.ticker}</span>
+                            <div className="size-1 rounded-full bg-border-dark"></div>
+                            <span className="text-[10px] text-text-secondary font-black uppercase tracking-[0.15em] truncate max-w-[250px]">{asset?.name}</span>
                           </div>
                           <button 
                             onClick={() => handleRemoveAsset(pa.asset_id)}
-                            className="text-text-secondary hover:text-red-400 p-1 hover:bg-red-400/10 rounded-lg transition-all"
+                            className="text-text-secondary hover:text-red-400 p-2 hover:bg-red-400/10 rounded-xl transition-all border border-transparent hover:border-red-400/20"
                           >
-                            <X size={14} />
+                            <X size={18} />
                           </button>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <input 
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            className="flex-1 accent-primary h-1.5 bg-surface-light rounded-lg appearance-none cursor-pointer"
-                            value={pa.weight * 100}
-                            onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
-                          />
-                          <div className="w-20 flex items-center bg-surface-light rounded-lg px-2 py-1.5 border border-border-dark focus-within:border-primary/50 transition-colors">
+                        <div className="flex items-center gap-8">
+                          <div className="flex-1 relative h-6 flex items-center">
+                            <input 
+                              type="range"
+                              min="0"
+                              max="100"
+                              step="1"
+                              className="w-full accent-primary h-1.5 bg-surface-light rounded-full appearance-none cursor-pointer shadow-inner"
+                              value={pa.weight * 100}
+                              onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
+                            />
+                          </div>
+                          <div className="w-28 flex items-center bg-background-dark/80 rounded-xl px-4 py-2 border border-border-dark focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-inner">
                             <input 
                               type="number"
-                              className="bg-transparent w-full text-right text-sm focus:outline-none font-black"
+                              className="bg-transparent w-full text-right text-lg focus:outline-none font-black tabular-nums text-white"
                               value={Math.round(pa.weight * 100)}
                               onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
                             />
-                            <span className="text-[10px] text-text-secondary ml-1 font-bold">%</span>
+                            <span className="text-xs text-text-secondary ml-1 font-black opacity-40">%</span>
                           </div>
                         </div>
                       </div>
@@ -988,24 +1083,24 @@ export default function PortfolioBuilderPage() {
                   })}
 
                   {newPortfolio.assets.length === 0 && (
-                    <div className="text-center py-20 text-text-secondary text-sm border border-dashed border-border-dark rounded-2xl flex flex-col items-center justify-center gap-4 h-full">
-                      <div className="p-4 bg-surface-dark rounded-full">
-                        <Plus size={32} className="opacity-20" />
+                    <div className="text-center py-20 text-text-secondary text-sm border-2 border-dashed border-border-dark rounded-[32px] flex flex-col items-center justify-center gap-6 h-full bg-surface-dark/10">
+                      <div className="p-6 bg-surface-dark rounded-[24px] shadow-xl">
+                        <Plus size={48} className="opacity-10" />
                       </div>
-                      <p className="max-w-[200px] leading-relaxed">Select assets from the left panel to define your strategy.</p>
+                      <p className="font-black text-white/40 uppercase tracking-[0.3em] text-[10px]">Select assets to start</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Composition Summary */}
-              <div className="w-1/4 flex flex-col p-6 bg-background-dark/30">
-                <label className="text-xs font-bold uppercase text-text-secondary mb-6 flex items-center gap-2">
-                  <PieChartIcon size={14} className="text-primary" />
-                  Live Preview
+              <div className="w-1/4 flex flex-col p-8 bg-background-dark/30 overflow-y-auto custom-scrollbar">
+                <label className="text-[10px] font-black uppercase text-text-secondary mb-10 flex items-center gap-4 tracking-[0.3em]">
+                  <PieChartIcon size={18} className="text-primary" />
+                  Blueprint
                 </label>
                 
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[250px] relative">
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[300px] relative mb-10">
                   {newPortfolio.assets.length > 0 && totalWeight > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -1013,70 +1108,65 @@ export default function PortfolioBuilderPage() {
                           data={modalChartData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={50}
-                          outerRadius={80}
-                          paddingAngle={5}
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={8}
                           dataKey="value"
                           stroke="none"
+                          animationDuration={1500}
                         >
                           {modalChartData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
                         <RechartsTooltip 
-                          contentStyle={{ backgroundColor: '#1a1f1b', border: '1px solid #2d352f', borderRadius: '12px' }}
-                          itemStyle={{ color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
+                          contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }}
+                          itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="text-center text-text-secondary opacity-10">
-                      <PieChartIcon size={64} className="mx-auto" />
+                    <div className="text-center text-text-secondary opacity-5">
+                      <PieChartIcon size={80} className="mx-auto" />
                     </div>
                   )}
 
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-10px]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-2">
                     <span className={cn(
-                      "text-2xl font-black tabular-nums transition-colors",
-                      Math.abs(totalWeight - 100) < 0.01 ? "text-primary" : "text-white"
+                      "text-4xl font-black tabular-nums transition-all duration-500 tracking-tighter drop-shadow-[0_0_15px_rgba(19,236,91,0.2)]",
+                      Math.abs(totalWeight - 100) < 0.01 ? "text-primary scale-110" : "text-white"
                     )}>
                       {Math.round(totalWeight)}%
                     </span>
-                    <span className="text-[8px] text-text-secondary uppercase font-bold tracking-widest">Total</span>
+                    <span className="text-[9px] text-text-secondary uppercase font-black tracking-[0.3em] mt-1">Allocation</span>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-border-dark">
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold uppercase text-text-secondary">Validation</span>
+                <div className="mt-auto pt-8 border-t border-border-dark/50 space-y-8">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-[0.2em]">Check</span>
                       <span className={cn(
-                          "text-xs font-black uppercase tracking-wider",
+                          "text-[10px] font-black uppercase tracking-widest flex items-center gap-2",
                           Math.abs(totalWeight - 100) < 0.01 ? "text-primary" : "text-red-400"
                       )}>
-                        {Math.abs(totalWeight - 100) < 0.01 ? "Complete" : "Required 100%"}
+                        <div className={cn("size-2 rounded-full", Math.abs(totalWeight - 100) < 0.01 ? "bg-primary animate-pulse" : "bg-red-400")}></div>
+                        {Math.abs(totalWeight - 100) < 0.01 ? "Ready" : "Mismatch"}
                       </span>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-[9px] font-bold uppercase text-text-secondary">Assets</span>
-                      <span className="text-xs font-black text-white">{newPortfolio.assets.length}</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-[0.2em]">Stake</span>
+                      <span className="text-xs font-black text-white tabular-nums">{newPortfolio.assets.length} ASSETS</span>
                     </div>
                   </div>
                   
-                  {Math.abs(totalWeight - 100) > 0.01 && newPortfolio.assets.length > 0 && (
-                    <div className="flex items-center gap-2 text-red-400 text-[10px] mb-4 bg-red-400/10 p-3 rounded-xl border border-red-400/20 font-bold uppercase">
-                        <AlertCircle size={14} className="shrink-0" />
-                        Allocations must be 100%
-                    </div>
-                  )}
-
                   <button 
                     disabled={Math.abs(totalWeight - 100) > 0.01 || !newPortfolio.name || newPortfolio.assets.length === 0}
                     onClick={handleSavePortfolio}
-                    className="w-full py-4 bg-primary text-background-dark font-black uppercase tracking-widest rounded-xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed shadow-xl shadow-primary/20"
+                    className="w-full py-5 bg-primary text-background-dark font-black uppercase tracking-[0.4em] rounded-2xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed shadow-[0_0_30px_rgba(19,236,91,0.2)] active:scale-[0.98] group text-sm"
                   >
-                    <Save size={20} />
-                    Save Portfolio
+                    <Save size={20} className="group-hover:scale-110 transition-transform" />
+                    {isEditing ? "Save Changes" : "Deploy Strategy"}
                   </button>
                 </div>
               </div>
@@ -1093,11 +1183,11 @@ export default function PortfolioBuilderPage() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #2a2a2a;
-          border-radius: 10px;
+          background: #1a1a1a;
+          border-radius: 20px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #333;
+          background: #252525;
         }
       `}</style>
     </div>
@@ -1112,7 +1202,7 @@ const ChevronDown = ({ size, className }: { size: number, className?: string }) 
     viewBox="0 0 24 24" 
     fill="none" 
     stroke="currentColor" 
-    strokeWidth="2" 
+    strokeWidth="3" 
     strokeLinecap="round" 
     strokeLinejoin="round" 
     className={className}
