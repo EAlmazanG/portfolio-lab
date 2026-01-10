@@ -200,42 +200,41 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 6. Current Progress (v0.2 Completed)
+## 6. Current Progress (v0.4 Completed)
 
 ### 6.1. Infrastructure & DevOps
 - **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
 - **Database:** PostgreSQL set up with SQLAlchemy ORM and Alembic for migrations.
 - **Backend:** FastAPI foundation with health checks and CORS configuration.
 - **Frontend:** Next.js (App Router) structure with TypeScript and Tailwind CSS.
-- **Automation:** `Makefile` for quick commands (venv, cli, test, up/down) and bash scripts for orchestration.
+- **Automation:** Refactored `Makefile` with clear commands (`make dev-start`, `make prod-start`, `make start portfolio-lab`).
+- **Icons:** Custom favicon and application branding implemented.
 
-### 6.2. Data Ingestion & Management (v0.2)
+### 6.2. Data Ingestion & Management
 - **Yahoo Finance Client:** Robust integration for fetching OHLCV data and asset metadata.
-- **Interactive CLI Tool:** A comprehensive data manager (`make cli`).
+- **Interactive CLI Tool:** A comprehensive data manager (`make backend-cli`).
 - **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting`.
 
-### 6.3. Asset Simulation Engine (v0.3 Baseline)
-- **Core Engine:** Implemented `SimulationEngine` for Baseline DCA calculations using Pandas.
-- **Database Models:** Added `Simulation` and `SimulationResult` tables to store configurations and performance metrics.
-- **API Endpoints:**
-    - `GET /api/v1/simulations/assets`: List available assets for simulation.
-    - `POST /api/v1/simulations/run`: Execute a baseline DCA simulation and persist results.
-- **Features:** Supports custom date ranges, investment amounts, and frequencies (daily, weekly, monthly).
-- **Architecture:** Decoupled simulation logic from persistence using a Service layer.
+### 6.3. Smart DCA Engine (v0.4)
+- **Core Engine:** Enhanced `SimulationEngine` to support algorithmic DCA.
+- **Indicators:** Support for **RSI**, **MA** (Simple Moving Average), and **EMA** (Exponential Moving Average).
+- **Dynamic Timing:** Adjusts contribution dates based on oversold/overbought signals to catch local dips.
+- **Dynamic Sizing:** Varies buy amounts (up to 5x multiplier) ensuring the total annual investment remains identical to the baseline.
+- **Safety Floor:** "Min Sizing" parameter that guarantees a minimum investment percentage even during overbought periods, preventing staying out of the market for too long.
+- **Realistic Backtesting:** All indicators are calculated using only data available up to the day prior to the trade (zero look-ahead bias).
 
-### 6.4. Frontend Implementation (v0.3 Baseline)
-- **Asset Tab:** Fully implemented using the Stitch prototype design.
-- **Components:**
-    - Sidebar with simulation parameters (Asset, Amount, Frequency, Dates, Fees).
-    - Results dashboard with KPI cards (Return, Invested, Accumulated).
-    - Interactive Charting using **Recharts** showing Portfolio Value vs. Invested Capital.
-- **API Integration:** Connects to FastAPI backend for real-time simulation runs.
-- **Tech Stack:** Next.js 14, TypeScript, Tailwind CSS, Recharts, Lucide-React.
-
-### 6.5. UI/UX Design Prototypes
-- **Stitch Prototypes:** Available in `stitch/` folder with detailed designs for key components.
-- **Current Coverage:** Single asset simulation interface with interactive controls and visualization.
-- **Format:** HTML prototypes with CSS/JS and accompanying screenshots for reference.
+### 6.4. Frontend Implementation (v0.4)
+- **Asset Tab:** Advanced simulation dashboard with feature toggles for Smart Timing and Sizing.
+- **Interactive Visualization:**
+    - **Portfolio Growth:** Compare Smart vs. Baseline vs. Invested capital.
+    - **Price Reference:** Line chart with synchronized tooltips.
+    - **Contributions Timeline:** Detailed bar chart showing exact investment dates and amounts.
+    - **Synchronized Zoom:** Global `Brush` component to zoom all charts simultaneously.
+- **History & Persistence:**
+    - **Favorites System:** Star simulations to save them in a dedicated tab.
+    - **Smart Deletion:** Options to clear only non-favorites or specific subsets.
+    - **Date Validation:** Date pickers are dynamically bounded by the available historical data for the selected asset.
+- **UX Improvements:** Collapsible sidebars with discreet handles, sticky simulation controls, and warning modals for input errors.
 
 ---
 
