@@ -23,7 +23,13 @@ import {
   CheckCircle2,
   BarChart2,
   Activity,
-  Calendar
+  Calendar,
+  Layers,
+  Zap,
+  Clock,
+  ArrowRight,
+  TrendingDown,
+  Maximize2
 } from "lucide-react";
 import { 
   getAssets, 
@@ -31,19 +37,39 @@ import {
   createPortfolio, 
   deletePortfolio, 
   getPortfolio,
-  togglePortfolioFavorite 
+  togglePortfolioFavorite,
+  getAssetHistory
 } from "../../lib/api";
 import { Asset } from "../../types/simulation";
 import { Portfolio, PortfolioListItem, PortfolioCreate } from "../../types/portfolio";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip as RechartsTooltip, 
+  Legend,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid
+} from "recharts";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 const COLORS = ['#13ec5b', '#3af578', '#6ef99c', '#9efcc0', '#cfffe4', '#0ea541', '#097a2d'];
+
+const METRIC_INFO = {
+  concentration: "The Herfindahl-Hirschman Index (HHI) measures portfolio concentration. A lower value indicates better diversification across assets.",
+  maxWeight: "The percentage allocated to your largest single position. High concentration increases exposure to specific asset risks.",
+  avgWeight: "The mathematical average allocation across all assets in the portfolio.",
+  portfolioIndex: "A simulated index representing the portfolio's historical price performance based on current target weights."
+};
 
 export default function PortfolioBuilderPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -54,9 +80,15 @@ export default function PortfolioBuilderPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
   
+  // Interaction states
+  const [expandedAssetId, setExpandedAssetId] = useState<number | null>(null);
+  const [assetHistories, setAssetHistories] = useState<Record<number, {date: string, price: number}[]>>({});
+  const [loadingHistory, setLoadingHistory] = useState<number | null>(null);
+  const [portfolioIndexData, setPortfolioIndexData] = useState<{date: string, value: number}[]>([]);
+  const [loadingIndex, setLoadingIndex] = useState(false);
+
   // New Portfolio State
   const [newPortfolio, setNewPortfolio] = useState<PortfolioCreate>({
     name: "",
@@ -68,19 +100,22 @@ export default function PortfolioBuilderPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (selectedPortfolio) {
+      loadPortfolioIndex();
+    } else {
+      setPortfolioIndexData([]);
+    }
+  }, [selectedPortfolio]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      console.log("Fetching assets and portfolios from API...");
-      
       const assetsData = await getAssets();
-      console.log("Assets fetched successfully:", assetsData?.length || 0);
       setAssets(assetsData || []);
 
       const portfoliosData = await getPortfolios();
-      console.log("Portfolios fetched successfully:", portfoliosData?.length || 0);
       setPortfolios(portfoliosData || []);
-      
     } catch (error) {
       console.error("Critical error loading data:", error);
     } finally {
@@ -88,8 +123,48 @@ export default function PortfolioBuilderPage() {
     }
   };
 
+  const loadPortfolioIndex = async () => {
+    if (!selectedPortfolio || selectedPortfolio.assets.length === 0) return;
+    setLoadingIndex(true);
+    try {
+      const endDate = new Date().toISOString().split('T')[0];
+      const startDate = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
+      
+      const histories = await Promise.all(
+        selectedPortfolio.assets.map(async (pa) => {
+          const data = await getAssetHistory(pa.asset_id, startDate, endDate);
+          return { asset_id: pa.asset_id, weight: pa.weight, data };
+        })
+      );
+
+      // Align dates and calculate weighted index
+      const dates = histories[0].data.map(d => d.date);
+      const indexValues = dates.map(date => {
+        let weightedValue = 0;
+        histories.forEach(h => {
+          const dayData = h.data.find(d => d.date === date);
+          if (dayData && h.data.length > 0) {
+            // Normalize to start at 100
+            const firstPrice = h.data[0].price;
+            const currentPrice = dayData.price;
+            const normalizedPrice = (currentPrice / firstPrice) * 100;
+            weightedValue += normalizedPrice * h.weight;
+          }
+        });
+        return { date, value: weightedValue };
+      });
+
+      setPortfolioIndexData(indexValues);
+    } catch (error) {
+      console.error("Failed to load portfolio index:", error);
+    } finally {
+      setLoadingIndex(false);
+    }
+  };
+
   const loadPortfolioDetails = async (id: number) => {
     setLoadingDetails(true);
+    setExpandedAssetId(null);
     try {
       const details = await getPortfolio(id);
       setSelectedPortfolio(details);
@@ -97,6 +172,28 @@ export default function PortfolioBuilderPage() {
       console.error("Failed to load portfolio details:", error);
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  const toggleAssetExpand = async (assetId: number) => {
+    if (expandedAssetId === assetId) {
+      setExpandedAssetId(null);
+      return;
+    }
+
+    setExpandedAssetId(assetId);
+    if (!assetHistories[assetId]) {
+      setLoadingHistory(assetId);
+      try {
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
+        const data = await getAssetHistory(assetId, startDate, endDate);
+        setAssetHistories(prev => ({ ...prev, [assetId]: data }));
+      } catch (error) {
+        console.error("Failed to fetch asset history:", error);
+      } finally {
+        setLoadingHistory(null);
+      }
     }
   };
 
@@ -154,7 +251,7 @@ export default function PortfolioBuilderPage() {
       loadPortfolioDetails(created.id);
     } catch (error) {
       console.error("Failed to save portfolio:", error);
-      alert("Failed to save portfolio. Please ensure the backend is running and the database is migrated.");
+      alert("Failed to save portfolio.");
     }
   };
 
@@ -206,13 +303,33 @@ export default function PortfolioBuilderPage() {
   const selectedPortfolioChartData = useMemo(() => {
     if (!selectedPortfolio) return [];
     return selectedPortfolio.assets.map(pa => {
-      // pa.asset is expected here based on Portfolio schema returning assets with detail
       return {
         name: pa.asset?.ticker || "Unknown",
         value: pa.weight * 100
       };
     });
   }, [selectedPortfolio]);
+
+  const hhiIndex = useMemo(() => {
+    if (!selectedPortfolio) return 0;
+    return selectedPortfolio.assets.reduce((sum, pa) => sum + Math.pow(pa.weight * 100, 2), 0);
+  }, [selectedPortfolio]);
+
+  const concentrationLabel = useMemo(() => {
+    if (hhiIndex < 1500) return { label: "Diversified", color: "text-primary" };
+    if (hhiIndex < 2500) return { label: "Moderate", color: "text-yellow-400" };
+    return { label: "Concentrated", color: "text-red-400" };
+  }, [hhiIndex]);
+
+  const renderInfoIcon = (text: string) => (
+    <div className="group relative cursor-help shrink-0">
+      <Info size={14} className="text-text-secondary hover:text-white transition-colors" />
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-surface-dark border border-border-active rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] text-[10px] leading-relaxed font-bold text-white text-center pointer-events-none">
+        {text}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-surface-dark"></div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
@@ -278,7 +395,6 @@ export default function PortfolioBuilderPage() {
                   <p className="text-text-secondary text-sm">Select or manage your portfolios.</p>
                 </div>
 
-                {/* Tabs */}
                 <div className="flex gap-4 border-b border-border-dark/30 mb-4">
                   <button 
                     onClick={() => setActiveTab("all")}
@@ -323,7 +439,7 @@ export default function PortfolioBuilderPage() {
                         )}>
                           <PieChartIcon size={18} />
                         </div>
-                        <h3 className="font-bold text-sm">{portfolio.name}</h3>
+                        <h3 className="font-bold text-sm truncate max-w-[180px]">{portfolio.name}</h3>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <button 
@@ -345,7 +461,7 @@ export default function PortfolioBuilderPage() {
                     </div>
                     <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase font-bold tracking-wider">
                       <span>{portfolio.asset_count} Assets</span>
-                      <span>Created {new Date(portfolio.created_at).toLocaleDateString()}</span>
+                      <span>{new Date(portfolio.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 ))}
@@ -363,160 +479,359 @@ export default function PortfolioBuilderPage() {
 
         {/* Main Content: Portfolio View */}
         <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
-          {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-12 z-10 custom-scrollbar">
             {selectedPortfolio ? (
-              <div className="max-w-5xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
-                <header className="flex justify-between items-start mb-12">
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <h1 className="text-4xl font-black text-white tracking-tight">{selectedPortfolio.name}</h1>
+              <div className="max-w-7xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
+                {/* Header */}
+                <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12 bg-surface-dark/40 p-8 rounded-3xl border border-border-active/20 backdrop-blur-sm">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-4 mb-3">
+                      <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight truncate max-w-[500px]">{selectedPortfolio.name}</h1>
                       <button 
                         onClick={(e) => handleToggleFavorite(e, selectedPortfolio.id)}
                         className={cn(
-                          "p-2 rounded-xl transition-all border",
+                          "p-2.5 rounded-xl transition-all border shrink-0",
                           selectedPortfolio.is_favorite 
                             ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
                             : "bg-surface-dark border-border-dark text-text-secondary hover:text-white"
                         )}
                       >
-                        <Star size={20} fill={selectedPortfolio.is_favorite ? "currentColor" : "none"} />
+                        <Star size={24} fill={selectedPortfolio.is_favorite ? "currentColor" : "none"} />
                       </button>
                     </div>
-                    <p className="text-text-secondary flex items-center gap-2 font-medium">
-                      <Calendar size={14} className="text-primary" />
-                      Created on {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-6 text-sm">
+                      <p className="text-text-secondary flex items-center gap-2 font-medium">
+                        <Calendar size={16} className="text-primary" />
+                        Created {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <div className="h-4 w-px bg-border-dark hidden sm:block"></div>
+                      <p className="text-text-secondary flex items-center gap-2 font-medium">
+                        <Layers size={16} className="text-primary" />
+                        {selectedPortfolio.assets.length} Active Assets
+                      </p>
+                      <div className="h-4 w-px bg-border-dark hidden sm:block"></div>
+                      <p className={cn("flex items-center gap-2 font-bold uppercase text-[11px] tracking-widest", concentrationLabel.color)}>
+                        <Zap size={16} />
+                        {concentrationLabel.label}
+                      </p>
+                    </div>
                   </div>
                   
-                  <div className="flex gap-3">
+                  <div className="flex gap-4 w-full lg:w-auto">
                     <button 
                       onClick={() => window.location.href = `/simulate-portfolio?id=${selectedPortfolio.id}`}
-                      className="px-6 py-3 bg-primary text-background-dark font-black uppercase tracking-widest rounded-xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
+                      className="flex-1 lg:flex-none px-8 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.15em] rounded-2xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-primary/20 active:scale-[0.98] group"
                     >
-                      <LineChartIcon size={18} />
-                      Simulate Strategy
+                      <LineChartIcon size={20} className="group-hover:scale-110 transition-transform" />
+                      Run Simulation
+                      <ArrowRight size={18} className="opacity-50" />
                     </button>
                   </div>
                 </header>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Allocation Table */}
-                  <div className="bg-surface-dark border border-border-active/30 rounded-2xl p-6 shadow-sm">
-                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-text-secondary mb-6 flex items-center gap-2">
-                      <LayoutIcon size={16} className="text-primary" />
-                      Asset Allocation
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <Activity size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Concentration</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.concentration)}
+                    </div>
+                    <p className="text-2xl font-black text-white">{hhiIndex.toFixed(0)}</p>
+                    <div className="w-full h-1 bg-surface-light rounded-full mt-3 overflow-hidden">
+                       <div className={cn("h-full transition-all duration-1000", hhiIndex < 1500 ? "bg-primary" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")} style={{ width: `${Math.min(100, (hhiIndex / 10000) * 100)}%` }}></div>
+                    </div>
+                  </div>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <PieChartIcon size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Max Weight</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.maxWeight)}
+                    </div>
+                    <p className="text-2xl font-black text-white">
+                      {Math.max(...selectedPortfolio.assets.map(a => a.weight * 100)).toFixed(0)}%
+                    </p>
+                    <p className="text-[10px] text-text-secondary mt-1 font-bold">
+                      in {selectedPortfolio.assets.find(a => a.weight === Math.max(...selectedPortfolio.assets.map(pa => pa.weight)))?.asset?.ticker}
+                    </p>
+                  </div>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <Layers size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Avg Weight</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.avgWeight)}
+                    </div>
+                    <p className="text-2xl font-black text-white">
+                      {(100 / selectedPortfolio.assets.length).toFixed(1)}%
+                    </p>
+                    <p className="text-[10px] text-text-secondary mt-1 font-bold">per asset</p>
+                  </div>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <LineChartIcon size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Perf. Index</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.portfolioIndex)}
+                    </div>
+                    {loadingIndex ? (
+                      <div className="h-8 flex items-center"><RefreshCcw size={16} className="animate-spin text-text-secondary" /></div>
+                    ) : (
+                      <>
+                        <p className="text-2xl font-black text-white">
+                          {portfolioIndexData.length > 0 ? (portfolioIndexData[portfolioIndexData.length - 1].value).toFixed(1) : "N/A"}
+                        </p>
+                        <p className={cn(
+                          "text-[10px] font-bold mt-1",
+                          portfolioIndexData.length > 0 && portfolioIndexData[portfolioIndexData.length - 1].value >= 100 ? "text-primary" : "text-red-400"
+                        )}>
+                          {portfolioIndexData.length > 0 ? (portfolioIndexData[portfolioIndexData.length - 1].value - 100).toFixed(1) + "%" : ""}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Price Index Chart */}
+                <div className="bg-surface-dark/60 border border-border-active/10 rounded-3xl p-8 shadow-2xl mb-10">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-sm font-black uppercase tracking-[0.25em] text-text-secondary flex items-center gap-3">
+                      <TrendingUp size={18} className="text-primary" />
+                      Portfolio Price Performance (Normalized 1Y)
                     </h3>
+                  </div>
+                  <div className="h-[300px] w-full">
+                    {loadingIndex ? (
+                      <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-4">
+                        <RefreshCcw size={32} className="animate-spin" />
+                        <p className="text-sm font-bold uppercase tracking-widest">Synthesizing Index...</p>
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={portfolioIndexData}>
+                          <defs>
+                            <linearGradient id="colorIndex" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#13ec5b" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
+                          <XAxis 
+                            dataKey="date" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{fill: '#666', fontSize: 10}} 
+                            minTickGap={60}
+                            tickFormatter={(str) => new Date(str).toLocaleDateString("en-US", {month: 'short'})}
+                          />
+                          <YAxis 
+                            hide 
+                            domain={['dataMin - 10', 'dataMax + 10']}
+                          />
+                          <RechartsTooltip 
+                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '12px' }}
+                            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#666', fontSize: '10px', marginBottom: '4px' }}
+                            formatter={(val: number) => [val.toFixed(2), "Index Value"]}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="value" 
+                            stroke="#13ec5b" 
+                            strokeWidth={3}
+                            fillOpacity={1} 
+                            fill="url(#colorIndex)" 
+                            animationDuration={2000}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 items-start">
+                  {/* Assets List */}
+                  <div className="xl:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-3xl p-8 shadow-2xl">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-sm font-black uppercase tracking-[0.25em] text-text-secondary flex items-center gap-3">
+                        <LayoutIcon size={18} className="text-primary" />
+                        Asset Breakdown & Market Trends
+                      </h3>
+                    </div>
                     <div className="space-y-4">
                       {selectedPortfolio.assets.map((pa, idx) => (
-                        <div key={pa.id} className="flex items-center justify-between p-4 bg-background-dark/50 rounded-xl border border-border-dark/50 group hover:border-primary/30 transition-all">
-                          <div className="flex items-center gap-4">
-                            <div className="size-10 rounded-lg flex items-center justify-center font-black text-xs border border-border-dark" style={{ color: COLORS[idx % COLORS.length] }}>
-                              {pa.asset?.ticker}
+                        <div key={pa.id} className="flex flex-col gap-4">
+                          <div 
+                            onClick={() => toggleAssetExpand(pa.asset_id)}
+                            className={cn(
+                              "flex items-center justify-between p-6 bg-background-dark/40 rounded-2xl border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300",
+                              expandedAssetId === pa.asset_id && "border-primary/40 bg-background-dark ring-1 ring-primary/10"
+                            )}
+                          >
+                            <div className="flex items-center gap-6">
+                              <div className="w-20 h-16 rounded-xl flex items-center justify-center font-black text-lg border-2 border-border-dark group-hover:border-primary/30 transition-all shadow-inner relative" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
+                                <span className="z-10">{pa.asset?.ticker}</span>
+                                <div className="absolute inset-0 opacity-[0.03] z-0 flex items-center justify-center">
+                                  <Maximize2 size={32} />
+                                </div>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-black text-white text-xl leading-tight truncate group-hover:text-primary transition-colors">{pa.asset?.name}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span className="text-[10px] text-text-secondary uppercase font-black tracking-widest px-2 py-0.5 bg-surface-light/50 rounded-md">{pa.asset?.asset_type}</span>
+                                  {pa.asset?.ticker.includes("USD") ? (
+                                    <span className="text-[10px] text-primary font-bold flex items-center gap-1"><Zap size={10} /> High Volatility</span>
+                                  ) : (
+                                    <span className="text-[10px] text-yellow-400 font-bold flex items-center gap-1"><Layers size={10} /> Core Holding</span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-bold text-white">{pa.asset?.name}</p>
-                              <p className="text-[10px] text-text-secondary uppercase font-black tracking-widest">{pa.asset?.asset_type}</p>
+                            <div className="flex items-center gap-8">
+                              <div className="text-right flex flex-col items-end gap-2">
+                                <p className="text-3xl font-black text-primary tabular-nums tracking-tighter">{(pa.weight * 100).toFixed(0)}<span className="text-xs ml-0.5 opacity-60 font-black">%</span></p>
+                                <div className="w-24 h-2 bg-surface-light rounded-full overflow-hidden shadow-inner">
+                                  <div className="h-full bg-primary shadow-[0_0_10px_rgba(19,236,91,0.4)] transition-all duration-1000" style={{ width: `${pa.weight * 100}%` }}></div>
+                                </div>
+                              </div>
+                              <div className={cn("transition-transform duration-300", expandedAssetId === pa.asset_id ? "rotate-180" : "")}>
+                                <ChevronDown size={20} className="text-text-secondary" />
+                              </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xl font-black text-primary">{(pa.weight * 100).toFixed(0)}%</p>
-                            <div className="w-24 h-1 bg-surface-light rounded-full mt-1 overflow-hidden">
-                              <div className="h-full bg-primary" style={{ width: `${pa.weight * 100}%` }}></div>
+                          
+                          {/* Expanded Chart Area */}
+                          {expandedAssetId === pa.asset_id && (
+                            <div className="p-8 bg-background-dark/60 rounded-3xl border border-primary/20 animate-in slide-in-from-top-4 duration-300">
+                               <div className="flex items-center justify-between mb-6">
+                                  <div className="flex items-center gap-3">
+                                     <LineChartIcon size={16} className="text-primary" />
+                                     <span className="text-xs font-black uppercase tracking-widest text-white">{pa.asset?.ticker} Price Evolution (1Y)</span>
+                                  </div>
+                                  <div className="flex items-center gap-4 text-[10px] font-bold text-text-secondary">
+                                     <span>Min: ${assetHistories[pa.asset_id] ? Math.min(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span>
+                                     <span>Max: ${assetHistories[pa.asset_id] ? Math.max(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span>
+                                  </div>
+                               </div>
+                               <div className="h-[200px] w-full">
+                                  {loadingHistory === pa.asset_id ? (
+                                    <div className="h-full flex items-center justify-center"><RefreshCcw className="animate-spin text-primary" size={24} /></div>
+                                  ) : assetHistories[pa.asset_id] ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <AreaChart data={assetHistories[pa.asset_id]}>
+                                        <defs>
+                                          <linearGradient id={`colorPrice-${pa.asset_id}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.2}/>
+                                            <stop offset="95%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0}/>
+                                          </linearGradient>
+                                        </defs>
+                                        <XAxis hide dataKey="date" />
+                                        <YAxis hide domain={['auto', 'auto']} />
+                                        <RechartsTooltip 
+                                          contentStyle={{ backgroundColor: '#0b0f0c', border: 'none', borderRadius: '8px' }}
+                                          itemStyle={{ color: '#fff', fontSize: '10px' }}
+                                          labelStyle={{ display: 'none' }}
+                                        />
+                                        <Area 
+                                          type="monotone" 
+                                          dataKey="price" 
+                                          stroke={COLORS[idx % COLORS.length]} 
+                                          strokeWidth={2}
+                                          fillOpacity={1} 
+                                          fill={`url(#colorPrice-${pa.asset_id})`} 
+                                          animationDuration={1500}
+                                        />
+                                      </AreaChart>
+                                    </ResponsiveContainer>
+                                  ) : null}
+                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Composition Chart */}
-                  <div className="bg-surface-dark border border-border-active/30 rounded-2xl p-6 flex flex-col shadow-sm">
-                    <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-text-secondary mb-6 flex items-center gap-2">
-                      <PieChartIcon size={16} className="text-primary" />
-                      Composition
+                  {/* Composition Summary */}
+                  <div className="xl:col-span-2 bg-surface-dark/60 border border-border-active/10 rounded-3xl p-8 flex flex-col shadow-2xl sticky top-8">
+                    <h3 className="text-sm font-black uppercase tracking-[0.25em] text-text-secondary mb-12 flex items-center gap-3">
+                      <PieChartIcon size={18} className="text-primary" />
+                      Allocation Weights
                     </h3>
-                    <div className="flex-1 min-h-[350px] relative">
+                    <div className="flex-1 min-h-[450px] relative">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
                             data={selectedPortfolioChartData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={80}
-                            outerRadius={120}
-                            paddingAngle={8}
+                            innerRadius={100}
+                            outerRadius={150}
+                            paddingAngle={10}
                             dataKey="value"
                             stroke="none"
+                            label={({ name, value }) => `${name} ${value.toFixed(0)}%`}
+                            labelLine={false}
                           >
                             {selectedPortfolioChartData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#1a1f1b', border: '1px solid #2d352f', borderRadius: '12px' }}
-                            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }}
+                            itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: '900' }}
                           />
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-10px]">
-                        <span className="text-4xl font-black text-primary">{selectedPortfolio.assets.length}</span>
-                        <span className="text-[10px] text-text-secondary uppercase font-bold tracking-widest">Assets</span>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mb-6">
+                        <span className="text-6xl font-black text-primary drop-shadow-[0_0_20px_rgba(19,236,91,0.2)] tabular-nums">{selectedPortfolio.assets.length}</span>
+                        <span className="text-[10px] text-text-secondary uppercase font-black tracking-[0.3em]">Total Assets</span>
                       </div>
+                    </div>
+                    
+                    <div className="mt-8 pt-8 border-t border-border-dark/30 space-y-4">
+                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-text-secondary">
+                          <span>Risk Profile</span>
+                          <span className="text-white">Medium-High</span>
+                       </div>
+                       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-text-secondary">
+                          <span>Rebalance Threshold</span>
+                          <span className="text-primary">±5.0%</span>
+                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
-                <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group mx-auto">
-                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
-                  <PieChartIcon size={48} className="text-primary relative z-10" />
+              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-1000">
+                <div className="size-32 rounded-3xl bg-surface-dark border border-border-active flex items-center justify-center mb-10 relative group mx-auto transform rotate-6 hover:rotate-0 transition-transform duration-500">
+                  <div className="absolute inset-0 rounded-3xl bg-primary/20 animate-pulse group-hover:animate-none opacity-20 blur-xl"></div>
+                  <PieChartIcon size={64} className="text-primary relative z-10" />
                 </div>
-                <h2 className="text-3xl font-bold text-white mb-3">Portfolio Explorer</h2>
-                <p className="text-text-secondary max-w-sm leading-relaxed mx-auto">
-                  Select a portfolio from the list to view its composition or create a new one to start building your strategy.
+                <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Portfolio Architect</h2>
+                <p className="text-text-secondary max-w-sm leading-relaxed mx-auto font-medium">
+                  Select a portfolio from your collection or construct a new multi-asset strategy to begin your analysis.
                 </p>
+                <div className="mt-12">
+                  <button 
+                    onClick={() => setShowCreateModal(true)}
+                    className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#3af578] transition-all shadow-2xl shadow-primary/10 active:scale-95"
+                  >
+                    Create New
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </main>
-
-        {/* Right Sidebar: Analytics */}
-        <aside className={cn(
-          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          rightSidebarOpen ? "w-[320px]" : "w-0 border-l-0"
-        )}>
-          {/* Toggle Handle Right */}
-          <button 
-            onClick={() => setRightSidebarOpen(!rightSidebarOpen)}
-            className={cn(
-              "absolute -left-3 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center bg-surface-dark border border-border-active/50 rounded-full text-text-secondary hover:text-white transition-all shadow-xl z-50 active:scale-95",
-              !rightSidebarOpen && "-translate-x-3"
-            )}
-          >
-            {rightSidebarOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-          </button>
-
-          <div className={cn(
-            "flex flex-col h-full min-w-[320px] transition-opacity duration-300",
-            rightSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-          )}>
-            <div className="p-6 border-b border-border-dark/30">
-              <h2 className="text-white text-lg font-bold flex items-center gap-2">
-                <BarChart2 size={18} className="text-primary" />
-                Performance Metrics
-              </h2>
-              <p className="text-text-secondary text-[11px] mt-1">Aggregated strategy analytics.</p>
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <Activity size={48} className="text-text-secondary opacity-10 mb-4" />
-              <p className="text-text-secondary text-sm px-4">Performance data for the selected portfolio will appear here after simulation.</p>
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* Create Modal */}
@@ -788,3 +1103,20 @@ export default function PortfolioBuilderPage() {
     </div>
   );
 }
+
+const ChevronDown = ({ size, className }: { size: number, className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="m6 9 6 6 6-6"/>
+  </svg>
+);
