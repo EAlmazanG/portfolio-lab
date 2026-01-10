@@ -17,6 +17,7 @@ async def get_portfolios():
             id=p.id,
             name=p.name,
             description=p.description,
+            initial_capital=p.initial_capital or 0.0,
             is_favorite=p.is_favorite,
             asset_count=len(p.assets),
             created_at=p.created_at

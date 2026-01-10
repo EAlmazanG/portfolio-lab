@@ -4,6 +4,7 @@ export interface PortfolioAsset {
   id?: number;
   asset_id: number;
   weight: number;
+  current_amount: number;
   asset?: Asset;
 }
 
@@ -11,6 +12,7 @@ export interface Portfolio {
   id: number;
   name: string;
   description?: string;
+  initial_capital: number;
   is_favorite: boolean;
   assets: PortfolioAsset[];
   created_at: string;
@@ -21,6 +23,7 @@ export interface PortfolioListItem {
   id: number;
   name: string;
   description?: string;
+  initial_capital: number;
   is_favorite: boolean;
   asset_count: number;
   created_at: string;
@@ -29,9 +32,23 @@ export interface PortfolioListItem {
 export interface PortfolioCreate {
   name: string;
   description?: string;
+  initial_capital: number;
   is_favorite?: boolean;
   assets: {
     asset_id: number;
     weight: number;
+    current_amount: number;
+  }[];
+}
+
+export interface PortfolioUpdate {
+  name?: string;
+  description?: string;
+  initial_capital?: number;
+  is_favorite?: boolean;
+  assets?: {
+    asset_id: number;
+    weight: number;
+    current_amount: number;
   }[];
 }

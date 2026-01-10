@@ -12,6 +12,7 @@ import {
   X,
   PlusCircle,
   AlertCircle,
+  AlertTriangle,
   LineChart as LineChartIcon,
   ChevronLeft,
   ChevronRight,
@@ -30,7 +31,13 @@ import {
   ArrowRight,
   TrendingDown,
   Maximize2,
-  Edit3
+  Edit3,
+  DollarSign,
+  Target,
+  ArrowRightLeft,
+  ChevronDown as ChevronDownIcon,
+  ToggleLeft,
+  ToggleRight
 } from "lucide-react";
 import { 
   getAssets, 
@@ -39,10 +46,11 @@ import {
   deletePortfolio, 
   getPortfolio,
   togglePortfolioFavorite,
-  getAssetHistory
+  getAssetHistory,
+  updatePortfolio
 } from "../../lib/api";
 import { Asset } from "../../types/simulation";
-import { Portfolio, PortfolioListItem, PortfolioCreate } from "../../types/portfolio";
+import { Portfolio, PortfolioListItem, PortfolioCreate, PortfolioUpdate } from "../../types/portfolio";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { 
@@ -58,22 +66,6 @@ import {
   YAxis,
   CartesianGrid
 } from "recharts";
-
-// Temporary until lib/api.ts can be edited
-async function updatePortfolio(id: number, portfolio: Partial<PortfolioCreate>): Promise<Portfolio> {
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-  const response = await fetch(`${API_URL}/portfolios/${id}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(portfolio),
-  });
-  if (!response.ok) {
-    throw new Error("Failed to update portfolio");
-  }
-  return response.json();
-}
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -93,7 +85,10 @@ const METRIC_INFO = {
   riskAnalysis: "Calculated risk profile based on asset volatility and concentration levels.",
   strategicView: "The long-term objective and market positioning of this strategy.",
   volatilityTag: "Indicates this asset has historically higher price swings (standard deviation).",
-  coreTag: "Indicates this is a fundamental building block of your long-term strategy."
+  coreTag: "Indicates this is a fundamental building block of your long-term strategy.",
+  initialCapital: "The total value of your portfolio in USD at the time of construction.",
+  currentStake: "The percentage of your total capital currently invested in this asset based on your input amounts.",
+  targetStake: "The ideal percentage you want this asset to represent in your portfolio for long-term strategy."
 };
 
 export default function PortfolioBuilderPage() {
@@ -107,6 +102,7 @@ export default function PortfolioBuilderPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"all" | "favorites">("all");
+  const [portfolioToDelete, setPortfolioToDelete] = useState<number | null>(null);
   
   // Interaction states
   const [expandedAssetId, setExpandedAssetId] = useState<number | null>(null);
@@ -114,10 +110,12 @@ export default function PortfolioBuilderPage() {
   const [loadingHistory, setLoadingHistory] = useState<number | null>(null);
   const [portfolioIndexData, setPortfolioIndexData] = useState<{date: string, value: number}[]>([]);
   const [loadingIndex, setLoadingIndex] = useState(false);
+  const [showCurrentAmounts, setShowCurrentAmounts] = useState(false);
 
   // New Portfolio State
   const [newPortfolio, setNewPortfolio] = useState<PortfolioCreate>({
     name: "",
+    initial_capital: 0,
     assets: [],
     is_favorite: false
   });
@@ -233,7 +231,7 @@ export default function PortfolioBuilderPage() {
 
     setNewPortfolio({
       ...newPortfolio,
-      assets: [...newPortfolio.assets, { asset_id: asset.id, weight: 0 }]
+      assets: [...newPortfolio.assets, { asset_id: asset.id, weight: 0, current_amount: 0 }]
     });
   };
 
@@ -259,27 +257,66 @@ export default function PortfolioBuilderPage() {
     });
   };
 
+  const handleAmountChange = (assetId: number, newAmount: number) => {
+    setNewPortfolio(prev => {
+        const updatedAssets = prev.assets.map(a => 
+            a.asset_id === assetId ? { ...a, current_amount: Math.max(0, newAmount) } : a
+        );
+        const newTotal = updatedAssets.reduce((sum, a) => sum + (a.current_amount || 0), 0);
+        return {
+            ...prev,
+            initial_capital: newTotal,
+            assets: updatedAssets
+        };
+    });
+  };
+
+  const handleInitialCapitalChange = (newTotal: number) => {
+      setNewPortfolio(prev => ({
+          ...prev,
+          initial_capital: Math.max(0, newTotal)
+      }));
+  };
+
   const handleSavePortfolio = async () => {
     if (Math.abs(totalWeight - 100) > 0.01) {
-      alert("Total weight must be exactly 100%");
+      alert("Total target weight must be exactly 100%");
       return;
     }
     if (!newPortfolio.name) {
       alert("Portfolio name is required");
       return;
     }
+    if (newPortfolio.initial_capital <= 0) {
+      alert("Total capital must be greater than 0");
+      return;
+    }
+
+    // Zero out amounts if toggle is OFF
+    const portfolioToSave = {
+      ...newPortfolio,
+      assets: newPortfolio.assets.map(a => ({
+        ...a,
+        current_amount: showCurrentAmounts ? a.current_amount : 0
+      }))
+    };
 
     try {
       let result;
       if (isEditing && selectedPortfolio) {
-        result = await updatePortfolio(selectedPortfolio.id, newPortfolio);
+        result = await updatePortfolio(selectedPortfolio.id, {
+          name: portfolioToSave.name,
+          initial_capital: portfolioToSave.initial_capital,
+          is_favorite: portfolioToSave.is_favorite,
+          assets: portfolioToSave.assets
+        });
       } else {
-        result = await createPortfolio(newPortfolio);
+        result = await createPortfolio(portfolioToSave);
       }
       
       setShowCreateModal(false);
       setIsEditing(false);
-      setNewPortfolio({ name: "", assets: [], is_favorite: false });
+      setNewPortfolio({ name: "", initial_capital: 0, assets: [], is_favorite: false });
       loadData();
       loadPortfolioDetails(result.id);
     } catch (error) {
@@ -292,22 +329,25 @@ export default function PortfolioBuilderPage() {
     if (!selectedPortfolio) return;
     setNewPortfolio({
       name: selectedPortfolio.name,
+      initial_capital: selectedPortfolio.initial_capital || 0,
       is_favorite: selectedPortfolio.is_favorite,
       assets: selectedPortfolio.assets.map(pa => ({
         asset_id: pa.asset_id,
-        weight: pa.weight
+        weight: pa.weight,
+        current_amount: pa.current_amount || 0
       }))
     });
     setIsEditing(true);
     setShowCreateModal(true);
+    // Check if any asset has a current amount to auto-show inputs
+    setShowCurrentAmounts(selectedPortfolio.assets.some(a => (a.current_amount || 0) > 0));
   };
 
-  const handleDeletePortfolio = async (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this portfolio?")) return;
+  const handleDeletePortfolio = async (id: number) => {
     try {
       await deletePortfolio(id);
       if (selectedPortfolio?.id === id) setSelectedPortfolio(null);
+      setPortfolioToDelete(null);
       loadData();
     } catch (error) {
       console.error("Failed to delete portfolio:", error);
@@ -378,6 +418,11 @@ export default function PortfolioBuilderPage() {
     </div>
   );
 
+  const hasPositionData = useMemo(() => {
+    if (!selectedPortfolio) return false;
+    return selectedPortfolio.assets.some(a => (a.current_amount || 0) > 0);
+  }, [selectedPortfolio]);
+
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
       {/* Top Navigation */}
@@ -386,7 +431,7 @@ export default function PortfolioBuilderPage() {
           <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
             <LineChartIcon size={20} />
           </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em] hidden sm:block">Portfolio-Lab</h2>
+          <h2 className="text-white text-lg font-bold leading-tight tracking-tight hidden sm:block">Portfolio-Lab</h2>
         </div>
 
         <div className="flex flex-1 justify-end items-center gap-4">
@@ -428,8 +473,8 @@ export default function PortfolioBuilderPage() {
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <div className="p-5 border-b border-border-dark/30 bg-background-dark/50">
                 <button 
-                  onClick={() => { setIsEditing(false); setNewPortfolio({name: "", assets: [], is_favorite: false}); setShowCreateModal(true); }}
-                  className="w-full py-2.5 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group text-sm"
+                  onClick={() => { setIsEditing(false); setNewPortfolio({name: "", initial_capital: 0, assets: [], is_favorite: false}); setShowCreateModal(true); setShowCurrentAmounts(false); }}
+                  className="w-full py-2.5 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group text-[11px] uppercase tracking-wider"
                 >
                   <Plus size={16} className="text-primary group-hover:scale-110 transition-transform" />
                   New Portfolio
@@ -439,14 +484,14 @@ export default function PortfolioBuilderPage() {
               <div className="p-5 pb-2">
                 <div className="flex flex-col gap-1 mb-4">
                   <h1 className="text-white tracking-tight text-xl font-bold leading-tight text-left">My Portfolios</h1>
-                  <p className="text-text-secondary text-[11px] uppercase font-bold tracking-widest">Saved strategies</p>
+                  <p className="text-text-secondary text-[10px] uppercase font-bold tracking-widest opacity-60">Saved strategies</p>
                 </div>
 
-                <div className="flex gap-4 border-b border-border-dark/30 mb-4">
+                <div className="flex gap-5 border-b border-border-dark/30 mb-5">
                   <button 
                     onClick={() => setActiveTab("all")}
                     className={cn(
-                      "pb-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
+                      "pb-2 text-[10px] font-black uppercase tracking-widest transition-all relative",
                       activeTab === "all" ? "text-primary" : "text-text-secondary hover:text-white"
                     )}
                   >
@@ -456,7 +501,7 @@ export default function PortfolioBuilderPage() {
                   <button 
                     onClick={() => setActiveTab("favorites")}
                     className={cn(
-                      "pb-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all relative",
+                      "pb-2 text-[10px] font-black uppercase tracking-widest transition-all relative",
                       activeTab === "favorites" ? "text-primary" : "text-text-secondary hover:text-white"
                     )}
                   >
@@ -466,7 +511,7 @@ export default function PortfolioBuilderPage() {
                 </div>
               </div>
 
-              <div className="p-5 pt-0 space-y-2">
+              <div className="p-5 pt-0 space-y-2.5">
                 {portfolios
                   .filter(p => activeTab === "all" || p.is_favorite)
                   .map(portfolio => (
@@ -474,12 +519,12 @@ export default function PortfolioBuilderPage() {
                     key={portfolio.id} 
                     onClick={() => loadPortfolioDetails(portfolio.id)}
                     className={cn(
-                      "bg-surface-dark border border-border-dark rounded-xl p-3 hover:border-primary/50 transition-all group relative cursor-pointer",
+                      "bg-surface-dark border border-border-dark rounded-xl p-3.5 hover:border-primary/50 transition-all group relative cursor-pointer shadow-sm",
                       selectedPortfolio?.id === portfolio.id && "border-primary/50 bg-primary/5 ring-1 ring-primary/10"
                     )}
                   >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2.5">
                         <div className={cn(
                           "p-1.5 rounded-lg transition-colors",
                           selectedPortfolio?.id === portfolio.id ? "bg-primary text-background-dark" : "bg-primary/10 text-primary"
@@ -499,7 +544,7 @@ export default function PortfolioBuilderPage() {
                           <Star size={12} fill={portfolio.is_favorite ? "currentColor" : "none"} />
                         </button>
                         <button 
-                          onClick={(e) => handleDeletePortfolio(e, portfolio.id)}
+                          onClick={(e) => { e.stopPropagation(); setPortfolioToDelete(portfolio.id); }}
                           className="p-1 text-text-secondary hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                         >
                           <Trash2 size={12} />
@@ -507,16 +552,16 @@ export default function PortfolioBuilderPage() {
                       </div>
                     </div>
                     <div className="flex justify-between items-center text-[9px] text-text-secondary uppercase font-bold tracking-widest">
-                      <span>{portfolio.asset_count} Assets</span>
-                      <span>{new Date(portfolio.created_at).toLocaleDateString()}</span>
+                      <span className="bg-surface-light px-1.5 py-0.5 rounded">{portfolio.asset_count} Assets</span>
+                      <span className="flex items-center gap-1"><DollarSign size={8} className="text-primary" />{portfolio.initial_capital?.toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
 
                 {portfolios.length === 0 && !loading && (
                   <div className="py-10 text-center bg-surface-dark/30 border border-dashed border-border-dark rounded-xl text-text-secondary">
-                    <PieChartIcon size={24} className="mx-auto mb-2 opacity-20" />
-                    <p className="text-[10px] px-4 font-bold uppercase tracking-widest">No portfolios</p>
+                    <PieChartIcon size={20} className="mx-auto mb-2 opacity-20" />
+                    <p className="text-[9px] px-5 font-bold uppercase tracking-widest opacity-40 leading-relaxed">No frameworks archived</p>
                   </div>
                 )}
               </div>
@@ -528,19 +573,19 @@ export default function PortfolioBuilderPage() {
         <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-8 lg:p-12 z-10 custom-scrollbar">
             {selectedPortfolio ? (
-              <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="max-w-[1760px] mx-auto animate-in fade-in slide-in-from-top-4 duration-500 space-y-10">
                 {/* Header */}
-                <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 bg-surface-dark/40 p-8 rounded-3xl border border-border-active/20 backdrop-blur-sm shadow-xl">
+                <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-surface-dark/40 p-10 rounded-[40px] border border-border-active/20 backdrop-blur-sm shadow-2xl">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-5 mb-3">
-                      <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight truncate max-w-[600px]">{selectedPortfolio.name}</h1>
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-6 mb-4">
+                      <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight truncate max-w-[1100px] leading-tight">{selectedPortfolio.name}</h1>
+                      <div className="flex items-center gap-3">
                         <button 
                           onClick={(e) => handleToggleFavorite(e, selectedPortfolio.id)}
                           className={cn(
-                            "p-2 rounded-xl transition-all border shrink-0",
+                            "p-3 rounded-2xl transition-all border shrink-0 shadow-lg",
                             selectedPortfolio.is_favorite 
                               ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
                               : "bg-surface-dark border-border-dark text-text-secondary hover:text-white"
@@ -550,138 +595,140 @@ export default function PortfolioBuilderPage() {
                         </button>
                         <button 
                           onClick={handleEditClick}
-                          className="p-2 rounded-xl border bg-surface-dark border-border-dark text-text-secondary hover:text-white hover:border-primary/50 transition-all shrink-0"
-                          title="Edit portfolio composition"
+                          className="p-3 rounded-2xl border bg-surface-dark border-border-dark text-text-secondary hover:text-white hover:border-primary/50 transition-all shrink-0 shadow-lg"
+                          title="Edit portfolio framework"
                         >
                           <Edit3 size={20} />
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-6 text-sm">
-                      <p className="text-text-secondary flex items-center gap-2 font-bold">
-                        <Calendar size={16} className="text-primary" />
-                        {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}
+                    <div className="flex flex-wrap items-center gap-6 text-xs">
+                      <p className="text-text-secondary flex items-center gap-2.5 font-bold tracking-wide">
+                        <Calendar size={18} className="text-primary" />
+                        {new Date(selectedPortfolio.created_at).toLocaleDateString("en-US", { month: 'long', day: 'numeric', year: 'numeric' })}
                       </p>
-                      <div className="h-4 w-px bg-border-dark hidden sm:block"></div>
-                      <p className="text-text-secondary flex items-center gap-2 font-bold">
-                        <Layers size={16} className="text-primary" />
-                        {selectedPortfolio.assets.length} Assets
+                      <div className="h-5 w-px bg-border-dark hidden sm:block opacity-30"></div>
+                      <p className="text-text-secondary flex items-center gap-2.5 font-bold tracking-wide">
+                        <Layers size={18} className="text-primary" />
+                        {selectedPortfolio.assets.length} Assets Installed
                       </p>
-                      <div className="h-4 w-px bg-border-dark hidden sm:block"></div>
-                      <p className={cn("flex items-center gap-2 font-black uppercase text-[10px] tracking-[0.2em]", concentrationLabel.color)}>
-                        <Zap size={16} />
-                        {concentrationLabel.label}
+                      <div className="h-5 w-px bg-border-dark hidden sm:block opacity-30"></div>
+                      <p className={cn("flex items-center gap-2.5 font-black uppercase text-[11px] tracking-widest", concentrationLabel.color)}>
+                        <Zap size={18} />
+                        {concentrationLabel.label} Framework
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex gap-4 w-full lg:w-auto">
+                  <div className="flex gap-6 w-full lg:w-auto">
                     <button 
                       onClick={() => window.location.href = `/simulate-portfolio?id=${selectedPortfolio.id}`}
-                      className="flex-1 lg:flex-none px-8 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] group"
+                      className="flex-1 lg:flex-none px-10 py-5 bg-primary text-background-dark font-black uppercase tracking-wider rounded-[24px] hover:bg-[#3af578] transition-all flex items-center justify-center gap-4 shadow-xl active:scale-[0.98] group text-sm"
                     >
-                      <LineChartIcon size={20} className="group-hover:scale-110 transition-transform" />
+                      <LineChartIcon size={22} className="group-hover:scale-110 transition-transform" />
                       Run Simulation
                     </button>
                   </div>
                 </header>
 
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3 text-text-secondary">
-                        <Activity size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">HHI Index</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4 text-text-secondary">
+                        <DollarSign size={18} className="text-primary" />
+                        <span className="text-[11px] font-black uppercase tracking-widest">Total Capital</span>
                       </div>
-                      {renderInfoIcon(METRIC_INFO.concentration)}
+                      {renderInfoIcon(METRIC_INFO.initialCapital)}
                     </div>
                     <div>
-                      <p className="text-2xl font-black text-white">{hhiIndex.toFixed(0)}</p>
-                      <div className="w-full h-1 bg-surface-light rounded-full mt-4 overflow-hidden">
-                         <div className={cn("h-full transition-all duration-1000", hhiIndex < 1500 ? "bg-primary" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")} style={{ width: `${Math.min(100, (hhiIndex / 10000) * 100)}%` }}></div>
-                      </div>
+                      <p className="text-3xl font-black text-white mb-2 leading-none">${selectedPortfolio.initial_capital?.toLocaleString()}</p>
+                      <p className="text-[10px] text-text-secondary font-bold tracking-widest uppercase opacity-60">USD Liquidity</p>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3 text-text-secondary">
-                        <PieChartIcon size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Max Weight</span>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4 text-text-secondary">
+                        <PieChartIcon size={18} className="text-primary" />
+                        <span className="text-[11px] font-black uppercase tracking-widest">Max Stake</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.maxWeight)}
                     </div>
                     <div>
-                      <p className="text-2xl font-black text-white">
+                      <p className="text-3xl font-black text-white mb-2 leading-none">
                         {Math.max(...selectedPortfolio.assets.map(a => a.weight * 100)).toFixed(0)}%
                       </p>
-                      <p className="text-[10px] text-text-secondary mt-2 font-bold tracking-widest uppercase">
-                        in {selectedPortfolio.assets.find(a => a.weight === Math.max(...selectedPortfolio.assets.map(pa => pa.weight)))?.asset?.ticker}
+                      <p className="text-[10px] text-text-secondary font-bold tracking-widest uppercase opacity-60">
+                        Top: {selectedPortfolio.assets.find(a => a.weight === Math.max(...selectedPortfolio.assets.map(pa => pa.weight)))?.asset?.ticker}
                       </p>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3 text-text-secondary">
-                        <Layers size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Avg Stake</span>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4 text-text-secondary">
+                        <Layers size={18} className="text-primary" />
+                        <span className="text-[11px] font-black uppercase tracking-widest">Avg Stake</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.avgWeight)}
                     </div>
                     <div>
-                      <p className="text-2xl font-black text-white">
+                      <p className="text-3xl font-black text-white mb-2 leading-none">
                         {(100 / selectedPortfolio.assets.length).toFixed(1)}%
                       </p>
-                      <p className="text-[10px] text-text-secondary mt-2 font-bold tracking-widest uppercase">per asset</p>
+                      <p className="text-[10px] text-text-secondary font-bold tracking-widest uppercase opacity-60">Distribution average</p>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-2xl group shadow-lg flex flex-col justify-between">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3 text-text-secondary">
-                        <Clock size={16} className="text-primary" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Last Update</span>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4 text-text-secondary">
+                        <Activity size={18} className="text-primary" />
+                        <span className="text-[11px] font-black uppercase tracking-widest">HHI Index</span>
                       </div>
-                      {renderInfoIcon(METRIC_INFO.lastUpdate)}
+                      {renderInfoIcon(METRIC_INFO.concentration)}
                     </div>
                     <div>
-                      <p className="text-2xl font-black text-white">Today</p>
-                      <p className="text-[10px] text-primary mt-2 font-bold tracking-widest uppercase">Database Sync</p>
+                      <p className="text-3xl font-black text-white mb-2 leading-none">{hhiIndex.toFixed(0)}</p>
+                      <div className="w-full h-1.5 bg-surface-light rounded-full mt-4 overflow-hidden">
+                         <div className={cn("h-full transition-all duration-1000", hhiIndex < 1500 ? "bg-primary" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")} style={{ width: `${Math.min(100, (hhiIndex / 10000) * 100)}%` }}></div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Price Index Chart - MOVED UP */}
-                <div className="bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 shadow-xl mb-8">
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-4">
-                      <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary flex items-center gap-4">
-                        <TrendingUp size={24} className="text-primary" />
+                {/* Price Index Chart */}
+                <div className="bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl">
+                  <div className="flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-5">
+                      <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                        <TrendingUp size={24} />
+                      </div>
+                      <h3 className="text-sm font-black uppercase tracking-widest text-white">
                         Performance Trend (Simulated 1Y)
                       </h3>
                       {renderInfoIcon(METRIC_INFO.portfolioIndex)}
                     </div>
                   </div>
-                  <div className="h-[350px] w-full">
+                  <div className="h-[450px] w-full">
                     {loadingIndex ? (
-                      <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-6">
-                        <RefreshCcw size={32} className="animate-spin" />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-50">Calculating Trends...</p>
+                      <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-8">
+                        <RefreshCcw size={40} className="animate-spin text-primary opacity-50" />
+                        <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Crunching market data...</p>
                       </div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={portfolioIndexData}>
                           <defs>
                             <linearGradient id="colorIndex" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#13ec5b" stopOpacity={0.3}/>
+                              <stop offset="5%" stopColor="#13ec5b" stopOpacity={0.2}/>
                               <stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/>
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
                           <XAxis 
                             dataKey="date" 
                             axisLine={false} 
                             tickLine={false} 
-                            tick={{fill: '#666', fontSize: 11}} 
+                            tick={{fill: '#666', fontSize: 11, fontWeight: 'bold'}} 
                             minTickGap={80}
                             tickFormatter={(str) => new Date(str).toLocaleDateString("en-US", {month: 'short'})}
                           />
@@ -690,16 +737,16 @@ export default function PortfolioBuilderPage() {
                             domain={['dataMin - 5', 'dataMax + 5']}
                           />
                           <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '16px' }}
-                            itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
-                            labelStyle={{ color: '#666', fontSize: '10px', marginBottom: '8px', fontWeight: 'black', textTransform: 'uppercase' }}
-                            formatter={(val: number) => [val.toFixed(2), "Value"]}
+                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '24px', padding: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
+                            itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
+                            labelStyle={{ color: '#666', fontSize: '11px', marginBottom: '10px', fontWeight: 'black', textTransform: 'uppercase' }}
+                            formatter={(val: number) => [val.toFixed(2), "Price Index"]}
                           />
                           <Area 
                             type="monotone" 
                             dataKey="value" 
                             stroke="#13ec5b" 
-                            strokeWidth={4}
+                            strokeWidth={5}
                             fillOpacity={1} 
                             fill="url(#colorIndex)" 
                             animationDuration={2500}
@@ -710,100 +757,129 @@ export default function PortfolioBuilderPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start mb-12">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start mb-16">
                   {/* Assets List */}
-                  <div className="lg:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 shadow-xl">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-4">
-                        <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary flex items-center gap-4">
-                          <LayoutIcon size={20} className="text-primary" />
+                  <div className="lg:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl">
+                    <div className="flex items-center justify-between mb-10">
+                      <div className="flex items-center gap-5">
+                        <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                          <LayoutIcon size={22} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-white">
                           Asset Breakdown
                         </h3>
                         {renderInfoIcon(METRIC_INFO.assetBreakdown)}
                       </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                       {selectedPortfolio.assets.map((pa, idx) => (
-                        <div key={pa.id} className="flex flex-col gap-4">
+                        <div key={pa.id} className="flex flex-col gap-5">
                           <div 
                             onClick={() => toggleAssetExpand(pa.asset_id)}
                             className={cn(
-                              "flex items-center justify-between p-6 bg-background-dark/40 rounded-2xl border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300 shadow-sm",
+                              "flex items-center justify-between p-7 bg-background-dark/40 rounded-[32px] border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300 shadow-md",
                               expandedAssetId === pa.asset_id && "border-primary/40 bg-background-dark ring-2 ring-primary/5"
                             )}
                           >
-                            <div className="flex items-center gap-6">
-                              <div className="w-20 h-16 rounded-xl flex items-center justify-center font-black text-lg border-2 border-border-dark group-hover:border-primary/30 transition-all shadow-inner relative overflow-hidden" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
+                            <div className="flex items-center gap-8">
+                              <div className="w-24 h-20 rounded-2xl flex items-center justify-center font-black text-xl border-2 border-border-dark group-hover:border-primary/30 transition-all shadow-inner relative overflow-hidden shrink-0" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
                                 <span className="z-10 tracking-tighter">{pa.asset?.ticker}</span>
                                 <div className="absolute inset-0 opacity-[0.05] z-0 flex items-center justify-center">
-                                  <Maximize2 size={32} />
+                                  <Maximize2 size={40} />
                                 </div>
                               </div>
-                              <div className="min-w-0 flex flex-col gap-1.5">
-                                <p className="font-black text-white text-xl leading-none truncate max-w-[300px] group-hover:text-primary transition-colors">{pa.asset?.name}</p>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-[9px] text-text-secondary uppercase font-black tracking-[0.15em] px-2.5 py-1 bg-surface-light/50 rounded-lg">{pa.asset?.asset_type}</span>
-                                  <div className="size-1 rounded-full bg-border-dark"></div>
-                                  <div className="flex items-center gap-3">
-                                    {pa.asset?.ticker.includes("USD") ? (
-                                      <div className="flex items-center gap-1.5 group/tag">
-                                        <span className="text-[9px] text-primary font-black flex items-center gap-1.5 uppercase tracking-wider"><Zap size={12} /> Volatility Risk</span>
-                                        {renderInfoIcon(METRIC_INFO.volatilityTag)}
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-1.5 group/tag">
-                                        <span className="text-[9px] text-yellow-400 font-black flex items-center gap-1.5 uppercase tracking-wider"><Layers size={12} /> Core Position</span>
-                                        {renderInfoIcon(METRIC_INFO.coreTag)}
-                                      </div>
-                                    )}
-                                  </div>
+                              <div className="min-w-0 flex flex-col gap-2.5">
+                                <p className="font-black text-white text-2xl leading-none truncate max-w-[500px] group-hover:text-primary transition-colors tracking-tight">{pa.asset?.name}</p>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-[10px] text-text-secondary uppercase font-black tracking-widest px-3 py-1.5 bg-surface-light/50 rounded-xl leading-none">{pa.asset?.asset_type}</span>
+                                  {hasPositionData && (pa.current_amount || 0) > 0 && (
+                                    <>
+                                      <div className="size-1.5 rounded-full bg-border-dark opacity-40"></div>
+                                      <span className="text-[10px] text-text-secondary font-bold uppercase tracking-widest flex items-center gap-1.5 leading-none opacity-70">
+                                        <DollarSign size={10} className="text-primary" />
+                                        {pa.current_amount?.toLocaleString()} Invested
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-8">
-                              <div className="text-right flex flex-col items-end gap-2">
-                                <p className="text-3xl font-black text-primary tabular-nums tracking-tighter leading-none">{(pa.weight * 100).toFixed(0)}<span className="text-sm ml-0.5 opacity-30 font-black">%</span></p>
-                                <div className="w-24 h-1.5 bg-surface-light rounded-full overflow-hidden shadow-inner">
-                                  <div className="h-full bg-primary shadow-[0_0_10px_rgba(19,236,91,0.4)] transition-all duration-1000" style={{ width: `${pa.weight * 100}%` }}></div>
+                            <div className="flex items-center gap-12 shrink-0">
+                              {/* Current vs Target Stake */}
+                              <div className={cn("flex flex-col gap-3", !hasPositionData && "items-end")}>
+                                <div className={cn(
+                                    "flex items-center gap-16 mb-1.5",
+                                    hasPositionData ? "justify-between" : "justify-end"
+                                )}>
+                                    {hasPositionData && (
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-60">Position</span>
+                                                {renderInfoIcon(METRIC_INFO.currentStake)}
+                                            </div>
+                                            <span className="text-xl font-black text-white leading-none tracking-tight">
+                                                {selectedPortfolio.initial_capital > 0 ? (((pa.current_amount || 0) / selectedPortfolio.initial_capital) * 100).toFixed(1) : "0.0"}%
+                                            </span>
+                                        </div>
+                                    )}
+                                    {hasPositionData && <ArrowRightLeft size={16} className="text-border-active opacity-15 mt-5" />}
+                                    <div className="flex flex-col items-end">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-60">Strategic Target</span>
+                                            {renderInfoIcon(METRIC_INFO.targetStake)}
+                                        </div>
+                                        <span className="text-xl font-black text-primary leading-none tracking-tight">{(pa.weight * 100).toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                                <div className="w-56 h-2 bg-surface-light rounded-full overflow-hidden flex shadow-inner relative">
+                                    <div className="h-full bg-surface-light absolute inset-0 opacity-15" style={{ width: `${(pa.weight * 100)}%` }}></div>
+                                    {hasPositionData && (
+                                        <div className={cn(
+                                            "h-full transition-all duration-1000 relative z-10",
+                                            selectedPortfolio.initial_capital > 0 && Math.abs(((pa.current_amount || 0) / selectedPortfolio.initial_capital) - pa.weight) < 0.05 ? "bg-primary" : "bg-yellow-400"
+                                        )} style={{ width: `${selectedPortfolio.initial_capital > 0 ? ((pa.current_amount || 0) / selectedPortfolio.initial_capital) * 100 : 0}%` }}></div>
+                                    )}
                                 </div>
                               </div>
-                              <div className={cn("transition-transform duration-300", expandedAssetId === pa.asset_id ? "rotate-180" : "")}>
-                                <ChevronDown size={24} className="text-text-secondary opacity-40 group-hover:opacity-100 transition-opacity" />
+                              <div className={cn("transition-transform duration-500", expandedAssetId === pa.asset_id ? "rotate-180" : "")}>
+                                <ChevronDownIcon size={28} className="text-text-secondary opacity-30 group-hover:opacity-80 transition-all" />
                               </div>
                             </div>
                           </div>
                           
                           {/* Expanded Chart Area */}
                           {expandedAssetId === pa.asset_id && (
-                            <div className="p-8 bg-background-dark/60 rounded-[32px] border border-primary/20 animate-in slide-in-from-top-4 duration-400 shadow-xl mx-2">
-                               <div className="flex items-center justify-between mb-6">
-                                  <div className="flex items-center gap-4">
-                                     <LineChartIcon size={16} className="text-primary" />
-                                     <span className="text-xs font-black uppercase tracking-[0.2em] text-white">{pa.asset?.ticker} Price Evolution (1Y)</span>
+                            <div className="p-10 bg-background-dark/60 rounded-[40px] border border-primary/20 animate-in slide-in-from-top-4 duration-500 shadow-2xl mx-2">
+                               <div className="flex items-center justify-between mb-8">
+                                  <div className="flex items-center gap-5">
+                                     <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                                        <LineChartIcon size={18} />
+                                     </div>
+                                     <span className="text-[11px] font-black uppercase tracking-widest text-white">{pa.asset?.ticker} Index (1Y)</span>
                                      {renderInfoIcon(METRIC_INFO.assetTrend)}
                                   </div>
-                                  <div className="flex items-center gap-6 text-[10px] font-black uppercase tracking-widest text-text-secondary">
-                                     <span className="flex items-center gap-2 border-r border-border-dark pr-6">Min: <span className="text-white">${assetHistories[pa.asset_id] ? Math.min(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span></span>
-                                     <span className="flex items-center gap-2">Max: <span className="text-white">${assetHistories[pa.asset_id] ? Math.max(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span></span>
+                                  <div className="flex items-center gap-8 text-[11px] font-black uppercase tracking-widest text-text-secondary opacity-70">
+                                     <span className="flex items-center gap-2.5 border-r border-border-dark pr-8">Min: <span className="text-white font-black">${assetHistories[pa.asset_id] ? Math.min(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span></span>
+                                     <span className="flex items-center gap-2.5">Max: <span className="text-white font-black">${assetHistories[pa.asset_id] ? Math.max(...assetHistories[pa.asset_id].map(d => d.price)).toLocaleString() : "..."}</span></span>
                                   </div>
                                </div>
-                               <div className="h-[250px] w-full">
+                               <div className="h-[300px] w-full">
                                   {loadingHistory === pa.asset_id ? (
-                                    <div className="h-full flex flex-col items-center justify-center gap-4"><RefreshCcw className="animate-spin text-primary" size={32} /></div>
+                                    <div className="h-full flex flex-col items-center justify-center gap-6"><RefreshCcw className="animate-spin text-primary opacity-40" size={40} /></div>
                                   ) : assetHistories[pa.asset_id] ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                       <AreaChart data={assetHistories[pa.asset_id]}>
                                         <defs>
                                           <linearGradient id={`colorPrice-${pa.asset_id}`} x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.25}/>
+                                            <stop offset="5%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0.2}/>
                                             <stop offset="95%" stopColor={COLORS[idx % COLORS.length]} stopOpacity={0}/>
                                           </linearGradient>
                                         </defs>
                                         <XAxis hide dataKey="date" />
                                         <YAxis hide domain={['auto', 'auto']} />
                                         <RechartsTooltip 
-                                          contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #ffffff10', borderRadius: '12px', padding: '12px' }}
-                                          itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                                          contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #ffffff10', borderRadius: '20px', padding: '16px', boxShadow: '0 15px 40px rgba(0,0,0,0.4)' }}
+                                          itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
                                           labelStyle={{ display: 'none' }}
                                           formatter={(val: number) => [`$${val.toLocaleString()}`, "Price"]}
                                         />
@@ -811,7 +887,7 @@ export default function PortfolioBuilderPage() {
                                           type="monotone" 
                                           dataKey="price" 
                                           stroke={COLORS[idx % COLORS.length]} 
-                                          strokeWidth={3}
+                                          strokeWidth={4}
                                           fillOpacity={1} 
                                           fill={`url(#colorPrice-${pa.asset_id})`} 
                                           animationDuration={2000}
@@ -827,73 +903,75 @@ export default function PortfolioBuilderPage() {
                     </div>
                   </div>
 
-                  {/* Distribution Summary - FIXED PIE CHART */}
-                  <div className="lg:col-span-2 flex flex-col gap-8">
+                  {/* Distribution Summary */}
+                  <div className="lg:col-span-2 flex flex-col gap-12">
                     {/* Pie Chart Card */}
-                    <div className="bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 flex flex-col shadow-xl min-h-[500px]">
-                      <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center gap-4">
-                          <h3 className="text-xs font-black uppercase tracking-[0.3em] text-text-secondary flex items-center gap-4">
-                            <PieChartIcon size={20} className="text-primary" />
-                            Distribution
+                    <div className="bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 flex flex-col shadow-2xl min-h-[600px] hover:border-primary/20 transition-all">
+                      <div className="flex items-center justify-between mb-10">
+                        <div className="flex items-center gap-5">
+                          <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                             <PieChartIcon size={22} />
+                          </div>
+                          <h3 className="text-sm font-black uppercase tracking-widest text-white">
+                            Strategic Weights
                           </h3>
                           {renderInfoIcon(METRIC_INFO.distribution)}
                         </div>
                       </div>
                       
-                      <div className="flex-1 flex flex-col items-center justify-center relative py-6">
-                        <div className="w-full h-[350px]">
+                      <div className="flex-1 flex flex-col items-center justify-center relative py-8">
+                        <div className="w-full h-[420px]">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
                                 data={selectedPortfolioChartData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={80}
-                                outerRadius={110}
-                                paddingAngle={8}
+                                innerRadius={100}
+                                outerRadius={140}
+                                paddingAngle={10}
                                 dataKey="value"
                                 stroke="none"
                                 label={({ name, value }) => `${name} ${value.toFixed(0)}%`}
-                                labelLine={{ stroke: '#333', strokeWidth: 1 }}
+                                labelLine={{ stroke: '#333', strokeWidth: 1.5, length: 20 }}
                                 animationDuration={2000}
                               >
                                 {selectedPortfolioChartData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
                                 ))}
                               </Pie>
                               <RechartsTooltip 
-                                contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }}
-                                itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
+                                contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '24px', padding: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
+                                itemStyle={{ color: '#fff', fontSize: '15px', fontWeight: '900' }}
                               />
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
                         
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
-                          <span className="text-5xl font-black text-primary drop-shadow-[0_0_20px_rgba(19,236,91,0.3)] tabular-nums">{selectedPortfolio.assets.length}</span>
-                          <span className="text-[10px] text-text-secondary uppercase font-black tracking-[0.3em] mt-1">Assets</span>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
+                          <span className="text-6xl font-black text-primary drop-shadow-[0_0_30px_rgba(19,236,91,0.4)] tabular-nums tracking-tighter leading-none">{selectedPortfolio.assets.length}</span>
+                          <span className="text-[11px] text-text-secondary uppercase font-black tracking-widest mt-2 opacity-60">Assets</span>
                         </div>
                       </div>
                       
-                      <div className="mt-6 pt-6 border-t border-border-dark/30 grid grid-cols-2 gap-6">
-                         <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary">Risk Analysis</span>
+                      <div className="mt-10 pt-10 border-t border-border-dark/30 grid grid-cols-2 gap-10">
+                         <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Risk Analysis</span>
                               {renderInfoIcon(METRIC_INFO.riskAnalysis)}
                             </div>
-                            <span className="text-xs font-black text-white flex items-center gap-2">
-                              <div className="size-2 rounded-full bg-yellow-400"></div>
+                            <span className="text-sm font-black text-white flex items-center gap-3">
+                              <div className="size-3 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.4)]"></div>
                               Aggressive-Medium
                             </span>
                          </div>
-                         <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-secondary">Strategic View</span>
+                         <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Objective</span>
                               {renderInfoIcon(METRIC_INFO.strategicView)}
                             </div>
-                            <span className="text-xs font-black text-primary flex items-center gap-2">
-                              <TrendingUp size={14} />
+                            <span className="text-sm font-black text-primary flex items-center gap-3">
+                              <TrendingUp size={18} />
                               Long-term Alpha
                             </span>
                          </div>
@@ -904,20 +982,20 @@ export default function PortfolioBuilderPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-1000">
-                <div className="size-32 rounded-[32px] bg-surface-dark border border-border-active flex items-center justify-center mb-10 relative group mx-auto transform rotate-6 hover:rotate-0 transition-transform duration-700 shadow-xl">
-                  <div className="absolute inset-0 rounded-[32px] bg-primary/20 animate-pulse group-hover:animate-none opacity-20 blur-2xl"></div>
-                  <PieChartIcon size={64} className="text-primary relative z-10" />
+                <div className="size-40 rounded-[48px] bg-surface-dark border border-border-active flex items-center justify-center mb-12 relative group mx-auto transform rotate-6 hover:rotate-0 transition-all duration-700 shadow-2xl">
+                  <div className="absolute inset-0 rounded-[48px] bg-primary/20 animate-pulse group-hover:animate-none opacity-20 blur-3xl"></div>
+                  <PieChartIcon size={80} className="text-primary relative z-10" />
                 </div>
-                <h2 className="text-4xl font-black text-white mb-4 tracking-tight">Portfolio Architect</h2>
-                <p className="text-text-secondary max-w-md leading-relaxed mx-auto font-medium text-sm opacity-80">
-                  Select a strategy from your archive or architect a new multi-asset portfolio.
+                <h2 className="text-4xl font-black text-white mb-4 tracking-tight leading-tight">Investment Architect</h2>
+                <p className="text-text-secondary max-w-lg leading-relaxed mx-auto font-medium text-base opacity-60 px-6">
+                  Select a saved framework from your database or architect a new multi-asset investment strategy.
                 </p>
                 <div className="mt-12">
                   <button 
-                    onClick={() => { setIsEditing(false); setNewPortfolio({name: "", assets: [], is_favorite: false}); setShowCreateModal(true); }}
-                    className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-[0.3em] rounded-2xl hover:bg-[#3af578] transition-all shadow-xl shadow-primary/10 active:scale-95 text-sm"
+                    onClick={() => { setIsEditing(false); setNewPortfolio({name: "", initial_capital: 0, assets: [], is_favorite: false}); setShowCreateModal(true); setShowCurrentAmounts(false); }}
+                    className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-wider rounded-[18px] hover:bg-[#3af578] transition-all shadow-xl shadow-primary/10 active:scale-95 text-sm"
                   >
-                    Create New
+                    Architect New Strategy
                   </button>
                 </div>
               </div>
@@ -926,51 +1004,107 @@ export default function PortfolioBuilderPage() {
         </main>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      {portfolioToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="size-16 rounded-full bg-red-400/10 flex items-center justify-center text-red-400 mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">Delete Portfolio?</h3>
+            <p className="text-text-secondary text-sm text-center mb-8">
+              This action cannot be undone. All data associated with this portfolio framework will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setPortfolioToDelete(null)}
+                className="flex-1 px-6 py-3 rounded-xl border border-border-active bg-surface-dark text-white font-bold hover:bg-border-active transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleDeletePortfolio(portfolioToDelete)}
+                className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)] text-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-surface-dark border border-border-dark rounded-[32px] w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-surface-dark border border-border-dark rounded-[40px] w-full max-w-[1840px] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
             {/* Modal Header */}
-            <div className="p-8 border-b border-border-dark flex items-center justify-between bg-background-dark/50">
-              <div className="flex items-center gap-8 flex-1">
+            <div className="p-8 border-b border-border-dark flex items-center justify-between bg-background-dark/50 gap-10">
+              <div className="flex items-center gap-6 shrink-0">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                  <div className="p-3.5 bg-primary/10 rounded-xl text-primary shadow-inner">
                     <PlusCircle size={24} />
                   </div>
-                  <h2 className="text-xl font-black tracking-tight uppercase">{isEditing ? "Edit Strategy" : "Build Strategy"}</h2>
+                  <h2 className="text-xl font-black tracking-tight uppercase whitespace-nowrap">{isEditing ? "Edit Strategy" : "Build Strategy"}</h2>
                 </div>
-                <div className="h-10 w-px bg-border-dark"></div>
+                <div className="h-10 w-px bg-border-dark opacity-30"></div>
+                
+                {/* Current Amounts Toggle */}
+                <button 
+                  onClick={() => setShowCurrentAmounts(!showCurrentAmounts)}
+                  className={cn(
+                    "flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all font-bold text-[10px] uppercase tracking-widest",
+                    showCurrentAmounts 
+                      ? "bg-primary/10 border-primary/30 text-primary" 
+                      : "bg-surface-light border-border-dark text-text-secondary hover:text-white"
+                  )}
+                >
+                  {showCurrentAmounts ? <ToggleRight size={18} className="text-primary" /> : <ToggleLeft size={18} />}
+                  Input Position Data
+                </button>
               </div>
               
-              <div className="flex items-center gap-6 mr-8">
-                <div className="flex items-center gap-4 bg-surface-light/50 px-6 py-2.5 rounded-2xl border border-border-dark focus-within:border-primary/50 transition-all shadow-inner">
-                  <span className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em]">TITLE:</span>
+              <div className="flex items-center gap-10 flex-1 min-w-0 justify-center">
+                <div className="flex items-center gap-5 bg-surface-light/50 px-8 py-4 rounded-3xl border border-border-dark focus-within:border-primary/50 transition-all shadow-inner flex-1 max-w-2xl group min-w-0">
+                  <span className="text-[10px] font-black uppercase text-text-secondary tracking-widest group-focus-within:text-primary transition-colors shrink-0">NAME:</span>
                   <input 
                     type="text"
                     placeholder="Strategy Name..."
-                    className="bg-transparent py-0 px-0 focus:outline-none text-base font-bold text-white placeholder:text-text-secondary/20 min-w-[300px]"
+                    className="bg-transparent py-0 px-0 focus:outline-none text-lg font-bold text-white placeholder:text-text-secondary/20 w-full tracking-tight truncate"
                     value={newPortfolio.name}
                     onChange={(e) => setNewPortfolio({...newPortfolio, name: e.target.value})}
                     autoFocus
                   />
                 </div>
+                <div className="flex items-center gap-5 bg-surface-light/50 px-8 py-4 rounded-3xl border border-border-dark focus-within:border-primary/50 transition-all shadow-inner min-w-[280px] group shrink-0">
+                  <span className="text-[10px] font-black uppercase text-text-secondary tracking-widest group-focus-within:text-primary transition-colors whitespace-nowrap shrink-0">TOTAL CAPITAL:</span>
+                  <div className="flex items-center min-w-0">
+                    <span className="text-text-secondary mr-2 font-black text-lg">$</span>
+                    <input 
+                      type="number"
+                      placeholder="0"
+                      className="bg-transparent py-0 px-0 focus:outline-none text-xl font-black text-white placeholder:text-text-secondary/20 w-full tabular-nums text-right tracking-tight"
+                      value={newPortfolio.initial_capital || ""}
+                      onChange={(e) => handleInitialCapitalChange(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
                 <button 
                   onClick={() => setNewPortfolio({...newPortfolio, is_favorite: !newPortfolio.is_favorite})}
                   className={cn(
-                    "p-3 rounded-2xl transition-all border shadow-lg",
+                    "p-4 rounded-2xl transition-all border shadow-lg active:scale-95 shrink-0",
                     newPortfolio.is_favorite 
                       ? "bg-yellow-400/10 border-yellow-400/20 text-yellow-400" 
                       : "bg-surface-light border-border-dark text-text-secondary hover:text-white"
                   )}
                   title={newPortfolio.is_favorite ? "Remove from favorites" : "Add to favorites"}
                 >
-                  <Star size={20} fill={newPortfolio.is_favorite ? "currentColor" : "none"} />
+                  <Star size={24} fill={newPortfolio.is_favorite ? "currentColor" : "none"} />
                 </button>
               </div>
 
               <button 
                 onClick={() => { setShowCreateModal(false); setIsEditing(false); }}
-                className="p-3 hover:bg-surface-light rounded-full transition-all text-text-secondary hover:text-white bg-surface-dark/50 border border-border-dark"
+                className="p-3 hover:bg-surface-light rounded-full transition-all text-text-secondary hover:text-white bg-surface-dark/50 border border-border-dark ml-4 active:scale-90 shrink-0"
               >
                 <X size={24} />
               </button>
@@ -981,23 +1115,23 @@ export default function PortfolioBuilderPage() {
               {/* Asset Selector */}
               <div className="w-1/4 border-r border-border-dark flex flex-col p-8 bg-background-dark/10">
                 <div className="relative mb-8">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" size={18} />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary opacity-40" size={18} />
                   <input 
                     type="text"
-                    placeholder="Search Markets..."
-                    className="w-full bg-surface-light border border-border-dark rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm font-bold shadow-inner"
+                    placeholder="Search global assets..."
+                    className="w-full bg-surface-light border border-border-dark rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-primary/50 text-xs font-bold shadow-inner tracking-wide"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   {loading ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-text-secondary gap-4">
-                      <RefreshCcw size={24} className="animate-spin" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">Loading Markets...</p>
+                    <div className="flex flex-col items-center justify-center py-20 text-text-secondary gap-5">
+                      <RefreshCcw size={28} className="animate-spin text-primary opacity-40" />
+                      <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Syncing database...</p>
                     </div>
                   ) : assets.length > 0 ? (
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-3.5">
                       {filteredAssets.map(asset => {
                           const isSelected = newPortfolio.assets.find(a => a.asset_id === asset.id);
                           const isDisabled = !!isSelected || totalWeight >= 100;
@@ -1007,7 +1141,7 @@ export default function PortfolioBuilderPage() {
                                   onClick={() => handleAddAsset(asset)}
                                   disabled={isDisabled}
                                   className={cn(
-                                      "flex items-center justify-between p-4 rounded-xl border transition-all text-left group shadow-sm",
+                                      "flex items-center justify-between p-4 rounded-2xl border transition-all text-left group shadow-sm active:scale-[0.98]",
                                       isSelected 
                                           ? "bg-primary/5 border-primary/20 opacity-50 cursor-not-allowed" 
                                           : totalWeight >= 100
@@ -1017,7 +1151,7 @@ export default function PortfolioBuilderPage() {
                               >
                                   <div className="min-w-0">
                                       <div className="font-black text-xs tracking-tight text-white group-hover:text-primary transition-colors">{asset.ticker}</div>
-                                      <div className="text-[9px] text-text-secondary font-bold line-clamp-1 uppercase tracking-widest">{asset.name}</div>
+                                      <div className="text-[9px] text-text-secondary font-bold line-clamp-1 uppercase tracking-widest mt-0.5">{asset.name}</div>
                                   </div>
                                   {!isSelected && <PlusCircle size={16} className={cn("shrink-0 transition-transform group-hover:scale-110", totalWeight >= 100 ? "text-text-secondary" : "text-primary")} />}
                               </button>
@@ -1026,7 +1160,7 @@ export default function PortfolioBuilderPage() {
                     </div>
                   ) : (
                     <div className="text-center py-20 text-text-secondary">
-                      <p className="text-xs font-black uppercase tracking-widest opacity-40">No markets found</p>
+                      <p className="text-xs font-black uppercase tracking-widest opacity-30 leading-relaxed text-center">No matching assets found in local archive</p>
                     </div>
                   )}
                 </div>
@@ -1034,49 +1168,84 @@ export default function PortfolioBuilderPage() {
 
               {/* Allocation Config */}
               <div className="w-2/4 flex flex-col p-8 border-r border-border-dark overflow-y-auto custom-scrollbar bg-background-dark/5">
-                <label className="text-[10px] font-black uppercase text-text-secondary mb-8 flex items-center gap-4 tracking-[0.3em]">
-                  <LayoutIcon size={18} className="text-primary" />
-                  Blueprint Strategy
+                <label className="text-[10px] font-black uppercase text-text-secondary mb-8 flex items-center gap-4 tracking-widest opacity-50">
+                  <LayoutIcon size={20} className="text-primary" />
+                  Deployment Roadmap
                 </label>
-                <div className="space-y-4 flex-1">
+                <div className="space-y-5 flex-1">
                   {newPortfolio.assets.map(pa => {
                     const asset = assets.find(a => a.id === pa.asset_id);
+                    const currentStakePct = newPortfolio.initial_capital > 0 ? ((pa.current_amount || 0) / newPortfolio.initial_capital) * 100 : 0;
                     return (
-                      <div key={pa.asset_id} className="bg-surface-dark/80 border border-border-active/30 rounded-2xl p-6 animate-in slide-in-from-left-4 duration-400 shadow-xl group">
+                      <div key={pa.asset_id} className="bg-surface-dark/80 border border-border-active/30 rounded-3xl p-7 animate-in slide-in-from-left-4 duration-400 shadow-xl group">
                         <div className="flex justify-between items-center mb-6">
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-5">
                             <span className="font-black text-xl text-primary tracking-tighter">{asset?.ticker}</span>
-                            <div className="size-1 rounded-full bg-border-dark"></div>
-                            <span className="text-[10px] text-text-secondary font-black uppercase tracking-[0.15em] truncate max-w-[250px]">{asset?.name}</span>
+                            <div className="size-1 rounded-full bg-border-dark opacity-40"></div>
+                            <span className="text-[10px] text-text-secondary font-black uppercase tracking-widest truncate max-w-[320px]">{asset?.name}</span>
                           </div>
                           <button 
                             onClick={() => handleRemoveAsset(pa.asset_id)}
-                            className="text-text-secondary hover:text-red-400 p-2 hover:bg-red-400/10 rounded-xl transition-all border border-transparent hover:border-red-400/20"
+                            className="text-text-secondary hover:text-red-400 p-2 hover:bg-red-400/10 rounded-xl transition-all border border-transparent hover:border-red-400/20 active:scale-90"
                           >
                             <X size={18} />
                           </button>
                         </div>
-                        <div className="flex items-center gap-8">
-                          <div className="flex-1 relative h-6 flex items-center">
-                            <input 
-                              type="range"
-                              min="0"
-                              max="100"
-                              step="1"
-                              className="w-full accent-primary h-1.5 bg-surface-light rounded-full appearance-none cursor-pointer shadow-inner"
-                              value={pa.weight * 100}
-                              onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
-                            />
-                          </div>
-                          <div className="w-28 flex items-center bg-background-dark/80 rounded-xl px-4 py-2 border border-border-dark focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all shadow-inner">
-                            <input 
-                              type="number"
-                              className="bg-transparent w-full text-right text-lg focus:outline-none font-black tabular-nums text-white"
-                              value={Math.round(pa.weight * 100)}
-                              onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
-                            />
-                            <span className="text-xs text-text-secondary ml-1 font-black opacity-40">%</span>
-                          </div>
+
+                        <div className={cn(
+                            "grid gap-8 mb-6",
+                            showCurrentAmounts ? "grid-cols-2" : "grid-cols-1"
+                        )}>
+                           {showCurrentAmounts && (
+                               <div className="flex flex-col gap-2.5 animate-in fade-in duration-300">
+                                  <label className="text-[8px] font-black text-text-secondary uppercase tracking-widest flex items-center gap-2 opacity-50">
+                                    <DollarSign size={10} className="text-primary" />
+                                    Current Value ($)
+                                  </label>
+                                  <div className="flex items-center bg-background-dark/80 rounded-[18px] px-5 py-3 border border-border-dark focus-within:border-primary/50 transition-all shadow-inner">
+                                    <input 
+                                      type="number"
+                                      className="bg-transparent w-full text-lg focus:outline-none font-black tabular-nums text-white tracking-tight"
+                                      placeholder="0"
+                                      value={pa.current_amount || ""}
+                                      onChange={(e) => handleAmountChange(pa.asset_id, Number(e.target.value))}
+                                    />
+                                    <span className={cn(
+                                        "text-[9px] font-black ml-2 px-2.5 py-1 rounded-lg transition-colors leading-none",
+                                        currentStakePct > 0 ? "bg-primary/10 text-primary" : "bg-surface-light text-text-secondary"
+                                    )}>
+                                        {currentStakePct.toFixed(1)}%
+                                    </span>
+                                  </div>
+                               </div>
+                           )}
+                           <div className="flex flex-col gap-2.5">
+                              <label className="text-[8px] font-black text-text-secondary uppercase tracking-widest flex items-center gap-2 opacity-50">
+                                <Target size={10} className="text-primary" />
+                                Target Stake (%)
+                              </label>
+                              <div className="flex items-center bg-background-dark/80 rounded-[18px] px-5 py-3 border border-border-dark focus-within:border-primary/50 transition-all shadow-inner">
+                                <input 
+                                  type="number"
+                                  className="bg-transparent w-full text-right text-lg focus:outline-none font-black tabular-nums text-white tracking-tight"
+                                  value={Math.round(pa.weight * 100)}
+                                  onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
+                                />
+                                <span className="text-xs text-text-secondary ml-1.5 font-black opacity-30">%</span>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="flex items-center gap-4">
+                          <input 
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="1"
+                            className="flex-1 accent-primary h-1.5 bg-surface-light rounded-full appearance-none cursor-pointer shadow-inner"
+                            value={pa.weight * 100}
+                            onChange={(e) => handleWeightChange(pa.asset_id, Number(e.target.value))}
+                          />
                         </div>
                       </div>
                     );
@@ -1084,10 +1253,10 @@ export default function PortfolioBuilderPage() {
 
                   {newPortfolio.assets.length === 0 && (
                     <div className="text-center py-20 text-text-secondary text-sm border-2 border-dashed border-border-dark rounded-[32px] flex flex-col items-center justify-center gap-6 h-full bg-surface-dark/10">
-                      <div className="p-6 bg-surface-dark rounded-[24px] shadow-xl">
-                        <Plus size={48} className="opacity-10" />
+                      <div className="p-8 bg-surface-dark rounded-[24px] shadow-2xl group hover:border-primary/20 transition-all border border-transparent">
+                        <Plus size={48} className="opacity-10 group-hover:opacity-30 transition-opacity" />
                       </div>
-                      <p className="font-black text-white/40 uppercase tracking-[0.3em] text-[10px]">Select assets to start</p>
+                      <p className="font-black text-white/30 uppercase tracking-widest text-[9px] px-10 leading-relaxed text-center">Select assets from the explorer to begin strategy construction</p>
                     </div>
                   )}
                 </div>
@@ -1095,9 +1264,9 @@ export default function PortfolioBuilderPage() {
 
               {/* Composition Summary */}
               <div className="w-1/4 flex flex-col p-8 bg-background-dark/30 overflow-y-auto custom-scrollbar">
-                <label className="text-[10px] font-black uppercase text-text-secondary mb-10 flex items-center gap-4 tracking-[0.3em]">
+                <label className="text-[10px] font-black uppercase text-text-secondary mb-10 flex items-center gap-4 tracking-widest opacity-50">
                   <PieChartIcon size={18} className="text-primary" />
-                  Blueprint
+                  Strategy Model
                 </label>
                 
                 <div className="flex-1 flex flex-col items-center justify-center min-h-[300px] relative mb-10">
@@ -1108,20 +1277,20 @@ export default function PortfolioBuilderPage() {
                           data={modalChartData}
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
+                          innerRadius={70}
+                          outerRadius={100}
                           paddingAngle={8}
                           dataKey="value"
                           stroke="none"
                           animationDuration={1500}
                         >
                           {modalChartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
                           ))}
                         </Pie>
                         <RechartsTooltip 
                           contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }}
-                          itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}
+                          itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: '900' }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -1133,40 +1302,40 @@ export default function PortfolioBuilderPage() {
 
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-2">
                     <span className={cn(
-                      "text-4xl font-black tabular-nums transition-all duration-500 tracking-tighter drop-shadow-[0_0_15px_rgba(19,236,91,0.2)]",
+                      "text-4xl font-black tabular-nums transition-all duration-700 tracking-tighter drop-shadow-[0_0_15px_rgba(19,236,91,0.2)]",
                       Math.abs(totalWeight - 100) < 0.01 ? "text-primary scale-110" : "text-white"
                     )}>
                       {Math.round(totalWeight)}%
                     </span>
-                    <span className="text-[9px] text-text-secondary uppercase font-black tracking-[0.3em] mt-1">Allocation</span>
+                    <span className="text-[9px] text-text-secondary uppercase font-black tracking-widest mt-1 opacity-50">Target Stake</span>
                   </div>
                 </div>
 
                 <div className="mt-auto pt-8 border-t border-border-dark/50 space-y-8">
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-[0.2em]">Check</span>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest opacity-50">Validator</span>
                       <span className={cn(
-                          "text-[10px] font-black uppercase tracking-widest flex items-center gap-2",
+                          "text-[10px] font-black uppercase tracking-widest flex items-center gap-2.5",
                           Math.abs(totalWeight - 100) < 0.01 ? "text-primary" : "text-red-400"
                       )}>
-                        <div className={cn("size-2 rounded-full", Math.abs(totalWeight - 100) < 0.01 ? "bg-primary animate-pulse" : "bg-red-400")}></div>
+                        <div className={cn("size-2 rounded-full shadow-md", Math.abs(totalWeight - 100) < 0.01 ? "bg-primary animate-pulse" : "bg-red-400")}></div>
                         {Math.abs(totalWeight - 100) < 0.01 ? "Ready" : "Mismatch"}
                       </span>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-[0.2em]">Stake</span>
-                      <span className="text-xs font-black text-white tabular-nums">{newPortfolio.assets.length} ASSETS</span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className="text-[9px] font-black uppercase text-text-secondary tracking-widest opacity-50">Assets</span>
+                      <span className="text-xs font-black text-white tabular-nums tracking-tight">{newPortfolio.assets.length} INSTALLED</span>
                     </div>
                   </div>
                   
                   <button 
-                    disabled={Math.abs(totalWeight - 100) > 0.01 || !newPortfolio.name || newPortfolio.assets.length === 0}
+                    disabled={Math.abs(totalWeight - 100) > 0.01 || !newPortfolio.name || newPortfolio.assets.length === 0 || newPortfolio.initial_capital <= 0}
                     onClick={handleSavePortfolio}
-                    className="w-full py-5 bg-primary text-background-dark font-black uppercase tracking-[0.4em] rounded-2xl hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed shadow-[0_0_30px_rgba(19,236,91,0.2)] active:scale-[0.98] group text-sm"
+                    className="w-full py-5 bg-primary text-background-dark font-black uppercase tracking-wider rounded-[20px] hover:bg-[#3af578] transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed shadow-xl shadow-primary/10 active:scale-[0.98] group text-sm"
                   >
                     <Save size={20} className="group-hover:scale-110 transition-transform" />
-                    {isEditing ? "Save Changes" : "Deploy Strategy"}
+                    {isEditing ? "Overwrite Strategy" : "Confirm Strategy"}
                   </button>
                 </div>
               </div>
@@ -1183,30 +1352,21 @@ export default function PortfolioBuilderPage() {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #1a1a1a;
+          background: rgba(255, 255, 255, 0.05);
           border-radius: 20px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #252525;
+          background: rgba(255, 255, 255, 0.1);
+        }
+        input[type='number']::-webkit-inner-spin-button,
+        input[type='number']::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        input[type='number'] {
+          -moz-appearance: textfield;
         }
       `}</style>
     </div>
   );
 }
-
-const ChevronDown = ({ size, className }: { size: number, className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="3" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="m6 9 6 6 6-6"/>
-  </svg>
-);

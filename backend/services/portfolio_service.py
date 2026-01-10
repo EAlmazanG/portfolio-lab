@@ -13,6 +13,7 @@ class PortfolioService:
             db_portfolio = Portfolio(
                 name=obj_in.name,
                 description=obj_in.description,
+                initial_capital=obj_in.initial_capital,
                 is_favorite=obj_in.is_favorite
             )
             db.add(db_portfolio)
@@ -22,7 +23,8 @@ class PortfolioService:
                 db_asset = PortfolioAsset(
                     portfolio_id=db_portfolio.id,
                     asset_id=asset_in.asset_id,
-                    weight=asset_in.weight
+                    weight=asset_in.weight,
+                    current_amount=asset_in.current_amount
                 )
                 db.add(db_asset)
             
@@ -71,6 +73,10 @@ class PortfolioService:
                 db_portfolio.name = obj_in.name
             if obj_in.description is not None:
                 db_portfolio.description = obj_in.description
+            if hasattr(obj_in, 'initial_capital') and obj_in.initial_capital is not None:
+                db_portfolio.initial_capital = obj_in.initial_capital
+            if hasattr(obj_in, 'is_favorite') and obj_in.is_favorite is not None:
+                db_portfolio.is_favorite = obj_in.is_favorite
             
             if obj_in.assets is not None:
                 # Delete old assets
@@ -80,7 +86,8 @@ class PortfolioService:
                     db_asset = PortfolioAsset(
                         portfolio_id=portfolio_id,
                         asset_id=asset_in.asset_id,
-                        weight=asset_in.weight
+                        weight=asset_in.weight,
+                        current_amount=asset_in.current_amount
                     )
                     db.add(db_asset)
             

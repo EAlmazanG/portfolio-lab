@@ -9,6 +9,7 @@ class Portfolio(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(String(500), nullable=True)
+    initial_capital = Column(Float, default=0.0)
     is_favorite = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -23,7 +24,8 @@ class PortfolioAsset(Base):
     id = Column(Integer, primary_key=True, index=True)
     portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=False)
     asset_id = Column(Integer, ForeignKey("assets.id"), nullable=False)
-    weight = Column(Float, nullable=False) # e.g. 0.5 for 50%
+    weight = Column(Float, nullable=False) # e.g. 0.5 for 50% (desired weight)
+    current_amount = Column(Float, default=0.0) # current amount in $
 
     # Relationships
     portfolio = relationship("Portfolio", back_populates="assets")
