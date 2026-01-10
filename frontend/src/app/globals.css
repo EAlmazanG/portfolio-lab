@@ -2,3 +2,78 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-background-dark text-white font-display;
+  }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-background-dark;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-border-dark rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-border-active;
+}
+
+/* Range Slider Styling to match prototype */
+input[type=range] {
+  -webkit-appearance: none;
+  background: transparent;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  @apply bg-primary;
+  cursor: pointer;
+  margin-top: -6px;
+  box-shadow: 0 0 10px rgba(19, 236, 91, 0.4);
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  @apply bg-border-dark rounded-full;
+}
+
+input[type=range]:focus {
+  outline: none;
+}
+
+/* Custom Number Input Spinners Styling */
+.custom-number-input::-webkit-inner-spin-button,
+.custom-number-input::-webkit-outer-spin-button {
+  opacity: 1;
+  cursor: pointer;
+  filter: invert(1) brightness(2);
+  height: 24px;
+}
+
+.custom-number-input {
+  -moz-appearance: textfield;
+}
+
+/* Date Input Calendar Icon Styling */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.5;
+  cursor: pointer;
+  padding: 5px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

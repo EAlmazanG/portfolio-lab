@@ -1,0 +1,88 @@
+export interface Asset {
+  id: number;
+  ticker: string;
+  name: string;
+  asset_type: string;
+  min_date?: string;
+  max_date?: string;
+}
+
+export interface PortfolioPoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  price: number;
+  indicator_value: number;
+  ma_short: number;
+  ma_long: number;
+  invested: number;
+  baseline_value: number;
+  smart_value: number;
+  cumulative_fees: number;
+  b_contribution: number;
+  s_contribution: number;
+}
+
+export interface SimulationResults {
+  final_value: number;
+  total_invested: number;
+  total_return_percent: number;
+  avg_purchase_price: number;
+  total_assets_accumulated: number;
+  portfolio_history: PortfolioPoint[];
+  baseline_final_value: number;
+  baseline_return_percent: number;
+  baseline_avg_purchase_price: number;
+  dca_efficiency: number;
+  total_fees: number;
+  fees_percentage: number;
+}
+
+export interface SimulationConfig {
+  asset_id: number;
+  start_date: string;
+  end_date: string;
+  initial_capital: number;
+  base_amount: number;
+  frequency: 'daily' | 'weekly' | 'bi-monthly' | 'monthly';
+  investment_mode: 'annual' | 'per_contribution';
+  commission_fee_percent: number;
+  minimum_fee_per_trade: number;
+  maintenance_fee_annual_percent: number;
+  dynamic_timing_enabled?: boolean;
+  timing_aggressiveness?: number;
+  dynamic_sizing_enabled?: boolean;
+  sizing_multiplier?: number;
+  smart_indicator?: 'RSI' | 'MA' | 'EMA';
+  rsi_threshold_low?: number;
+  rsi_threshold_high?: number;
+  ma_period_short?: number;
+  ma_period_long?: number;
+  expensive_buy_ratio?: number;
+  is_favorite?: boolean;
+}
+
+export interface SimulationResponse {
+  id: number | null;
+  config: SimulationConfig;
+  results: SimulationResults;
+}
+
+export interface SimulationHistoryItem {
+  id: number;
+  asset_ticker: string;
+  asset_name: string;
+  start_date: string;
+  end_date: string;
+  final_value: number;
+  total_invested: number;
+  gross_profit: number;
+  net_profit: number;
+  total_fees: number;
+  total_return_percent: number;
+  smart_vs_baseline_diff: number;
+  is_favorite: boolean;
+  created_at: string;
+}

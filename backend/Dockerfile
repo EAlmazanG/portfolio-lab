@@ -20,12 +20,12 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 # Copy project
-COPY . .
+COPY . backend/
 
 # Expose port
 EXPOSE 8000
 
 # Command to run the application (Production default)
 # In development, this is overridden by docker-compose to use --reload
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

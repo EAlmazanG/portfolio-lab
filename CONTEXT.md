@@ -112,23 +112,40 @@ To validate the hypothesis, every simulation must be compared against:
 
 ### 3.4. Frontend (Next.js)
 - **Architecture:** Next.js Application organized into three main functional tabs.
+- **Prototypes:** Detailed UI designs available in `stitch/` folder:
+  - **Format:** HTML files with embedded CSS/JS and accompanying PNG screenshots.
+  - **Location:** Organized by feature/component (e.g., `stitch/single_asset_simulation/`).
+  - **Current Assets:** Single asset simulation prototype (`code.html` + `screen.png`).
 - **Tabs:**
-    1.  **Asset:**
-        *   Select Asset.
-        *   Toggle Commission/Fees.
-        *   Enable/Disable specific Features (Timing, Sizing).
-        *   Adjust Parameters (limit to 1 parameter per feature for initial version).
-        *   Run Simulation & View Results (Charts: Value vs. Time, ROI vs. Time).
-        *   Compare vs. Baseline.
-    2.  **Portfolio:**
-        *   Build Portfolio (Select multiple assets and weights).
-        *   Configure Portfolio-level features (Rebalancing rules).
-        *   Run Simulation & View Aggregate Results.
-        *   Compare vs. Portfolio Baseline.
-    3.  **Optimizer:**
-        *   Batch simulation runner.
-        *   Iterate through parameter ranges to find optimal settings for a specific asset or portfolio.
-        *   Display best performing configurations.
+
+    1.  **Asset Tab:**
+        *   **Asset Selection:** Dropdown/combobox to select from available assets in database.
+        *   **Commission Toggle:** Checkbox to enable/disable trading fees and commissions.
+        *   **Feature Selection:** Enable/disable specific features per asset (Timing, Sizing, etc.).
+        *   **Parameter Adjustment:** Sliders/inputs for each selected feature (limited to 1 parameter per feature).
+        *   **Simulation Control:** Run button to execute simulation with current configuration.
+        *   **Results Visualization:** Charts showing value and ROI over time.
+        *   **Baseline Comparison:** Side-by-side comparison with standard DCA results.
+        *   **Persistence:** Save/load functionality for asset simulation configurations.
+
+    2.  **Portfolio Tab:**
+        *   **Portfolio Construction:** Multi-select interface to add assets to portfolio with weight allocation (percentage-based).
+        *   **Asset-Level Features:** For each portfolio asset, enable/disable features and adjust parameters (1 parameter per feature).
+        *   **Portfolio-Level Features:** When multiple assets exist, enable portfolio-wide features (Smart Rebalancing, etc.).
+        *   **Simulation Execution:** Launch portfolio simulations with all configured assets and features.
+        *   **Results Display:**
+            - **Baselines:** Standard portfolio performance (fixed allocations, regular rebalancing).
+            - **Results:** Interactive charts showing portfolio value, individual asset performance, and total ROI.
+            - **Comparisons:** Detailed comparisons between smart strategies vs. baselines (both asset-level and portfolio-level).
+        *   **Persistence:** Save/load functionality for complete portfolio configurations.
+
+    3.  **Optimizer Tab:**
+        *   **Scope Selection:** Choose between single asset or existing portfolio for optimization.
+        *   **Feature Configuration:** Select features and define parameter ranges for iteration.
+        *   **Batch Execution:** Run multiple simulations varying parameters across defined ranges.
+        *   **Optimization Results:** Display best-performing parameter combinations with performance metrics.
+        *   **Persistence:** Save/load functionality for optimization configurations and results.
+
 - **Persistence:**
     *   Save/Load constructed Portfolios.
     *   Save/Load Simulation Results (Asset & Optimization runs).
@@ -162,9 +179,10 @@ To validate the hypothesis, every simulation must be compared against:
     *   Implement Commission Logic.
     *   Create API Endpoints for Asset Simulation.
 4.  **Asset Frontend:**
-    *   Build "Asset" Tab.
-    *   Connect to Backend API.
-    *   Visualize charts and comparisons.
+    *   Reference `stitch/single_asset_simulation/` prototypes for UI design.
+    *   Build "Asset" Tab with asset selection, feature toggles, and parameter controls.
+    *   Connect to Backend API for simulation execution.
+    *   Implement charts for value/ROI visualization and baseline comparisons.
 5.  **Portfolio Engine (Backend):**
     *   Implement Portfolio Construction & Weighting.
     *   Implement Rebalancing Logic (Standard & Smart).
@@ -182,7 +200,45 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 5. Development Rules & Best Practices
+## 6. Current Progress (v0.4 Completed)
+
+### 6.1. Infrastructure & DevOps
+- **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
+- **Database:** PostgreSQL set up with SQLAlchemy ORM and Alembic for migrations.
+- **Backend:** FastAPI foundation with health checks and CORS configuration.
+- **Frontend:** Next.js (App Router) structure with TypeScript and Tailwind CSS.
+- **Automation:** Refactored `Makefile` with clear commands (`make dev-start`, `make prod-start`, `make start portfolio-lab`).
+- **Icons:** Custom favicon and application branding implemented.
+
+### 6.2. Data Ingestion & Management
+- **Yahoo Finance Client:** Robust integration for fetching OHLCV data and asset metadata.
+- **Interactive CLI Tool:** A comprehensive data manager (`make backend-cli`).
+- **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting`.
+
+### 6.3. Smart DCA Engine (v0.4)
+- **Core Engine:** Enhanced `SimulationEngine` to support algorithmic DCA.
+- **Indicators:** Support for **RSI**, **MA** (Simple Moving Average), and **EMA** (Exponential Moving Average).
+- **Dynamic Timing:** Adjusts contribution dates based on oversold/overbought signals to catch local dips.
+- **Dynamic Sizing:** Varies buy amounts (up to 5x multiplier) ensuring the total annual investment remains identical to the baseline.
+- **Safety Floor:** "Min Sizing" parameter that guarantees a minimum investment percentage even during overbought periods, preventing staying out of the market for too long.
+- **Realistic Backtesting:** All indicators are calculated using only data available up to the day prior to the trade (zero look-ahead bias).
+
+### 6.4. Frontend Implementation (v0.4)
+- **Asset Tab:** Advanced simulation dashboard with feature toggles for Smart Timing and Sizing.
+- **Interactive Visualization:**
+    - **Portfolio Growth:** Compare Smart vs. Baseline vs. Invested capital.
+    - **Price Reference:** Line chart with synchronized tooltips.
+    - **Contributions Timeline:** Detailed bar chart showing exact investment dates and amounts.
+    - **Synchronized Zoom:** Global `Brush` component to zoom all charts simultaneously.
+- **History & Persistence:**
+    - **Favorites System:** Star simulations to save them in a dedicated tab.
+    - **Smart Deletion:** Options to clear only non-favorites or specific subsets.
+    - **Date Validation:** Date pickers are dynamically bounded by the available historical data for the selected asset.
+- **UX Improvements:** Collapsible sidebars with discreet handles, sticky simulation controls, and warning modals for input errors.
+
+---
+
+## 7. Development Rules & Best Practices
 
 1.  **Capital Constraint:** In *all* comparisons, the total capital deployed in the "Smart" strategy must exactly match the "Baseline" strategy on an annual basis.
 2.  **Strategy Pattern:** Use the Strategy Design Pattern for Indicators and Buying Logic to ensure modularity and easy extensibility.

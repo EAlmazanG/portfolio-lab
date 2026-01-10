@@ -13,18 +13,45 @@
 
 1. **Start the environment:**
    ```bash
-   ./scripts/ops/dev_up.sh
+   make dev-start
    ```
    This command builds the Docker containers and starts the services in development mode with hot-reloading.
    
    - **Backend API:** [http://localhost:8000/docs](http://localhost:8000/docs)
-   - **Frontend:** [http://localhost:3001](http://localhost:3001)
-   - **Database:** `localhost:5432`
+   - **Frontend:** [http://localhost:3000](http://localhost:3000)
+   - **Database:** `localhost:5433` (external port)
 
-2. **Stop the environment:**
+2. **Full Production Run:**
    ```bash
-   ./scripts/ops/dev_down.sh
+   make start portfolio-lab
    ```
+   This is the quickest way to run the full app: it activates the environment, starts production containers, and automatically opens the browser.
+
+3. **Manage Data (CLI):**
+   ```bash
+   make backend-cli
+   ```
+   This interactive tool allows you to search, add, and update asset historical data from Yahoo Finance.
+
+4. **Stop everything:**
+   ```bash
+   make close
+   ```
+
+### Dashboard Features
+- **Smart DCA:** Toggle Dynamic Timing and Dynamic Sizing based on RSI, MA, or EMA.
+- **Safety Floor:** Ensure you never miss a buy opportunity with the "Min Sizing" floor.
+- **Advanced History:** Organize your best simulations using the **Favorites (Star)** system.
+- **Synchronized Charts:** Analyze price, growth, and contributions with synchronized zooming and filtering.
+
+### Command Palette (Makefile)
+The project includes a comprehensive `Makefile`:
+- `make start portfolio-lab`: Full automated production startup.
+- `make close`: Stop and clean all containers (dev/prod).
+- `make dev-start` / `make dev-stop`: Manage development environment.
+- `make backend-cli`: Open the interactive Data Manager.
+- `make backend-test`: Run Python tests.
+- `make shell`: Activate virtual environment directly.
 
 ### Production Environment
 

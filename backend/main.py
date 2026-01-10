@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.api.v1 import simulation_router
+
 app = FastAPI(title="Portfolio-Lab API", version="0.1.0")
 
 # Configure CORS
@@ -11,6 +13,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Routers
+app.include_router(simulation_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
