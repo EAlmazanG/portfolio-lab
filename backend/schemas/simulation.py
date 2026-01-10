@@ -12,7 +12,7 @@ class SimulationBase(BaseModel):
     end_date: datetime
     initial_capital: float = Field(default=0.0, ge=0)
     base_amount: float = Field(gt=0)
-    frequency: str = Field(pattern="^(daily|weekly|monthly)$")
+    frequency: str = Field(pattern="^(daily|weekly|monthly|bi-monthly)$")
     investment_mode: str = Field(default="per_contribution", pattern="^(annual|per_contribution)$")
     commission_fee_percent: float = Field(default=0.0, ge=0)
     minimum_fee_per_trade: float = Field(default=0.0, ge=0)

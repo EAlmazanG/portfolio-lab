@@ -146,6 +146,8 @@ class SimulationEngine:
                 periodic_amount = base_amount / 52
             elif frequency == "monthly":
                 periodic_amount = base_amount / 12
+            elif frequency == "bi-monthly":
+                periodic_amount = base_amount / 24
 
         # 1. Calculate Indicators
         indicator_df = self._calculate_indicators(
@@ -153,16 +155,46 @@ class SimulationEngine:
             ma_period_short, ma_period_long
         )
         
+        if indicator_df.empty:
+            raise ValueError("No market data available for the selected start date.")
+        
         # Determine baseline investment dates
         baseline_dates = []
         if frequency == 'daily':
             baseline_dates = indicator_df.index.tolist()
-        elif frequency == 'weekly':
-            baseline_dates = indicator_df.index[::5].tolist()
-        elif frequency == 'monthly':
-            baseline_dates = indicator_df.index[::21].tolist()
+        else:
+            # Calendar-based grouping for consistency
+            grouped = indicator_df.groupby([indicator_df.index.year, indicator_df.index.month])
+            for _, group in grouped:
+                if frequency == 'weekly':
+                    # First trading day of each week in the month
+                    weeks = group.index.to_series().dt.isocalendar().week.unique()
+                    for week in weeks:
+                        baseline_dates.append(group[group.index.to_series().dt.isocalendar().week == week].index[0])
+                elif frequency == 'bi-monthly':
+                    # First trading day of month
+                    baseline_dates.append(group.index[0])
+                    # First trading day on or after the 15th
+                    middle_days = group[group.index.day >= 15]
+                    if not middle_days.empty:
+                        baseline_dates.append(middle_days.index[0])
+                elif frequency == 'monthly':
+                    # First trading day of month
+                    baseline_dates.append(group.index[0])
+
+        # Remove potential duplicates and sort
+        baseline_dates = sorted(list(set(baseline_dates)))
 
         daily_maintenance_factor = (maintenance_fee_annual_percent / 100.0) / 252.0 if maintenance_fee_annual_percent > 0 else 0
+
+        # Update periodic_amount based on actual number of contributions per year to ensure total invested matches exactly
+        # This is critical for the user's comparison requirement
+        if investment_mode == "annual":
+            # Count contributions in the first full year or average them
+            first_year = indicator_df.index[0].year
+            year_count = len([d for d in baseline_dates if d.year == first_year])
+            if year_count > 0:
+                periodic_amount = base_amount / year_count
 
         # --- SIMULATION STATE ---
         # Baseline
@@ -180,7 +212,7 @@ class SimulationEngine:
         s_next_idx = 0
         
         # Initial Capital (applied to both)
-        if initial_capital > 0:
+        if initial_capital > 0 and not indicator_df.empty:
             fee = max(initial_capital * (commission_percent / 100.0), minimum_fee_per_trade)
             b_assets += (initial_capital - fee) / indicator_df.iloc[0]['close']
             b_invested += initial_capital
@@ -320,17 +352,27 @@ class SimulationEngine:
                         annual_budget_remaining -= actual_buy_amount
                         s_contribution += actual_buy_amount
             
+            # Helper to handle NaNs for JSON serialization
+            def clean_val(val, default=0.0):
+                try:
+                    import math
+                    if math.isnan(val) or math.isinf(val):
+                        return default
+                    return float(val)
+                except:
+                    return default
+
             # Record history
             portfolio_history.append({
                 "date": date.strftime("%Y-%m-%d"),
-                "open": round(float(row['open']), 2),
-                "high": round(float(row['high']), 2),
-                "low": round(float(row['low']), 2),
-                "close": round(float(row['close']), 2),
-                "price": round(float(row['close']), 2),
-                "indicator_value": round(float(row['indicator_value']), 4) if 'indicator_value' in row else 0.0,
-                "ma_short": round(float(row['ma_short_val']), 2) if 'ma_short_val' in row else 0.0,
-                "ma_long": round(float(row['ma_long_val']), 2) if 'ma_long_val' in row else 0.0,
+                "open": round(clean_val(row['open']), 2),
+                "high": round(clean_val(row['high']), 2),
+                "low": round(clean_val(row['low']), 2),
+                "close": round(clean_val(row['close']), 2),
+                "price": round(clean_val(row['close']), 2),
+                "indicator_value": round(clean_val(row['indicator_value']), 4) if 'indicator_value' in row else 0.0,
+                "ma_short": round(clean_val(row['ma_short_val']), 2) if 'ma_short_val' in row else 0.0,
+                "ma_long": round(clean_val(row['ma_long_val']), 2) if 'ma_long_val' in row else 0.0,
                 "invested": round(float(s_invested), 2),
                 "baseline_value": round(float(b_assets * row['close']), 2),
                 "smart_value": round(float(s_assets * row['close']), 2),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -85,6 +85,7 @@ export default function AssetSimulationPage() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [isSmartDcaEnabled, setIsSmartDcaEnabled] = useState(true);
+  const [isFeesEnabled, setIsFeesEnabled] = useState(true);
   const [visibleContributions, setVisibleContributions] = useState({
     baseline: true,
     smart: true
@@ -196,6 +197,9 @@ export default function AssetSimulationPage() {
     try {
       const runConfig = {
         ...config,
+        commission_fee_percent: isFeesEnabled ? config.commission_fee_percent : 0,
+        minimum_fee_per_trade: isFeesEnabled ? config.minimum_fee_per_trade : 0,
+        maintenance_fee_annual_percent: isFeesEnabled ? config.maintenance_fee_annual_percent : 0,
         dynamic_timing_enabled: isSmartDcaEnabled ? config.dynamic_timing_enabled : false,
         dynamic_sizing_enabled: isSmartDcaEnabled ? config.dynamic_sizing_enabled : false,
       };
@@ -390,21 +394,10 @@ export default function AssetSimulationPage() {
           </div>
 
           <div className="p-6 pb-2">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex flex-col gap-1 mb-4">
                   <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left">Configuration</h1>
-                  <button
-                    onClick={() => setIsSmartDcaEnabled(!isSmartDcaEnabled)}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
-                      isSmartDcaEnabled 
-                        ? "bg-primary/20 text-primary border border-primary/30" 
-                        : "bg-surface-dark text-text-secondary border border-border-dark"
-                    )}
-                  >
-                    Smart DCA: {isSmartDcaEnabled ? "ON" : "OFF"}
-                  </button>
+                  <p className="text-text-secondary text-sm">Set up your DCA parameters.</p>
                 </div>
-                <p className="text-text-secondary text-sm">Set up your {isSmartDcaEnabled ? 'smart' : 'baseline'} DCA parameters.</p>
           </div>
 
           {/* 1. Asset & Dates Section */}
@@ -542,6 +535,7 @@ export default function AssetSimulationPage() {
                       >
                         <option value="daily">Daily</option>
                         <option value="weekly">Weekly</option>
+                        <option value="bi-monthly">Bi-monthly (2x Month)</option>
                         <option value="monthly">Monthly</option>
                       </select>
                       <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
@@ -567,6 +561,22 @@ export default function AssetSimulationPage() {
 
           {/* 3. Fees Section */}
           <div className="border-b border-border-dark/30">
+            <div className="px-6 pt-4 pb-2 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Fees & Commissions</span>
+              <button
+                onClick={() => setIsFeesEnabled(!isFeesEnabled)}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all",
+                  isFeesEnabled 
+                    ? "bg-red-400/10 text-red-400 border border-red-400/20" 
+                    : "bg-surface-dark text-text-secondary border border-border-dark"
+                )}
+              >
+                {isFeesEnabled ? "Enabled" : "Disabled"}
+              </button>
+            </div>
+            {isFeesEnabled && (
+              <>
             <div 
               onClick={() => setCollapsedSections(prev => ({ ...prev, section3: !prev.section3 }))}
               className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
@@ -615,12 +625,29 @@ export default function AssetSimulationPage() {
                   </div>
                 </div>
               </div>
+                )}
+              </>
             )}
           </div>
 
           {/* 4. Smart Optimization Section */}
-              {isSmartDcaEnabled && (
           <div className="border-b border-border-dark/30">
+            <div className="px-6 pt-4 pb-2 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Smart Features</span>
+              <button
+                onClick={() => setIsSmartDcaEnabled(!isSmartDcaEnabled)}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all",
+                  isSmartDcaEnabled 
+                    ? "bg-primary/10 text-primary border border-primary/20" 
+                    : "bg-surface-dark text-text-secondary border border-border-dark"
+                )}
+              >
+                {isSmartDcaEnabled ? "Enabled" : "Disabled"}
+              </button>
+            </div>
+            {isSmartDcaEnabled && (
+              <>
             <div 
               onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
               className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
@@ -787,9 +814,9 @@ export default function AssetSimulationPage() {
                     />
                   </div>
                 </div>
-                    </div>
-                  )}
               </div>
+                  )}
+              </>
             )}
           </div>
 
@@ -804,6 +831,7 @@ export default function AssetSimulationPage() {
                   Run Simulation
             </button>
             </div>
+          </div>
           </div>
         </aside>
 

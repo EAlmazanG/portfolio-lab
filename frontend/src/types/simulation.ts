@@ -44,7 +44,7 @@ export interface SimulationConfig {
   end_date: string;
   initial_capital: number;
   base_amount: number;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  frequency: 'daily' | 'weekly' | 'bi-monthly' | 'monthly';
   investment_mode: 'annual' | 'per_contribution';
   commission_fee_percent: number;
   minimum_fee_per_trade: number;
