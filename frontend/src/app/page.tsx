@@ -81,6 +81,7 @@ export default function AssetSimulationPage() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [isSmartDcaEnabled, setIsSmartDcaEnabled] = useState(true);
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -186,7 +187,12 @@ export default function AssetSimulationPage() {
     setSimulation(null); // Clear previous results to avoid undefined issues
     setAssetPreviewData([]); // Clear preview when running simulation
     try {
-      const results = await runSimulation(config as any);
+      const runConfig = {
+        ...config,
+        dynamic_timing_enabled: isSmartDcaEnabled ? config.dynamic_timing_enabled : false,
+        dynamic_sizing_enabled: isSmartDcaEnabled ? config.dynamic_sizing_enabled : false,
+      };
+      const results = await runSimulation(runConfig as any);
       setSimulation(results);
       loadHistory(); // Refresh history
     } catch (error) {
@@ -216,6 +222,7 @@ export default function AssetSimulationPage() {
         dynamic_timing_enabled: !!details.config.dynamic_timing_enabled,
         dynamic_sizing_enabled: !!details.config.dynamic_sizing_enabled,
       } as any);
+      setIsSmartDcaEnabled(!!details.config.dynamic_timing_enabled || !!details.config.dynamic_sizing_enabled);
     } catch (error) {
       console.error("Error loading simulation details:", error);
       alert("Error loading simulation details.");
@@ -376,8 +383,21 @@ export default function AssetSimulationPage() {
               </div>
 
               <div className="p-6 pb-2">
-                <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left pb-1">Configuration</h1>
-                <p className="text-text-secondary text-sm">Set up your smart DCA parameters.</p>
+                <div className="flex items-center justify-between mb-1">
+                  <h1 className="text-white tracking-light text-[24px] font-bold leading-tight text-left">Configuration</h1>
+                  <button
+                    onClick={() => setIsSmartDcaEnabled(!isSmartDcaEnabled)}
+                    className={cn(
+                      "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
+                      isSmartDcaEnabled 
+                        ? "bg-primary/20 text-primary border border-primary/30" 
+                        : "bg-surface-dark text-text-secondary border border-border-dark"
+                    )}
+                  >
+                    Smart DCA: {isSmartDcaEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <p className="text-text-secondary text-sm">Set up your {isSmartDcaEnabled ? 'smart' : 'baseline'} DCA parameters.</p>
               </div>
 
               {/* 1. Asset & Dates Section */}
@@ -592,176 +612,178 @@ export default function AssetSimulationPage() {
               </div>
 
               {/* 4. Smart Optimization Section */}
-              <div className="border-b border-border-dark/30">
-                <div 
-                  onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
-                  className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
-                >
-                  <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
-                    <BrainCircuit size={14} className="text-primary" />
-                    4. Smart Optimization
-                  </h3>
-                  <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
-                    <ChevronDown size={14} />
+              {isSmartDcaEnabled && (
+                <div className="border-b border-border-dark/30">
+                  <div 
+                    onClick={() => setCollapsedSections(prev => ({ ...prev, section4: !prev.section4 }))}
+                    className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors"
+                  >
+                    <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                      <BrainCircuit size={14} className="text-primary" />
+                      4. Smart Optimization
+                    </h3>
+                    <div className={cn("text-text-secondary transition-transform duration-200", collapsedSections.section4 && "-rotate-90")}>
+                      <ChevronDown size={14} />
+                    </div>
                   </div>
-                </div>
 
-                {!collapsedSections.section4 && (
-                  <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
-                    {/* Indicator Selection */}
-                    <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                      <div className="flex flex-col gap-3">
-                        <label className="text-white text-[13px] font-medium opacity-80 flex items-center gap-2">
-                          <Activity size={14} className="text-primary" />
-                          Smart Indicator
-                        </label>
-                        <div className="relative">
-                          <select 
-                            className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-10 px-4 text-sm cursor-pointer"
-                            value={config.smart_indicator}
-                            onChange={(e) => setConfig({ ...config, smart_indicator: e.target.value as any })}
+                  {!collapsedSections.section4 && (
+                    <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
+                      {/* Indicator Selection */}
+                      <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                        <div className="flex flex-col gap-3">
+                          <label className="text-white text-[13px] font-medium opacity-80 flex items-center gap-2">
+                            <Activity size={14} className="text-primary" />
+                            Smart Indicator
+                          </label>
+                          <div className="relative">
+                            <select 
+                              className="appearance-none flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-10 px-4 text-sm cursor-pointer"
+                              value={config.smart_indicator}
+                              onChange={(e) => setConfig({ ...config, smart_indicator: e.target.value as any })}
+                            >
+                              <option value="RSI">RSI (Relative Strength Index)</option>
+                              <option value="MA">Moving Average Crossover</option>
+                              <option value="MACD">MACD (Trend Following)</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+
+                          {/* RSI Specific Params */}
+                          {config.smart_indicator === 'RSI' && (
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Oversold (Buy)</label>
+                                <input 
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  type="number" 
+                                  value={config.rsi_threshold_low}
+                                  onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Overbought (Sell)</label>
+                                <input 
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  type="number" 
+                                  value={config.rsi_threshold_high}
+                                  onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* MA Specific Params */}
+                          {config.smart_indicator === 'MA' && (
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
+                                <input 
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  type="number" 
+                                  value={config.ma_period_short}
+                                  onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-1.5">
+                                <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Long Period</label>
+                                <input 
+                                  className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
+                                  type="number" 
+                                  value={config.ma_period_long}
+                                  onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Feature 1: Dynamic Timing */}
+                      <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="flex flex-col">
+                            <span className="text-white font-medium text-sm">Dynamic Timing</span>
+                            <span className="text-text-secondary text-xs">Adjust buy timing on volatility</span>
+                          </div>
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfig({ ...config, dynamic_timing_enabled: !config.dynamic_timing_enabled });
+                            }}
+                            className={cn(
+                              "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
+                              config.dynamic_timing_enabled ? "bg-primary" : "bg-border-dark"
+                            )}
                           >
-                            <option value="RSI">RSI (Relative Strength Index)</option>
-                            <option value="MA">Moving Average Crossover</option>
-                            <option value="MACD">MACD (Trend Following)</option>
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                            <ChevronDown size={14} />
+                            <span className={cn(
+                              "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                              config.dynamic_timing_enabled ? "translate-x-5" : "translate-x-0"
+                            )} />
                           </div>
                         </div>
-
-                        {/* RSI Specific Params */}
-                        {config.smart_indicator === 'RSI' && (
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Oversold (Buy)</label>
-                              <input 
-                                className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                                type="number" 
-                                value={config.rsi_threshold_low}
-                                onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Overbought (Sell)</label>
-                              <input 
-                                className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                                type="number" 
-                                value={config.rsi_threshold_high}
-                                onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
-                              />
-                            </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-xs text-text-secondary">
+                            <span>Conservative</span>
+                            <span className="text-primary font-bold">Aggressive ({config.timing_aggressiveness})</span>
                           </div>
-                        )}
+                          <input 
+                            type="range" 
+                            min="0" 
+                            max="1" 
+                            step="0.05" 
+                            value={config.timing_aggressiveness}
+                            onChange={(e) => setConfig({ ...config, timing_aggressiveness: Number(e.target.value) })}
+                            className="w-full" 
+                          />
+                        </div>
+                      </div>
 
-                        {/* MA Specific Params */}
-                        {config.smart_indicator === 'MA' && (
-                          <div className="grid grid-cols-2 gap-3 mt-2">
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
-                              <input 
-                                className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                                type="number" 
-                                value={config.ma_period_short}
-                                onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                              <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Long Period</label>
-                              <input 
-                                className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs"
-                                type="number" 
-                                value={config.ma_period_long}
-                                onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
-                              />
-                            </div>
+                      {/* Feature 2: Dynamic Sizing */}
+                      <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="flex flex-col">
+                            <span className="text-white font-medium text-sm">Dynamic Sizing</span>
+                            <span className="text-text-secondary text-xs">Increase amount on dips</span>
                           </div>
-                        )}
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfig({ ...config, dynamic_sizing_enabled: !config.dynamic_sizing_enabled });
+                            }}
+                            className={cn(
+                              "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
+                              config.dynamic_sizing_enabled ? "bg-primary" : "bg-border-dark"
+                            )}
+                          >
+                            <span className={cn(
+                              "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                              config.dynamic_sizing_enabled ? "translate-x-5" : "translate-x-0"
+                            )} />
+                          </div>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-xs text-text-secondary">
+                            <span>1.0x</span>
+                            <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
+                          </div>
+                          <input 
+                            type="range" 
+                            min="1" 
+                            max="5" 
+                            step="0.1" 
+                            value={config.sizing_multiplier}
+                            onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
+                            className="w-full" 
+                          />
+                        </div>
                       </div>
                     </div>
-
-                    {/* Feature 1: Dynamic Timing */}
-                    <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex flex-col">
-                          <span className="text-white font-medium text-sm">Dynamic Timing</span>
-                          <span className="text-text-secondary text-xs">Adjust buy timing on volatility</span>
-                        </div>
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfig({ ...config, dynamic_timing_enabled: !config.dynamic_timing_enabled });
-                          }}
-                          className={cn(
-                            "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
-                            config.dynamic_timing_enabled ? "bg-primary" : "bg-border-dark"
-                          )}
-                        >
-                          <span className={cn(
-                            "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                            config.dynamic_timing_enabled ? "translate-x-5" : "translate-x-0"
-                          )} />
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-xs text-text-secondary">
-                          <span>Conservative</span>
-                          <span className="text-primary font-bold">Aggressive ({config.timing_aggressiveness})</span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="0" 
-                          max="1" 
-                          step="0.05" 
-                          value={config.timing_aggressiveness}
-                          onChange={(e) => setConfig({ ...config, timing_aggressiveness: Number(e.target.value) })}
-                          className="w-full" 
-                        />
-                      </div>
-                    </div>
-
-                    {/* Feature 2: Dynamic Sizing */}
-                    <div className="bg-surface-dark rounded-xl p-4 border border-border-active/50">
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex flex-col">
-                          <span className="text-white font-medium text-sm">Dynamic Sizing</span>
-                          <span className="text-text-secondary text-xs">Increase amount on dips</span>
-                        </div>
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfig({ ...config, dynamic_sizing_enabled: !config.dynamic_sizing_enabled });
-                          }}
-                          className={cn(
-                            "relative inline-block w-10 h-5 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out select-none",
-                            config.dynamic_sizing_enabled ? "bg-primary" : "bg-border-dark"
-                          )}
-                        >
-                          <span className={cn(
-                            "absolute top-0.5 left-0.5 block size-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                            config.dynamic_sizing_enabled ? "translate-x-5" : "translate-x-0"
-                          )} />
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-xs text-text-secondary">
-                          <span>1.0x</span>
-                          <span className="text-primary font-bold">{config.sizing_multiplier}x Max Multiplier</span>
-                        </div>
-                        <input 
-                          type="range" 
-                          min="1" 
-                          max="5" 
-                          step="0.1" 
-                          value={config.sizing_multiplier}
-                          onChange={(e) => setConfig({ ...config, sizing_multiplier: Number(e.target.value) })}
-                          className="w-full" 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Sticky Run Button */}
@@ -808,32 +830,37 @@ export default function AssetSimulationPage() {
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 animate-in fade-in slide-in-from-top-4 duration-500 delay-75">
                   {/* Card 1: Smart DCA */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                      <TrendingUp size={64} className="text-primary" />
-                    </div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-text-secondary text-sm font-medium">Total Return (Smart DCA)</p>
-                      <div className="group/info relative cursor-help">
-                        <Info size={14} className="text-text-secondary" />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                          Total return percentage including the smart strategies applied over the invested capital.
+                  {isSmartDcaEnabled && (
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <TrendingUp size={64} className="text-primary" />
+                      </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-text-secondary text-sm font-medium">Total Return (Smart DCA)</p>
+                        <div className="group/info relative cursor-help">
+                          <Info size={14} className="text-text-secondary" />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
+                            Total return percentage including the smart strategies applied over the invested capital.
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-baseline gap-2">
+                        <h3 className={cn("text-3xl font-bold", simulation.results.total_return_percent >= 0 ? "text-white" : "text-red-400")}>
+                          {simulation.results.total_return_percent > 0 ? "+" : ""}{simulation.results.total_return_percent}%
+                        </h3>
+                        <span className="text-primary text-sm font-bold bg-primary/10 px-2 py-0.5 rounded-full flex items-center">
+                          <TrendingUp size={12} className="mr-1" /> { (simulation.results.total_return_percent - simulation.results.baseline_return_percent).toFixed(1) }% vs Base
+                        </span>
+                      </div>
+                      <p className="text-text-secondary/60 text-xs mt-3">Final Value: ${simulation.results.final_value.toLocaleString()}</p>
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <h3 className={cn("text-3xl font-bold", simulation.results.total_return_percent >= 0 ? "text-white" : "text-red-400")}>
-                        {simulation.results.total_return_percent > 0 ? "+" : ""}{simulation.results.total_return_percent}%
-                      </h3>
-                      <span className="text-primary text-sm font-bold bg-primary/10 px-2 py-0.5 rounded-full flex items-center">
-                        <TrendingUp size={12} className="mr-1" /> { (simulation.results.total_return_percent - simulation.results.baseline_return_percent).toFixed(1) }% vs Base
-                      </span>
-                    </div>
-                    <p className="text-text-secondary/60 text-xs mt-3">Final Value: ${simulation.results.final_value.toLocaleString()}</p>
-                  </div>
+                  )}
 
                   {/* Card 2: Baseline */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden">
+                  <div className={cn(
+                    "bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden",
+                    !isSmartDcaEnabled && "sm:col-span-2 lg:col-span-2"
+                  )}>
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-text-secondary text-sm font-medium">Total Return (Standard DCA)</p>
                       <div className="group/info relative cursor-help">
@@ -880,16 +907,18 @@ export default function AssetSimulationPage() {
                           <Activity size={18} className="text-primary" />
                           Portfolio Value Growth
                         </h3>
-                        <p className="text-text-secondary text-[11px]">Cumulative capital growth vs baseline investment</p>
+                        <p className="text-text-secondary text-[11px]">Cumulative capital growth {isSmartDcaEnabled ? 'vs baseline investment' : ''}</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <div 
-                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.smart && "opacity-30")}
-                          onClick={() => setVisibleSeries(prev => ({ ...prev, smart: !prev.smart }))}
-                        >
-                          <span className="w-3 h-3 rounded-full bg-primary"></span>
-                          <span className="text-xs text-white">Smart DCA</span>
-                        </div>
+                        {isSmartDcaEnabled && (
+                          <div 
+                            className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.smart && "opacity-30")}
+                            onClick={() => setVisibleSeries(prev => ({ ...prev, smart: !prev.smart }))}
+                          >
+                            <span className="w-3 h-3 rounded-full bg-primary"></span>
+                            <span className="text-xs text-white">Smart DCA</span>
+                          </div>
+                        )}
                         <div 
                           className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.baseline && "opacity-30")}
                           onClick={() => setVisibleSeries(prev => ({ ...prev, baseline: !prev.baseline }))}
@@ -941,12 +970,12 @@ export default function AssetSimulationPage() {
                             labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
                             formatter={(value: any, name: string) => [`$${value.toLocaleString()}`, name]}
                           />
-                          {visibleSeries.smart && (
+                          {isSmartDcaEnabled && visibleSeries.smart && (
                             <Area 
                               type="monotone" 
                               dataKey="smart_value" 
                               stroke="#13ec5b" 
-                              strokeWidth={3}
+                              strokeWidth={3} 
                               fillOpacity={1} 
                               fill="url(#gradientSmart)" 
                               name="Smart DCA"
@@ -1148,7 +1177,7 @@ export default function AssetSimulationPage() {
                       <div className="group/info relative cursor-help">
                         <Info size={14} className="text-text-secondary" />
                         <div className="absolute bottom-full left-0 mb-2 w-64 p-2 bg-background-dark border border-border-active rounded text-[10px] text-white opacity-0 group-hover/info:opacity-100 transition-opacity z-50 pointer-events-none shadow-2xl">
-                          Detailed comparison between the baseline and optimized strategy.
+                          {isSmartDcaEnabled ? 'Detailed comparison between the baseline and optimized strategy.' : 'Detailed metrics of your DCA strategy.'}
                         </div>
                       </div>
                     </div>
@@ -1163,10 +1192,12 @@ export default function AssetSimulationPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-4 text-sm font-medium">
-                          <span className="text-slate-400" title="Standard DCA">${ simulation.results.baseline_avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
-                          <span className="text-primary" title="Smart DCA">${ simulation.results.avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
-                        </div>
+                    <div className="flex gap-4 text-sm font-medium">
+                      <span className="text-slate-400" title="Standard DCA">${ simulation.results.baseline_avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
+                      {isSmartDcaEnabled && (
+                        <span className="text-primary" title="Smart DCA">${ simulation.results.avg_purchase_price.toLocaleString(undefined, { maximumFractionDigits: 0 }) }</span>
+                      )}
+                    </div>
                       </div>
                       <div className="flex justify-between items-center pb-2 border-b border-border-dark flex-wrap gap-2">
                         <div className="flex items-center gap-2">
