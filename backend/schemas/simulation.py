@@ -82,6 +82,8 @@ class AssetSimpleResponse(BaseModel):
     ticker: str
     name: str
     asset_type: str
+    min_date: Optional[str] = None
+    max_date: Optional[str] = None
 
 
 class SimulationHistoryItem(BaseModel):

@@ -427,7 +427,20 @@ export default function AssetSimulationPage() {
                       value={config.asset_id}
                       onChange={(e) => {
                         const newId = Number(e.target.value);
-                        setConfig({ ...config, asset_id: newId });
+                        const asset = assets.find(a => a.id === newId);
+                        
+                        let newConfig = { ...config, asset_id: newId };
+                        
+                        // Auto-adjust dates if they are outside the new asset's range
+                        if (asset?.min_date && config.start_date < asset.min_date) {
+                          newConfig.start_date = asset.min_date;
+                        }
+                        if (asset?.max_date && config.end_date > asset.max_date) {
+                          newConfig.end_date = asset.max_date;
+                        }
+                        
+                        setConfig(newConfig);
+                        
                         if (newId === 0) {
                           setAssetPreviewData([]);
                           setSimulation(null);
@@ -458,9 +471,14 @@ export default function AssetSimulationPage() {
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
                       type="date" 
+                      min={selectedAsset?.min_date}
+                      max={config.end_date}
                       value={config.start_date}
                       onChange={(e) => {
-                        setConfig({ ...config, start_date: e.target.value });
+                        const newDate = e.target.value;
+                        if (selectedAsset?.min_date && newDate < selectedAsset.min_date) return;
+                        if (newDate > config.end_date) return;
+                        setConfig({ ...config, start_date: newDate });
                         if (!simulation) loadAssetPreview(config.asset_id);
                       }}
                     />
@@ -470,9 +488,14 @@ export default function AssetSimulationPage() {
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-3 text-sm"
                       type="date" 
+                      min={config.start_date}
+                      max={selectedAsset?.max_date}
                       value={config.end_date}
                       onChange={(e) => {
-                        setConfig({ ...config, end_date: e.target.value });
+                        const newDate = e.target.value;
+                        if (selectedAsset?.max_date && newDate > selectedAsset.max_date) return;
+                        if (newDate < config.start_date) return;
+                        setConfig({ ...config, end_date: newDate });
                         if (!simulation) loadAssetPreview(config.asset_id);
                       }}
                     />
@@ -505,9 +528,10 @@ export default function AssetSimulationPage() {
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm custom-number-input"
                       type="number" 
+                      min="0"
                       step="1000"
                       value={config.initial_capital}
-                      onChange={(e) => setConfig({ ...config, initial_capital: Number(e.target.value) })}
+                      onChange={(e) => setConfig({ ...config, initial_capital: Math.max(0, Number(e.target.value)) })}
                     />
                   </div>
                   <div className="flex flex-col gap-2">
@@ -553,9 +577,10 @@ export default function AssetSimulationPage() {
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-4 text-sm custom-number-input"
                       type="number" 
+                      min="1"
                       step="50"
                       value={config.base_amount}
-                      onChange={(e) => setConfig({ ...config, base_amount: Number(e.target.value) })}
+                      onChange={(e) => setConfig({ ...config, base_amount: Math.max(1, Number(e.target.value)) })}
                     />
                   </div>
                 </div>
@@ -601,30 +626,33 @@ export default function AssetSimulationPage() {
                     <label className="text-white text-[11px] font-medium opacity-80">Trade %</label>
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                      min="0"
                       step="0.1" 
                       type="number" 
                       value={config.commission_fee_percent}
-                      onChange={(e) => setConfig({ ...config, commission_fee_percent: Number(e.target.value) })}
+                      onChange={(e) => setConfig({ ...config, commission_fee_percent: Math.max(0, Number(e.target.value)) })}
                     />
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Min ($)</label>
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                      min="0"
                       step="0.1" 
                       type="number" 
                       value={config.minimum_fee_per_trade}
-                      onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Number(e.target.value) })}
+                      onChange={(e) => setConfig({ ...config, minimum_fee_per_trade: Math.max(0, Number(e.target.value)) })}
                     />
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className="text-white text-[11px] font-medium opacity-80">Maint %</label>
                     <input 
                       className="flex w-full rounded-lg text-white focus:outline-0 focus:ring-1 focus:ring-primary border border-border-active bg-surface-dark h-11 px-2 text-center text-sm appearance-none custom-number-input"
+                      min="0"
                       step="0.1" 
                       type="number" 
                       value={config.maintenance_fee_annual_percent}
-                      onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Number(e.target.value) })}
+                      onChange={(e) => setConfig({ ...config, maintenance_fee_annual_percent: Math.max(0, Number(e.target.value)) })}
                     />
                   </div>
                 </div>
@@ -695,9 +723,11 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  min="0"
+                                  max="100"
                                   step="5"
                                   value={config.rsi_threshold_low}
-                                  onChange={(e) => setConfig({ ...config, rsi_threshold_low: Number(e.target.value) })}
+                                  onChange={(e) => setConfig({ ...config, rsi_threshold_low: Math.min(100, Math.max(0, Number(e.target.value))) })}
                                 />
                               </div>
                               <div className="flex flex-col gap-1.5">
@@ -705,9 +735,11 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  min="0"
+                                  max="100"
                                   step="5"
                                   value={config.rsi_threshold_high}
-                                  onChange={(e) => setConfig({ ...config, rsi_threshold_high: Number(e.target.value) })}
+                                  onChange={(e) => setConfig({ ...config, rsi_threshold_high: Math.min(100, Math.max(0, Number(e.target.value))) })}
                                 />
                               </div>
                             </div>
@@ -721,9 +753,10 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  min="1"
                                   step="5"
                                   value={config.ma_period_short}
-                                  onChange={(e) => setConfig({ ...config, ma_period_short: Number(e.target.value) })}
+                                  onChange={(e) => setConfig({ ...config, ma_period_short: Math.max(1, Number(e.target.value)) })}
                                 />
                               </div>
                               <div className="flex flex-col gap-1.5">
@@ -731,9 +764,10 @@ export default function AssetSimulationPage() {
                                 <input 
                                   className="flex w-full rounded-lg text-white border border-border-active bg-background-dark h-9 px-3 text-xs custom-number-input"
                                   type="number" 
+                                  min="1"
                                   step="5"
                                   value={config.ma_period_long}
-                                  onChange={(e) => setConfig({ ...config, ma_period_long: Number(e.target.value) })}
+                                  onChange={(e) => setConfig({ ...config, ma_period_long: Math.max(1, Number(e.target.value)) })}
                                 />
                               </div>
                             </div>

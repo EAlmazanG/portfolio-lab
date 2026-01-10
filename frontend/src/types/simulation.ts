@@ -3,6 +3,8 @@ export interface Asset {
   ticker: string;
   name: string;
   asset_type: string;
+  min_date?: string;
+  max_date?: string;
 }
 
 export interface PortfolioPoint {

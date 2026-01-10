@@ -31,10 +31,31 @@ class SimulationService:
 
     @staticmethod
     def get_assets():
-        """Returns all active assets."""
+        """Returns all active assets with their available date range."""
         db = SessionLocal()
         try:
-            return db.query(Asset).filter(Asset.is_active == True).all()
+            from backend.models.market_data import MarketData
+            from sqlalchemy import func
+            
+            assets = db.query(Asset).filter(Asset.is_active == True).all()
+            response = []
+            
+            for asset in assets:
+                # Get min/max dates from MarketData
+                stats = db.query(
+                    func.min(MarketData.date).label("min_date"),
+                    func.max(MarketData.date).label("max_date")
+                ).filter(MarketData.asset_id == asset.id).first()
+                
+                response.append({
+                    "id": asset.id,
+                    "ticker": asset.ticker,
+                    "name": asset.name,
+                    "asset_type": asset.asset_type,
+                    "min_date": stats.min_date.strftime("%Y-%m-%d") if stats and stats.min_date else None,
+                    "max_date": stats.max_date.strftime("%Y-%m-%d") if stats and stats.max_date else None
+                })
+            return response
         finally:
             db.close()
 
