@@ -650,8 +650,8 @@ export default function AssetSimulationPage() {
                               onChange={(e) => setConfig({ ...config, smart_indicator: e.target.value as any })}
                             >
                               <option value="RSI">RSI (Relative Strength Index)</option>
-                              <option value="MA">Moving Average Crossover</option>
-                              <option value="MACD">MACD (Trend Following)</option>
+                              <option value="MA">Simple Moving Average</option>
+                              <option value="EMA">Exponential Moving Average</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
                               <ChevronDown size={14} />
@@ -682,8 +682,8 @@ export default function AssetSimulationPage() {
                             </div>
                           )}
 
-                          {/* MA Specific Params */}
-                          {config.smart_indicator === 'MA' && (
+                          {/* MA or EMA Specific Params */}
+                          {(config.smart_indicator === 'MA' || config.smart_indicator === 'EMA') && (
                             <div className="grid grid-cols-2 gap-3 mt-2">
                               <div className="flex flex-col gap-1.5">
                                 <label className="text-text-secondary text-[11px] font-bold uppercase tracking-wider">Short Period</label>
@@ -1102,7 +1102,7 @@ export default function AssetSimulationPage() {
                                 return [value.toFixed(4), config.smart_indicator];
                               }}
                             />
-                            {config.smart_indicator === 'MA' ? (
+                            {config.smart_indicator === 'MA' || config.smart_indicator === 'EMA' ? (
                               <>
                                 <Line type="monotone" dataKey="ma_short" stroke="#60a5fa" strokeWidth={1.5} dot={false} name="ma_short" isAnimationActive={false} />
                                 <Line type="monotone" dataKey="ma_long" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="ma_long" isAnimationActive={false} />
@@ -1181,10 +1181,10 @@ export default function AssetSimulationPage() {
                             formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name === 's_contribution' ? 'Smart DCA' : 'Standard DCA']}
                           />
                           {visibleContributions.baseline && (
-                            <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={48} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                           )}
                           {isSmartDcaEnabled && visibleContributions.smart && (
-                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={48} radius={[2, 2, 0, 0]} isAnimationActive={false} />
                           )}
                           <Brush 
                             dataKey="date" 

@@ -53,7 +53,7 @@ export interface SimulationConfig {
   timing_aggressiveness?: number;
   dynamic_sizing_enabled?: boolean;
   sizing_multiplier?: number;
-  smart_indicator?: 'RSI' | 'MA' | 'MACD';
+  smart_indicator?: 'RSI' | 'MA' | 'EMA';
   rsi_threshold_low?: number;
   rsi_threshold_high?: number;
   ma_period_short?: number;

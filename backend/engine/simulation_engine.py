@@ -100,15 +100,14 @@ class SimulationEngine:
             df.loc[df['ma_short_val'] < df['ma_long_val'], 'signal'] = 1  # Bearish -> buy less
             df.loc[df['ma_short_val'] > df['ma_long_val'], 'signal'] = -1 # Bullish -> buy more
             
-        elif indicator_type == "MACD":
-            exp1 = df['close'].ewm(span=12, adjust=False).mean()
-            exp2 = df['close'].ewm(span=26, adjust=False).mean()
-            df['macd'] = exp1 - exp2
-            df['signal_line'] = df['macd'].ewm(span=9, adjust=False).mean()
-            df['indicator_value'] = df['macd'] - df['signal_line']
+        elif indicator_type == "EMA":
+            df['ma_short_val'] = df['close'].ewm(span=ma_short, adjust=False).mean()
+            df['ma_long_val'] = df['close'].ewm(span=ma_long, adjust=False).mean()
+            df['indicator_value'] = df['ma_short_val'] / df['ma_long_val']
             df['signal'] = 0
-            df.loc[df['indicator_value'] < 0, 'signal'] = 1   # Bearish -> buy less
-            df.loc[df['indicator_value'] > 0, 'signal'] = -1  # Bullish -> buy more
+            # Signal based on crossover/position
+            df.loc[df['ma_short_val'] < df['ma_long_val'], 'signal'] = 1  # Bearish -> buy less
+            df.loc[df['ma_short_val'] > df['ma_long_val'], 'signal'] = -1 # Bullish -> buy more
 
         # Filter back to original start_date
         return df[df.index >= self.start_date]
