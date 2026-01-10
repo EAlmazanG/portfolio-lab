@@ -7,7 +7,7 @@ from alembic import context
 
 # Import models metadata
 from backend.db.base import Base
-from backend.models import Asset, MarketData
+from backend.models import Asset, MarketData, Portfolio, PortfolioAsset, Simulation, SimulationResult
 import os
 from dotenv import load_dotenv
 

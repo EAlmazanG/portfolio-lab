@@ -16,8 +16,12 @@ class Simulation(Base):
     name = Column(String(255), nullable=True)
     
     # Asset association
-    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=False)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
     asset = relationship("Asset", back_populates="simulations")
+
+    # Portfolio association
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=True)
+    portfolio = relationship("Portfolio", back_populates="simulations")
 
     # Configuration
     start_date = Column(DateTime, nullable=False)

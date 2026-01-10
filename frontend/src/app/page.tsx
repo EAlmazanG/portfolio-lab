@@ -368,7 +368,8 @@ export default function AssetSimulationPage() {
         <div className="flex flex-1 justify-end items-center gap-4">
           <div className="hidden md:flex items-center gap-6 border-l border-border-dark pl-6">
             <div className="flex items-center gap-6">
-            <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Asset</a>
+            <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="/">Asset</a>
+            <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="/portfolios">Portfolios</a>
             <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
           </div>
           <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
@@ -925,7 +926,7 @@ export default function AssetSimulationPage() {
           {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative">
             {simulation ? (
               <>
                 <header className="flex justify-between items-start mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -1678,7 +1679,7 @@ export default function AssetSimulationPage() {
                   >
                     <Trash2 size={16} />
                   </button>
-                </div>
+          </div>
               </div>
               <p className="text-text-secondary text-[11px] mb-4">Recover your previous analyses</p>
               
