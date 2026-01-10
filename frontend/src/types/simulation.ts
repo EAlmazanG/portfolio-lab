@@ -13,6 +13,8 @@ export interface PortfolioPoint {
   close: number;
   price: number;
   indicator_value: number;
+  ma_short: number;
+  ma_long: number;
   invested: number;
   baseline_value: number;
   smart_value: number;

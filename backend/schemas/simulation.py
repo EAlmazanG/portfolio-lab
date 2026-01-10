@@ -42,6 +42,8 @@ class PortfolioPoint(BaseModel):
     close: float = 0.0
     price: float
     indicator_value: float = 0.0
+    ma_short: float = 0.0
+    ma_long: float = 0.0
     invested: float
     baseline_value: float
     smart_value: float

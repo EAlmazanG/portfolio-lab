@@ -85,6 +85,10 @@ export default function AssetSimulationPage() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [isSmartDcaEnabled, setIsSmartDcaEnabled] = useState(true);
+  const [visibleContributions, setVisibleContributions] = useState({
+    baseline: true,
+    smart: true
+  });
   const [visibleSeries, setVisibleSeries] = useState({
     smart: true,
     baseline: true,
@@ -901,9 +905,9 @@ export default function AssetSimulationPage() {
                 </div>
 
                 {/* Main Chart Area */}
-                <div className="flex flex-col gap-6 mb-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-150">
-                  {/* Portfolio Growth Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
+                <div className="flex flex-col gap-10 mb-10 animate-in fade-in slide-in-from-top-4 duration-500 delay-150">
+                  {/* Portfolio Growth Chart - FULL WIDTH (100%) */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm w-full">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                       <div className="flex flex-col">
                         <h3 className="text-white text-lg font-bold flex items-center gap-2">
@@ -938,9 +942,9 @@ export default function AssetSimulationPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="w-full h-[350px]">
+                    <div className="w-full h-[400px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <AreaChart data={simulation.results.portfolio_history}>
                           <defs>
                             <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
@@ -961,7 +965,6 @@ export default function AssetSimulationPage() {
                             interval={Math.floor(simulation.results.portfolio_history.length / 5)}
                           />
                           <YAxis 
-                            yAxisId="growthAxis"
                             stroke="#9db9a6" 
                             fontSize={10} 
                             tickLine={false} 
@@ -976,7 +979,6 @@ export default function AssetSimulationPage() {
                           />
                           {isSmartDcaEnabled && visibleSeries.smart && (
                             <Area 
-                              yAxisId="growthAxis"
                               type="monotone" 
                               dataKey="smart_value" 
                               stroke="#13ec5b" 
@@ -988,7 +990,6 @@ export default function AssetSimulationPage() {
                           )}
                           {visibleSeries.baseline && (
                             <Area 
-                              yAxisId="growthAxis"
                               type="monotone" 
                               dataKey="baseline_value" 
                               stroke="#94a3b8" 
@@ -999,7 +1000,6 @@ export default function AssetSimulationPage() {
                           )}
                           {visibleSeries.invested && (
                             <Area 
-                              yAxisId="growthAxis"
                               type="monotone" 
                               dataKey="invested" 
                               stroke="#64748b" 
@@ -1014,8 +1014,193 @@ export default function AssetSimulationPage() {
                     </div>
                   </div>
 
-                  {/* Fees & Net Value Impact Section */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-200">
+                  {/* Asset Price Chart - FULL WIDTH (100%) */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-300 w-full">
+                    <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
+                      <div className="flex flex-col">
+                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
+                          <Activity size={18} className="text-blue-400" />
+                          Asset Price Reference
+                        </h3>
+                        <p className="text-text-secondary text-[11px]">Historical price action for reference</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-blue-400"></span>
+                        <span className="text-xs text-text-secondary font-bold">Price Line</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-[350px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <defs>
+                            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis dataKey="date" hide />
+                          <YAxis 
+                            orientation="right"
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            domain={['auto', 'auto']}
+                            tickFormatter={(value) => `$${Math.round(value).toLocaleString()}`}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                            formatter={(value: any) => [`$${value.toLocaleString()}`, "Price"]}
+                            labelStyle={{ color: '#9db9a6', fontSize: '10px' }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="close" 
+                            stroke="#60a5fa" 
+                            fillOpacity={1} 
+                            fill="url(#colorPrice)" 
+                            strokeWidth={2}
+                            isAnimationActive={false}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Smart Indicator Chart - FULL WIDTH */}
+                  {isSmartDcaEnabled && (
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-350 w-full shadow-lg">
+                      <div className="flex flex-col mb-4">
+                        <h3 className="text-white text-sm font-bold flex items-center gap-2 uppercase tracking-wider">
+                          <BrainCircuit size={16} className="text-primary" />
+                          {config.smart_indicator} Indicator
+                        </h3>
+                        <p className="text-text-secondary text-[10px]">Technical analysis used for trade decisions</p>
+                      </div>
+                      <div className="w-full h-[120px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                            <XAxis dataKey="date" hide />
+                            <YAxis 
+                              orientation="right"
+                              stroke="#9db9a6" 
+                              fontSize={10} 
+                              tickLine={false} 
+                              axisLine={false}
+                              domain={config.smart_indicator === 'RSI' ? [0, 100] : ['auto', 'auto']}
+                              tickFormatter={(value) => value.toFixed(1)}
+                            />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                              itemStyle={{ fontSize: '11px' }}
+                              labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '10px' }}
+                              formatter={(value: any, name: string) => {
+                                if (name === 'ma_short') return [value.toFixed(2), `MA ${config.ma_period_short}`];
+                                if (name === 'ma_long') return [value.toFixed(2), `MA ${config.ma_period_long}`];
+                                return [value.toFixed(4), config.smart_indicator];
+                              }}
+                            />
+                            {config.smart_indicator === 'MA' ? (
+                              <>
+                                <Line type="monotone" dataKey="ma_short" stroke="#60a5fa" strokeWidth={1.5} dot={false} name="ma_short" isAnimationActive={false} />
+                                <Line type="monotone" dataKey="ma_long" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="ma_long" isAnimationActive={false} />
+                              </>
+                            ) : (
+                              <Line type="monotone" dataKey="indicator_value" stroke="#13ec5b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                            )}
+                            {config.smart_indicator === 'RSI' && (
+                              <>
+                                <Line dataKey={() => config.rsi_threshold_low} stroke="#f87171" strokeDasharray="3 3" dot={false} strokeWidth={1} opacity={0.3} />
+                                <Line dataKey={() => config.rsi_threshold_high} stroke="#f87171" strokeDasharray="3 3" dot={false} strokeWidth={1} opacity={0.3} />
+                              </>
+                            )}
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contributions Timeline Chart - FULL WIDTH */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-400 w-full shadow-lg">
+                    <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                      <div className="flex flex-col">
+                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
+                          <Coins size={18} className="text-primary" />
+                          Contributions Timeline
+                        </h3>
+                        <p className="text-text-secondary text-[11px]">Compare exact contribution amounts and timing</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        {isSmartDcaEnabled && (
+                          <div 
+                            className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleContributions.smart && "opacity-30")}
+                            onClick={() => setVisibleContributions(prev => ({ ...prev, smart: !prev.smart }))}
+                          >
+                            <span className="w-3 h-3 rounded-sm bg-primary"></span>
+                            <span className="text-xs text-white">Smart Contribution</span>
+                          </div>
+                        )}
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleContributions.baseline && "opacity-30")}
+                          onClick={() => setVisibleContributions(prev => ({ ...prev, baseline: !prev.baseline }))}
+                        >
+                          <span className="w-3 h-3 rounded-sm bg-slate-400/30 border border-slate-400/50"></span>
+                          <span className="text-xs text-text-secondary">Standard Contribution</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(str) => {
+                              const date = new Date(str);
+                              return `${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
+                            }}
+                          />
+                          <YAxis 
+                            orientation="right"
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => `$${value}`}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
+                            itemStyle={{ fontSize: '12px', padding: '2px 0' }}
+                            labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
+                            formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name === 's_contribution' ? 'Smart DCA' : 'Standard DCA']}
+                          />
+                          {visibleContributions.baseline && (
+                            <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          )}
+                          {isSmartDcaEnabled && visibleContributions.smart && (
+                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+                          )}
+                          <Brush 
+                            dataKey="date" 
+                            height={40} 
+                            stroke="#3b5443" 
+                            fill="#0b0f0c"
+                            travellerWidth={10}
+                            tickFormatter={() => ""}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Fees & Net Value Impact Section - FULL WIDTH */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-200 w-full mx-auto">
                     {/* Cumulative Fees Over Time */}
                     <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
                       <div className="flex justify-between items-center mb-6">
@@ -1116,202 +1301,6 @@ export default function AssetSimulationPage() {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Asset Price Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-300">
-                    <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                      <div className="flex flex-col">
-                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
-                          <Activity size={18} className="text-blue-400" />
-                          Asset Price Reference
-                        </h3>
-                        <p className="text-text-secondary text-[11px]">Daily OHLC price action</p>
-                      </div>
-                      <div 
-                        className={cn("flex items-center gap-2 cursor-pointer transition-opacity", !visibleSeries.price && "opacity-30")}
-                        onClick={() => setVisibleSeries(prev => ({ ...prev, price: !prev.price }))}
-                      >
-                        <span className="w-3 h-3 rounded-full bg-blue-400"></span>
-                        <span className="text-xs text-text-secondary font-bold">Candles</span>
-                      </div>
-                    </div>
-                    <div className="w-full h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                          <XAxis dataKey="date" hide />
-                          <YAxis 
-                            orientation="right"
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            domain={['auto', 'auto']}
-                            tickFormatter={(value) => `$${Math.round(value).toLocaleString()}`}
-                          />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
-                            content={({ active, payload, label }) => {
-                              if (active && payload && payload.length) {
-                                const data = payload[0].payload;
-                                return (
-                                  <div className="bg-[#1c271f] border border-[#3b5443] p-3 rounded-lg shadow-xl">
-                                    <p className="text-[#9db9a6] text-[10px] font-bold mb-2 uppercase">{new Date(label).toLocaleDateString()}</p>
-                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                      <span className="text-text-secondary text-[10px]">Open:</span>
-                                      <span className="text-white text-[10px] font-mono">${data.open?.toLocaleString()}</span>
-                                      <span className="text-text-secondary text-[10px]">High:</span>
-                                      <span className="text-white text-[10px] font-mono">${data.high?.toLocaleString()}</span>
-                                      <span className="text-text-secondary text-[10px]">Low:</span>
-                                      <span className="text-white text-[10px] font-mono">${data.low?.toLocaleString()}</span>
-                                      <span className="text-text-secondary text-[10px]">Close:</span>
-                                      <span className="text-white text-[10px] font-mono">${data.close?.toLocaleString()}</span>
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          {visibleSeries.price && (
-                            <Bar 
-                              dataKey="high" 
-                              fill="none" 
-                              isAnimationActive={false}
-                              shape={(props: any) => {
-                                const { x, width, payload, yAxis } = props;
-                                if (!yAxis?.scale || !payload || !(payload.open > 0)) return null;
-                                const isUp = payload.close >= payload.open;
-                                const color = isUp ? "#13ec5b" : "#f87171";
-                                const openY = yAxis.scale(payload.open);
-                                const closeY = yAxis.scale(payload.close);
-                                const highY = yAxis.scale(payload.high);
-                                const lowY = yAxis.scale(payload.low);
-                                return (
-                                  <g key={`candle-${payload.date}`}>
-                                    <line x1={x + width / 2} y1={highY} x2={x + width / 2} y2={lowY} stroke={color} strokeWidth={1} />
-                                    <rect x={x} y={Math.min(openY, closeY)} width={width} height={Math.max(Math.abs(openY - closeY), 1)} fill={color} />
-                                  </g>
-                                );
-                              }}
-                            />
-                          )}
-                        </ComposedChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Smart Indicator Chart */}
-                  {isSmartDcaEnabled && (
-                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-350">
-                      <div className="flex flex-col mb-4">
-                        <h3 className="text-white text-sm font-bold flex items-center gap-2 uppercase tracking-wider">
-                          <BrainCircuit size={16} className="text-primary" />
-                          {config.smart_indicator} Indicator
-                        </h3>
-                        <p className="text-text-secondary text-[10px]">Technical analysis used for trade decisions</p>
-                      </div>
-                      <div className="w-full h-[120px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                            <XAxis dataKey="date" hide />
-                            <YAxis 
-                              orientation="right"
-                              stroke="#9db9a6" 
-                              fontSize={10} 
-                              tickLine={false} 
-                              axisLine={false}
-                              domain={config.smart_indicator === 'RSI' ? [0, 100] : ['auto', 'auto']}
-                              tickFormatter={(value) => value.toFixed(1)}
-                            />
-                            <Tooltip 
-                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
-                              itemStyle={{ fontSize: '11px', color: '#13ec5b' }}
-                              labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '10px' }}
-                              formatter={(value: any) => [value.toFixed(4), config.smart_indicator]}
-                            />
-                            <Line type="monotone" dataKey="indicator_value" stroke="#13ec5b" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                            {config.smart_indicator === 'RSI' && (
-                              <>
-                                <Line dataKey={() => config.rsi_threshold_low} stroke="#f87171" strokeDasharray="3 3" dot={false} strokeWidth={1} opacity={0.3} />
-                                <Line dataKey={() => config.rsi_threshold_high} stroke="#f87171" strokeDasharray="3 3" dot={false} strokeWidth={1} opacity={0.3} />
-                              </>
-                            )}
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Contributions Timeline Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-500 delay-400">
-                    <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-                      <div className="flex flex-col">
-                        <h3 className="text-white text-lg font-bold flex items-center gap-2">
-                          <Coins size={18} className="text-primary" />
-                          Contributions Timeline
-                        </h3>
-                        <p className="text-text-secondary text-[11px]">Compare exact contribution amounts and timing</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        {isSmartDcaEnabled && (
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-sm bg-primary"></span>
-                            <span className="text-xs text-white">Smart Contribution</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-sm bg-slate-400/30 border border-slate-400/50"></span>
-                          <span className="text-xs text-text-secondary">Standard Contribution</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="w-full h-[250px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(str) => {
-                              const date = new Date(str);
-                              return `${date.getMonth()+1}/${date.getFullYear().toString().slice(-2)}`;
-                            }}
-                          />
-                          <YAxis 
-                            orientation="right"
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(value) => `$${value}`}
-                          />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '8px' }}
-                            itemStyle={{ fontSize: '12px', padding: '2px 0' }}
-                            labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
-                            formatter={(value: any, name: string) => [`$${Number(value).toLocaleString()}`, name === 's_contribution' ? 'Smart DCA' : 'Standard DCA']}
-                          />
-                          <Bar dataKey="b_contribution" fill="#94a3b8" opacity={0.3} name="Standard DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
-                          {isSmartDcaEnabled && (
-                            <Bar dataKey="s_contribution" fill="#13ec5b" name="Smart DCA" barSize={12} radius={[2, 2, 0, 0]} isAnimationActive={false} />
-                          )}
-                          <Brush 
-                            dataKey="date" 
-                            height={40} 
-                            stroke="#3b5443" 
-                            fill="#0b0f0c"
-                            travellerWidth={10}
-                            tickFormatter={() => ""}
-                          />
-                        </ComposedChart>
-                      </ResponsiveContainer>
                     </div>
                   </div>
                 </div>

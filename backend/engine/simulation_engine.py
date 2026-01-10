@@ -92,13 +92,13 @@ class SimulationEngine:
             df.loc[df['indicator_value'] > rsi_high, 'signal'] = 1
             
         elif indicator_type == "MA":
-            df['ma_short'] = df['close'].rolling(window=ma_short).mean()
-            df['ma_long'] = df['close'].rolling(window=ma_long).mean()
-            df['indicator_value'] = df['ma_short'] / df['ma_long']
+            df['ma_short_val'] = df['close'].rolling(window=ma_short).mean()
+            df['ma_long_val'] = df['close'].rolling(window=ma_long).mean()
+            df['indicator_value'] = df['ma_short_val'] / df['ma_long_val']
             df['signal'] = 0
             # Signal based on crossover/position
-            df.loc[df['ma_short'] < df['ma_long'], 'signal'] = 1  # Bearish -> buy less
-            df.loc[df['ma_short'] > df['ma_long'], 'signal'] = -1 # Bullish -> buy more
+            df.loc[df['ma_short_val'] < df['ma_long_val'], 'signal'] = 1  # Bearish -> buy less
+            df.loc[df['ma_short_val'] > df['ma_long_val'], 'signal'] = -1 # Bullish -> buy more
             
         elif indicator_type == "MACD":
             exp1 = df['close'].ewm(span=12, adjust=False).mean()
@@ -330,6 +330,8 @@ class SimulationEngine:
                 "close": round(float(row['close']), 2),
                 "price": round(float(row['close']), 2),
                 "indicator_value": round(float(row['indicator_value']), 4) if 'indicator_value' in row else 0.0,
+                "ma_short": round(float(row['ma_short_val']), 2) if 'ma_short_val' in row else 0.0,
+                "ma_long": round(float(row['ma_long_val']), 2) if 'ma_long_val' in row else 0.0,
                 "invested": round(float(s_invested), 2),
                 "baseline_value": round(float(b_assets * row['close']), 2),
                 "smart_value": round(float(s_assets * row['close']), 2),
