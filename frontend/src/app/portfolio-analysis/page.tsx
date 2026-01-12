@@ -140,7 +140,10 @@ export default function PortfolioSimulationPage() {
         return { date, value: weightedSum };
       });
       
-      setPreviewData(indexPoints);
+      // Filter for weekly data to reduce noise (1 point every 7 days)
+      const weeklyPoints = indexPoints.filter((_, idx) => idx % 7 === 0 || idx === indexPoints.length - 1);
+      
+      setPreviewData(weeklyPoints);
     } catch (error) {
       console.error("Error loading preview:", error);
     } finally {
@@ -755,55 +758,94 @@ export default function PortfolioSimulationPage() {
                   </div>
                 </div>
               ) : selectedPortfolioDetails ? (
-                <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-10">
-                  <header className="flex justify-between items-start">
-                    <div className="flex flex-col">
-                      <h2 className="text-white text-[28px] font-bold leading-tight mb-2">{selectedPortfolioDetails.name}</h2>
-                      <div className="flex items-center gap-4 text-[10px] text-text-secondary font-black uppercase tracking-widest mt-2 opacity-60">
-                        <span className="flex items-center gap-1.5"><Layers size={12} className="text-primary" /> {selectedPortfolioDetails.assets.length} Assets</span>
-                        <div className="size-1 rounded-full bg-border-dark"></div>
-                        <span className="flex items-center gap-1.5"><Calendar size={12} className="text-primary" /> {config.start_date} → {config.end_date}</span>
-                      </div>
+                <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-10 flex-1 flex flex-col justify-center">
+                  <header className="flex flex-col">
+                    <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Portfolio Overview</h2>
+                    <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
+                      <LineChartIcon size={14} className="text-primary" />
+                      <span>Historical index performance for </span>
+                      <span className="text-primary font-bold">{selectedPortfolioDetails.name}</span>
                     </div>
                   </header>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                    <div className="lg:col-span-3 bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
-                      <h3 className="text-white text-[11px] font-black uppercase tracking-widest mb-6 opacity-50">Portfolio Index (1Y)</h3>
-                      <div className="h-[320px]">
-                        {loadingPreview ? <div className="h-full flex flex-col items-center justify-center gap-6"><RefreshCcw size={32} className="animate-spin text-primary opacity-40" /><span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Syncing index data...</span></div> : (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={previewData}><defs><linearGradient id="colorPreview" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#13ec5b" stopOpacity={0.1}/><stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/></linearGradient></defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
-                              <XAxis dataKey="date" hide /><YAxis hide domain={['dataMin - 5', 'dataMax + 5']} /><Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }} itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: '900' }} labelStyle={{ display: 'none' }} formatter={(val: number) => [val.toFixed(2), "Price Index"]} />
-                              <Area type="monotone" dataKey="value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#colorPreview)" animationDuration={2000} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        )}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 shadow-xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                      <Activity size={200} className="text-primary" />
+                    </div>
+                    
+                    <div className="flex justify-between items-end mb-8 relative z-10">
+                      <div>
+                        <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Current Index Value</p>
+                        <h3 className="text-white text-4xl font-black tabular-nums">
+                          {previewData.length > 0 ? previewData[previewData.length - 1].value.toFixed(2) : "0.00"}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Period Range</p>
+                        <p className="text-white font-bold">{new Date(config.start_date).getFullYear()} — {new Date(config.end_date).getFullYear()}</p>
                       </div>
                     </div>
-                    <div className="lg:col-span-2 bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
-                      <h3 className="text-white text-[11px] font-black uppercase tracking-widest mb-6 opacity-50">Strategic Weights</h3>
-                      <div className="h-[320px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsPieChart>
-                            <Pie data={selectedPortfolioDetails.assets.map(pa => ({ name: pa.asset?.ticker || "Unknown", value: pa.weight * 100 }))} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value" stroke="none" label={({ name, value }) => `${name} ${value.toFixed(0)}%`} labelLine={{ stroke: '#333', strokeWidth: 1.5 }} animationDuration={2000}>
-                              {selectedPortfolioDetails.assets.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }} itemStyle={{ fontWeight: '900', color: '#fff' }} />
-                          </RechartsPieChart>
-                        </ResponsiveContainer>
-                      </div>
+
+                    <div className="w-full h-[400px] relative z-10">
+                      {loadingPreview && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-background-dark/20 backdrop-blur-[2px] z-20 rounded-xl">
+                          <RefreshCcw size={30} className="text-primary animate-spin" />
+                        </div>
+                      )}
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={previewData}>
+                          <defs>
+                            <linearGradient id="previewGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.1}/>
+                              <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(str) => {
+                              const date = new Date(str);
+                              return date.getFullYear().toString();
+                            }}
+                            interval={Math.floor(previewData.length / 6)}
+                          />
+                          <YAxis 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => value.toFixed(0)}
+                          />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                            itemStyle={{ fontSize: '14px', color: '#13ec5b', fontWeight: 'bold' }}
+                            labelStyle={{ color: '#9db9a6', marginBottom: '8px' }}
+                            formatter={(value: any) => [value.toFixed(2), "Index Value"]}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="value" 
+                            stroke="#13ec5b" 
+                            strokeWidth={3}
+                            fillOpacity={1} 
+                            fill="url(#previewGradient)" 
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                  </div>
-                  
-                  <div className="mt-8 flex items-center justify-center gap-4 py-4 bg-primary/5 rounded-xl border border-primary/10">
-                    <span className="text-primary">
-                      <Info size={18} />
-                    </span>
-                    <p className="text-sm text-text-secondary">
-                      You are viewing the <span className="text-white font-bold text-base">historical index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Run Simulation</span> to analyze results.
-                    </p>
+                    
+                    <div className="mt-8 flex items-center justify-center gap-4 py-4 bg-primary/5 rounded-xl border border-primary/10">
+                      <span className="text-primary">
+                        <Info size={18} />
+                      </span>
+                      <p className="text-sm text-text-secondary">
+                        You are viewing the <span className="text-white font-bold text-base">historical portfolio index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Run Simulation</span> to analyze results.
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : (

@@ -178,7 +178,10 @@ export default function PortfolioBuilderPage() {
           });
           return { date, value: weightedValue };
         });
-        setPortfolioIndexData(indexValues);
+
+        // Filter for weekly data to reduce noise (1 point every 7 days)
+        const weeklyValues = indexValues.filter((_, idx) => idx % 7 === 0 || idx === indexValues.length - 1);
+        setPortfolioIndexData(weeklyValues);
       }
     } catch (error) {
       console.error("Failed to load portfolio index:", error);
@@ -680,9 +683,13 @@ export default function PortfolioBuilderPage() {
                 </div>
 
                 {/* Price Index Chart */}
-                <div className="bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl">
-                  <div className="flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-5">
+                <div className="bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                    <Activity size={200} className="text-primary" />
+                  </div>
+
+                  <div className="flex flex-col mb-10 relative z-10">
+                    <div className="flex items-center gap-5 mb-2">
                       <div className="p-3 bg-primary/10 rounded-2xl text-primary">
                         <TrendingUp size={24} />
                       </div>
@@ -691,8 +698,26 @@ export default function PortfolioBuilderPage() {
                       </h3>
                       {renderInfoIcon(METRIC_INFO.portfolioIndex)}
                     </div>
+                    <div className="flex items-center gap-2 text-text-secondary text-xs font-medium opacity-60 ml-[60px]">
+                      <span>Historical index performance for </span>
+                      <span className="text-primary font-bold">{selectedPortfolio.name}</span>
+                    </div>
                   </div>
-                  <div className="h-[450px] w-full">
+
+                  <div className="flex justify-between items-end mb-8 relative z-10">
+                    <div>
+                      <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Current Index Value</p>
+                      <h3 className="text-white text-4xl font-black tabular-nums">
+                        {portfolioIndexData.length > 0 ? portfolioIndexData[portfolioIndexData.length - 1].value.toFixed(2) : "0.00"}
+                      </h3>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Period Range</p>
+                      <p className="text-white font-bold">Last 12 Months</p>
+                    </div>
+                  </div>
+
+                  <div className="h-[450px] w-full relative z-10">
                     {loadingIndex ? (
                       <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-8">
                         <RefreshCcw size={40} className="animate-spin text-primary opacity-50" />
@@ -710,15 +735,22 @@ export default function PortfolioBuilderPage() {
                           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
                           <XAxis 
                             dataKey="date" 
-                            axisLine={false} 
+                            stroke="#9db9a6" 
+                            fontSize={10} 
                             tickLine={false} 
-                            tick={{fill: '#666', fontSize: 11, fontWeight: 'bold'}} 
-                            minTickGap={80}
-                            tickFormatter={(str) => new Date(str).toLocaleDateString("en-US", {month: 'short'})}
+                            axisLine={false}
+                            tickFormatter={(str) => {
+                              const date = new Date(str);
+                              return date.getFullYear().toString();
+                            }}
+                            interval={Math.floor(portfolioIndexData.length / 6)}
                           />
                           <YAxis 
-                            hide 
-                            domain={['dataMin - 5', 'dataMax + 5']}
+                            stroke="#9db9a6" 
+                            fontSize={10} 
+                            tickLine={false} 
+                            axisLine={false}
+                            tickFormatter={(value) => value.toFixed(0)}
                           />
                           <RechartsTooltip 
                             contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '24px', padding: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
