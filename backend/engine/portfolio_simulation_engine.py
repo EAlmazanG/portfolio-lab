@@ -185,8 +185,8 @@ class PortfolioSimulationEngine:
         df['date'] = pd.to_datetime(df['date'])
         df.set_index('date', inplace=True)
         
-        # Resample logic:
-        # 1. For stateful/cumulative values, take the last value of the week
+        # 1. Resample logic:
+        # For stateful/cumulative values, take the last value of the week
         cumulative_cols = ["invested", "baseline_value", "smart_value", "cumulative_fees", "price"]
         weekly_cumulative = df[cumulative_cols].resample('W').last().ffill()
         
@@ -196,6 +196,14 @@ class PortfolioSimulationEngine:
         
         # Combine them
         weekly = pd.concat([weekly_cumulative, weekly_contributions], axis=1)
+        
+        # 3. Add the very first day of history to ensure we don't skip the start
+        first_day_idx = df.index[0]
+        if first_day_idx not in weekly.index:
+            first_day = df.loc[first_day_idx:first_day_idx].copy()
+            # For the first day, we keep its contributions as they are already daily
+            weekly = pd.concat([first_day, weekly])
+            weekly = weekly.sort_index()
         
         # Convert back to list of dicts
         weekly_history = []
@@ -235,6 +243,12 @@ class PortfolioSimulationEngine:
 
         # Get all unique dates
         all_dates = pd.concat([df.index.to_series() for df in asset_dfs]).unique()
+        
+        # Ensure the portfolio start date is included in the history
+        start_ts = pd.Timestamp(self.start_date).normalize()
+        if start_ts not in all_dates:
+            all_dates = np.append(all_dates, start_ts)
+            
         all_dates = np.sort(all_dates)
         
         # Create a combined dataframe with all dates

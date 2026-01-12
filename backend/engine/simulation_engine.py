@@ -227,7 +227,31 @@ class SimulationEngine:
             s_invested += initial_capital
             s_fees += fee
 
+        # Record history
         portfolio_history = []
+        
+        # Add Initial Investment Point at start_date if it's before the first market data point
+        # This prevents the chart from starting at 0 and showing a "spike"
+        first_market_date = indicator_df.index[0]
+        if self.start_date < first_market_date:
+            portfolio_history.append({
+                "date": self.start_date.strftime("%Y-%m-%d"),
+                "open": round(float(indicator_df.iloc[0]['open']), 2),
+                "high": round(float(indicator_df.iloc[0]['high']), 2),
+                "low": round(float(indicator_df.iloc[0]['low']), 2),
+                "close": round(float(indicator_df.iloc[0]['close']), 2),
+                "price": round(float(indicator_df.iloc[0]['close']), 2),
+                "indicator_value": 0.0,
+                "ma_short": 0.0,
+                "ma_long": 0.0,
+                "invested": round(float(s_invested), 2),
+                "baseline_value": round(float(s_invested), 2), # At the very start, value equals investment
+                "smart_value": round(float(s_invested), 2),
+                "cumulative_fees": round(float(s_fees), 2),
+                "b_contribution": 0.0,
+                "s_contribution": 0.0
+            })
+
         current_year = indicator_df.index[0].year
         
         # Track annual budget for smart strategy
