@@ -768,84 +768,143 @@ export default function PortfolioSimulationPage() {
                     </div>
                   </header>
 
-                  <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 shadow-xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
-                      <Activity size={200} className="text-primary" />
-                    </div>
-                    
-                    <div className="flex justify-between items-end mb-8 relative z-10">
-                      <div>
-                        <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Current Index Value</p>
-                        <h3 className="text-white text-4xl font-black tabular-nums">
-                          {previewData.length > 0 ? previewData[previewData.length - 1].value.toFixed(2) : "0.00"}
-                        </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Index Chart Card */}
+                    <div className="lg:col-span-2 bg-surface-dark border border-border-active/50 rounded-2xl p-8 shadow-xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                        <Activity size={200} className="text-primary" />
                       </div>
-                      <div className="text-right">
-                        <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Period Range</p>
-                        <p className="text-white font-bold">{new Date(config.start_date).getFullYear()} — {new Date(config.end_date).getFullYear()}</p>
+                      
+                      <div className="flex justify-between items-end mb-8 relative z-10">
+                        <div>
+                          <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Current Index Value</p>
+                          <h3 className="text-white text-4xl font-black tabular-nums">
+                            {previewData.length > 0 ? previewData[previewData.length - 1].value.toFixed(2) : "0.00"}
+                          </h3>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Period Range</p>
+                          <p className="text-white font-bold">Last 12 Months</p>
+                        </div>
+                      </div>
+
+                      <div className="w-full h-[400px] relative z-10">
+                        {loadingPreview && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-background-dark/20 backdrop-blur-[2px] z-20 rounded-xl">
+                            <RefreshCcw size={30} className="text-primary animate-spin" />
+                          </div>
+                        )}
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={previewData}>
+                            <defs>
+                              <linearGradient id="previewGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.1}/>
+                                <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
+                            <XAxis 
+                              dataKey="date" 
+                              stroke="#9db9a6" 
+                              fontSize={10} 
+                              tickLine={false} 
+                              axisLine={false}
+                              tickFormatter={(str) => {
+                                const date = new Date(str);
+                                return date.getFullYear().toString();
+                              }}
+                              interval={Math.floor(previewData.length / 6)}
+                            />
+                            <YAxis 
+                              stroke="#9db9a6" 
+                              fontSize={10} 
+                              tickLine={false} 
+                              axisLine={false}
+                              tickFormatter={(value) => value.toFixed(0)}
+                            />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
+                              itemStyle={{ fontSize: '14px', color: '#13ec5b', fontWeight: 'bold' }}
+                              labelStyle={{ color: '#9db9a6', marginBottom: '8px' }}
+                              formatter={(value: any) => [value.toFixed(2), "Index Value"]}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="value" 
+                              stroke="#13ec5b" 
+                              strokeWidth={3}
+                              fillOpacity={1} 
+                              fill="url(#previewGradient)" 
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
 
-                    <div className="w-full h-[400px] relative z-10">
-                      {loadingPreview && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-background-dark/20 backdrop-blur-[2px] z-20 rounded-xl">
-                          <RefreshCcw size={30} className="text-primary animate-spin" />
+                    {/* Composition Card */}
+                    <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 shadow-xl flex flex-col">
+                      <div className="flex flex-col gap-1 mb-8">
+                        <span className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em] opacity-50">Strategic Weights</span>
+                        <h3 className="text-white text-xl font-bold flex items-center gap-2">
+                          <PieChartIcon size={18} className="text-primary" />
+                          Composition
+                        </h3>
+                      </div>
+
+                      <div className="flex-1 flex flex-col items-center justify-center relative min-h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie
+                              data={selectedPortfolioDetails.assets.map(pa => ({ name: pa.asset?.ticker || "???", value: pa.weight * 100 }))}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={80}
+                              outerRadius={110}
+                              paddingAngle={8}
+                              dataKey="value"
+                              stroke="none"
+                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              labelLine={{ stroke: '#3b5443', strokeWidth: 1 }}
+                            >
+                              {selectedPortfolioDetails.assets.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }}
+                              itemStyle={{ fontWeight: 'bold', color: '#fff', fontSize: '12px' }}
+                            />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                        
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-2">
+                          <span className="text-4xl font-black text-primary drop-shadow-[0_0_20px_rgba(19,236,91,0.3)]">
+                            {selectedPortfolioDetails.assets.length}
+                          </span>
+                          <span className="text-[9px] text-text-secondary uppercase font-black tracking-widest opacity-40">Assets</span>
                         </div>
-                      )}
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={previewData}>
-                          <defs>
-                            <linearGradient id="previewGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.1}/>
-                              <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(str) => {
-                              const date = new Date(str);
-                              return date.getFullYear().toString();
-                            }}
-                            interval={Math.floor(previewData.length / 6)}
-                          />
-                          <YAxis 
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(value) => value.toFixed(0)}
-                          />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)' }}
-                            itemStyle={{ fontSize: '14px', color: '#13ec5b', fontWeight: 'bold' }}
-                            labelStyle={{ color: '#9db9a6', marginBottom: '8px' }}
-                            formatter={(value: any) => [value.toFixed(2), "Index Value"]}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="value" 
-                            stroke="#13ec5b" 
-                            strokeWidth={3}
-                            fillOpacity={1} 
-                            fill="url(#previewGradient)" 
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
+                      </div>
+
+                      <div className="mt-8 grid grid-cols-2 gap-4">
+                        <div className="bg-background-dark/40 p-3 rounded-xl border border-border-active/10">
+                          <span className="text-[8px] font-black text-text-secondary uppercase block mb-1">Concentration</span>
+                          <span className="text-xs font-bold text-white">{(Math.max(...selectedPortfolioDetails.assets.map(a => a.weight)) * 100).toFixed(0)}% Max</span>
+                        </div>
+                        <div className="bg-background-dark/40 p-3 rounded-xl border border-border-active/10">
+                          <span className="text-[8px] font-black text-text-secondary uppercase block mb-1">Target Yield</span>
+                          <span className="text-xs font-bold text-primary">High-Alpha</span>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="mt-8 flex items-center justify-center gap-4 py-4 bg-primary/5 rounded-xl border border-primary/10">
-                      <span className="text-primary">
-                        <Info size={18} />
-                      </span>
-                      <p className="text-sm text-text-secondary">
-                        You are viewing the <span className="text-white font-bold text-base">historical portfolio index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Run Simulation</span> to analyze results.
-                      </p>
-                    </div>
+                  </div>
+                  
+                  <div className="mt-8 flex items-center justify-center gap-4 py-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <span className="text-primary">
+                      <Info size={18} />
+                    </span>
+                    <p className="text-sm text-text-secondary">
+                      You are viewing the <span className="text-white font-bold text-base">historical portfolio index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Run Simulation</span> to analyze results.
+                    </p>
                   </div>
                 </div>
               ) : (
