@@ -27,7 +27,7 @@ import { twMerge } from "tailwind-merge";
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, Cell, ComposedChart, Brush, Line, PieChart as RechartsPieChart, Pie, Legend,
-  ReferenceLine
+  ReferenceLine, ReferenceArea
 } from "recharts";
 import Header from "../../components/Header";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -1046,41 +1046,67 @@ export default function PortfolioSimulationPage() {
                           {!isCollapsed && (
                             <div className="space-y-6 relative z-0 mt-6 pt-6 border-t border-border-dark/30 animate-in fade-in slide-in-from-top-2 duration-300">
                               {/* 1. Price & Indicator Chart */}
-                              <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
-                                <div className="flex justify-between items-center mb-3 px-1">
-                                  <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
-                                    <span>Market Price & {indicatorType} Signal</span>
-                                    {renderInfoIcon(METRIC_INFO.priceIndicators)}
-                                  </h5>
+                              <div className="space-y-4">
+                                {/* Price Chart */}
+                                <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
+                                  <div className="flex justify-between items-center mb-3 px-1">
+                                    <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                                      <span>Market Price</span>
+                                      {indicatorType !== 'RSI' && <span>& {indicatorType} Signal</span>}
+                                      {renderInfoIcon(METRIC_INFO.priceIndicators)}
+                                    </h5>
+                                  </div>
+                                  <div className="h-[200px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                      <ComposedChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
+                                        <XAxis dataKey="date" hide />
+                                        <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
+                                        <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase' }} />
+                                        
+                                        <Line type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={2} dot={false} name="Market Price" animationDuration={1000} />
+                                        
+                                        {indicatorType !== 'RSI' && (
+                                          <>
+                                            {indicatorType === 'MA' || indicatorType === 'EMA' ? (
+                                              <>
+                                                <Line type="monotone" dataKey="ma_short" stroke="#facc15" strokeWidth={1} dot={false} name="Short MA" opacity={0.7} />
+                                                <Line type="monotone" dataKey="ma_long" stroke="#fb923c" strokeWidth={1} dot={false} name="Long MA" opacity={0.7} />
+                                              </>
+                                            ) : null}
+                                          </>
+                                        )}
+                                      </ComposedChart>
+                                    </ResponsiveContainer>
+                                  </div>
                                 </div>
-                                <div className="h-[250px] w-full">
-                                  <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
-                                      <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
-                                      <XAxis dataKey="date" hide />
-                                      <YAxis yId="left" orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
-                                      <YAxis yId="right" orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={indicatorType === 'RSI' ? [0, 100] : ['auto', 'auto']} />
-                                      <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase' }} />
-                                      
-                                      {indicatorType === 'RSI' && (
-                                        <>
-                                          <ReferenceLine yId="right" y={70} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '70', fill: '#ef4444', fontSize: 8 }} />
-                                          <ReferenceLine yId="right" y={30} stroke="#13ec5b" strokeDasharray="3 3" label={{ position: 'right', value: '30', fill: '#13ec5b', fontSize: 8 }} />
-                                        </>
-                                      )}
 
-                                      <Line yId="left" type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={2} dot={false} name="Market Price" animationDuration={1000} />
-                                      {indicatorType === 'RSI' ? (
-                                        <Line yId="right" type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1.5} dot={false} name="RSI Value" />
-                                      ) : (
-                                        <>
-                                          <Line yId="left" type="monotone" dataKey="ma_short" stroke="#facc15" strokeWidth={1} dot={false} name="Short MA" opacity={0.7} />
-                                          <Line yId="left" type="monotone" dataKey="ma_long" stroke="#fb923c" strokeWidth={1} dot={false} name="Long MA" opacity={0.7} />
-                                        </>
-                                      )}
-                                    </ComposedChart>
-                                  </ResponsiveContainer>
-                                </div>
+                                {/* RSI Sub-chart (Only if RSI) */}
+                                {indicatorType === 'RSI' && (
+                                  <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
+                                    <div className="flex justify-between items-center mb-3 px-1">
+                                      <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <span>{indicatorType} Indicator</span>
+                                      </h5>
+                                    </div>
+                                    <div className="h-[100px] w-full">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
+                                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
+                                          <XAxis dataKey="date" hide />
+                                          <YAxis orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={[0, 100]} ticks={[0, 30, 70, 100]} />
+                                          <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ display: 'none' }} />
+                                          
+                                          <ReferenceArea y1={30} y2={70} fill="#13ec5b" fillOpacity={0.05} />
+                                          <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '70', fill: '#ef4444', fontSize: 7 }} />
+                                          <ReferenceLine y={30} stroke="#13ec5b" strokeDasharray="3 3" label={{ position: 'right', value: '30', fill: '#13ec5b', fontSize: 7 }} />
+
+                                          <Line type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1.5} dot={false} name="RSI Value" />
+                                        </ComposedChart>
+                                      </ResponsiveContainer>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               {/* 2. Contributions Chart */}
