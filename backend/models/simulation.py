@@ -96,6 +96,10 @@ class SimulationResult(Base):
     total_fees = Column(Float, nullable=True)
     fees_percentage = Column(Float, nullable=True)
 
+    # Risk metrics
+    volatility = Column(Float, nullable=True)
+    max_drawdown = Column(Float, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self):

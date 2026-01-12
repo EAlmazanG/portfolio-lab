@@ -363,8 +363,8 @@ export default function AssetSimulationPage() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar: Configuration */}
         <aside className={cn(
-          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          leftSidebarOpen ? "w-full max-w-[400px]" : "w-0 border-r-0"
+          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
+          leftSidebarOpen ? "w-[400px]" : "w-0 border-r-0"
         )}>
           {/* Toggle Handle Left */}
           <button 
@@ -379,7 +379,7 @@ export default function AssetSimulationPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[400px] transition-opacity duration-300",
+            "flex flex-col h-full w-[400px] transition-opacity duration-300",
             leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -1619,7 +1619,7 @@ export default function AssetSimulationPage() {
 
         {/* Right Sidebar: History */}
         <aside className={cn(
-          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
+          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
           rightSidebarOpen ? "w-[320px]" : "w-0 border-l-0"
         )}>
           {/* Toggle Handle Right */}
@@ -1635,7 +1635,7 @@ export default function AssetSimulationPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[320px] transition-opacity duration-300",
+            "flex flex-col h-full w-[320px] transition-opacity duration-300",
             rightSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
           <div className="p-6 border-b border-border-dark/30">

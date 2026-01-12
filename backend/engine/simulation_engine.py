@@ -1,6 +1,7 @@
 """Engine for running asset simulations."""
 
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
@@ -407,7 +408,6 @@ class SimulationEngine:
         # Volatility (Standard Deviation of Periodic Returns)
         volatility = 0.0
         if len(smart_values) > 1:
-            import numpy as np
             returns = []
             for i in range(1, len(smart_values)):
                 if smart_values[i-1] > 0:

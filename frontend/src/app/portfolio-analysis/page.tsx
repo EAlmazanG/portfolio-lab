@@ -351,8 +351,8 @@ export default function PortfolioSimulationPage() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar: Configuration */}
         <aside className={cn(
-          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          leftSidebarOpen ? "w-full max-w-[400px]" : "w-0 border-r-0"
+          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
+          leftSidebarOpen ? "w-[400px]" : "w-0 border-r-0"
         )}>
           <button 
             onClick={() => setLeftSidebarOpen(!leftSidebarOpen)}
@@ -361,7 +361,7 @@ export default function PortfolioSimulationPage() {
             {leftSidebarOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
           </button>
 
-          <div className={cn("flex flex-col h-full min-w-[400px] transition-opacity duration-300", leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none")}>
+          <div className={cn("flex flex-col h-full w-[400px] transition-opacity duration-300", leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none")}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <div className="p-6 border-b border-border-dark/30 bg-background-dark/50">
                 <button 
@@ -572,7 +572,7 @@ export default function PortfolioSimulationPage() {
                 className="w-full py-4 bg-primary text-background-dark font-black uppercase tracking-wider rounded-xl flex items-center justify-center gap-3 transition-all hover:bg-[#3af578] shadow-2xl active:scale-[0.98] disabled:opacity-30"
               >
                 {loading ? <RefreshCcw size={20} className="animate-spin" /> : <Play size={20} fill="currentColor" />}
-                Analyze Portfolio
+                Run Simulation
               </button>
             </div>
           </div>
@@ -773,7 +773,7 @@ export default function PortfolioSimulationPage() {
                       <Info size={18} />
                     </span>
                     <p className="text-sm text-text-secondary">
-                      You are viewing the <span className="text-white font-bold text-base">historical index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Analyze Portfolio</span> to simulate results.
+                      You are viewing the <span className="text-white font-bold text-base">historical index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Run Simulation</span> to analyze results.
                     </p>
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export default function PortfolioSimulationPage() {
                 <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
                   <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group">
                     <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
-                    <PieChartIcon size={48} className="text-primary relative z-10" />
+                    <Sliders size={48} className="text-primary relative z-10" />
                   </div>
                   <h2 className="text-3xl font-bold text-white mb-3">Ready to Start?</h2>
                   <p className="text-text-secondary max-w-sm leading-relaxed">
@@ -795,14 +795,14 @@ export default function PortfolioSimulationPage() {
 
         {/* Right Sidebar: History */}
         <aside className={cn(
-          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
+          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
           rightSidebarOpen ? "w-[320px]" : "w-0 border-l-0"
         )}>
           <button onClick={() => setRightSidebarOpen(!rightSidebarOpen)} className={cn("absolute -left-3 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center bg-surface-dark border border-border-active/50 rounded-full text-text-secondary hover:text-white transition-all shadow-xl z-50 active:scale-95", !rightSidebarOpen && "-translate-x-3")}>
             {rightSidebarOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
 
-          <div className={cn("flex flex-col h-full min-w-[320px] transition-opacity duration-300", rightSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none")}>
+          <div className={cn("flex flex-col h-full w-[320px] transition-opacity duration-300", rightSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none")}>
             <div className="p-6 border-b border-border-dark/30">
               <div className="flex justify-between items-start mb-1">
                 <h2 className="text-white text-lg font-bold flex items-center gap-2"><History size={18} className="text-primary" /> Past Simulations</h2>

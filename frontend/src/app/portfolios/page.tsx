@@ -432,8 +432,8 @@ export default function PortfolioBuilderPage() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar: Saved Portfolios */}
         <aside className={cn(
-          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          leftSidebarOpen ? "w-full max-w-[420px]" : "w-0 border-r-0"
+          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
+          leftSidebarOpen ? "w-[420px]" : "w-0 border-r-0"
         )}>
           {/* Toggle Handle Left */}
           <button 
@@ -447,7 +447,7 @@ export default function PortfolioBuilderPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[420px] transition-opacity duration-300",
+            "flex flex-col h-full w-[420px] transition-opacity duration-300",
             leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">

@@ -1,6 +1,7 @@
 """Service for managing simulations."""
 
 import json
+import numpy as np
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -64,9 +65,10 @@ class SimulationService:
         """Returns past simulations with basic info."""
         db = SessionLocal()
         try:
+            from sqlalchemy.orm import joinedload
             # Filter for single asset simulations only (no portfolio_id)
             # and ensure they have an asset associated
-            simulations = db.query(Simulation).filter(
+            simulations = db.query(Simulation).options(joinedload(Simulation.results)).filter(
                 Simulation.portfolio_id.is_(None),
                 Simulation.asset_id.isnot(None)
             ).order_by(Simulation.created_at.desc()).limit(limit).all()
@@ -152,7 +154,6 @@ class SimulationService:
             volatility = 0.0
             max_drawdown = 0.0
             if portfolio_history:
-                import numpy as np
                 smart_values = [p["smart_value"] for p in portfolio_history]
                 if len(smart_values) > 1:
                     returns = []
@@ -293,7 +294,9 @@ class SimulationService:
                     baseline_avg_purchase_price=dca_result.baseline_avg_purchase_price,
                     dca_efficiency=dca_result.dca_efficiency,
                     total_fees=dca_result.total_fees,
-                    fees_percentage=dca_result.fees_percentage
+                    fees_percentage=dca_result.fees_percentage,
+                    volatility=dca_result.volatility,
+                    max_drawdown=dca_result.max_drawdown
                 )
                 
                 db.add(res)

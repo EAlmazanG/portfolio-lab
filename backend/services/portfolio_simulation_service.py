@@ -1,6 +1,7 @@
 """Service for managing portfolio simulations."""
 
 import json
+import numpy as np
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List, Optional
@@ -97,7 +98,9 @@ class PortfolioSimulationService:
                     baseline_final_value=result["baseline_final_value"],
                     baseline_return_percent=result["baseline_return_percent"],
                     total_fees=result["total_fees"],
-                    fees_percentage=result["fees_percentage"]
+                    fees_percentage=result["fees_percentage"],
+                    volatility=result.get("volatility", 0.0),
+                    max_drawdown=result.get("max_drawdown", 0.0)
                 )
                 
                 # Only add risk metrics if columns exist in the DB
@@ -122,7 +125,8 @@ class PortfolioSimulationService:
         """Returns past portfolio simulations."""
         db = SessionLocal()
         try:
-            simulations = db.query(Simulation).filter(
+            from sqlalchemy.orm import joinedload
+            simulations = db.query(Simulation).options(joinedload(Simulation.results)).filter(
                 Simulation.portfolio_id.isnot(None)
             ).order_by(Simulation.created_at.desc()).limit(limit).all()
             
@@ -191,7 +195,6 @@ class PortfolioSimulationService:
             if portfolio_history:
                 smart_values = [p["smart_value"] for p in portfolio_history]
                 if len(smart_values) > 1:
-                    import numpy as np
                     returns = []
                     for i in range(1, len(smart_values)):
                         if smart_values[i-1] > 0:
