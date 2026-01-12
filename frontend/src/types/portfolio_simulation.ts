@@ -25,6 +25,9 @@ export interface PortfolioSimulationConfig {
   investment_mode: 'annual' | 'per_contribution';
   rebalancing_mode: 'none' | 'periodic' | 'contribution';
   rebalancing_interval_months: number;
+  commission_fee_percent: number;
+  minimum_fee_per_trade: number;
+  maintenance_fee_annual_percent: number;
   asset_configs: Record<number, AssetSimulationConfig>;
   is_favorite: boolean;
 }
@@ -58,6 +61,12 @@ export interface PortfolioSimulationHistoryItem {
   final_value: number;
   total_invested: number;
   total_return_percent: number;
+  baseline_return_percent: number;
+  net_profit: number;
+  total_fees: number;
+  fees_percentage: number;
+  volatility: number;
+  max_drawdown: number;
   is_favorite: boolean;
   created_at: string;
 }

@@ -19,7 +19,7 @@ import {
 } from "../../types/portfolio";
 import {
   PortfolioSimulationConfig, PortfolioSimulationResponse, PortfolioSimulationHistoryItem,
-  AssetSimulationConfig, PortfolioSimulationPoint, AssetSimulationResultItem
+  AssetSimulationConfig
 } from "../../types/portfolio_simulation";
 import { Asset } from "../../types/simulation";
 import { clsx, type ClassValue } from "clsx";
@@ -1347,12 +1347,43 @@ export default function PortfolioSimulationPage() {
                       {!collapsedHistory[item.id] && (
                         <div className="px-4 pb-4 animate-in slide-in-from-top-1 duration-200">
                           <div className="grid grid-cols-2 gap-y-3 gap-x-4 bg-background-dark/40 rounded-xl p-3 border border-border-dark/20 shadow-inner">
-                            <div className="flex flex-col"><span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span><span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span></div>
-                            <div className="flex flex-col"><span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Final Value</span><span className="text-white text-xs font-bold">${item.final_value.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span></div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Invested</span>
+                              <span className="text-white text-xs font-bold">${item.total_invested.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Net Profit</span>
+                              <span className={cn("text-xs font-bold", item.net_profit >= 0 ? "text-primary" : "text-red-400")}>
+                                ${item.net_profit.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">Fees Impact</span>
+                              <span className="text-red-400 text-xs font-medium">
+                                {item.fees_percentage}%
+                              </span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-text-secondary text-[9px] uppercase font-bold tracking-widest">DCA Alpha</span>
+                              <span className={cn("text-xs font-medium", (item.total_return_percent - item.baseline_return_percent) >= 0 ? "text-primary" : "text-red-400")}>
+                                {(item.total_return_percent - item.baseline_return_percent).toFixed(1)}%
+                              </span>
+                            </div>
                           </div>
-                          <div className="mt-3 flex justify-between items-center opacity-60">
-                            <span className="text-text-secondary text-[10px] flex items-center gap-1.5 font-medium"><Calendar size={12} className="opacity-50" /> {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}</span>
-                            <div className="size-5 rounded-full bg-background-dark flex items-center justify-center border border-border-dark"><ArrowUpRight size={10} className="text-text-secondary" /></div>
+                          
+                          <div className="mt-3 flex justify-between items-center px-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-text-secondary text-[10px] flex items-center gap-1 font-medium opacity-60">
+                                <Calendar size={10} />
+                                {new Date(item.start_date).getFullYear()} - {new Date(item.end_date).getFullYear()}
+                              </span>
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-orange-400/10 text-orange-400">
+                                {item.max_drawdown}% MDD
+                              </span>
+                            </div>
+                            <div className="size-5 rounded-full bg-background-dark flex items-center justify-center border border-border-dark shadow-sm">
+                              <ArrowUpRight size={10} className="text-text-secondary" />
+                            </div>
                           </div>
                         </div>
                       )}

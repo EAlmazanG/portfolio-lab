@@ -134,14 +134,25 @@ class PortfolioSimulationService:
             for sim in simulations:
                 result = sim.results[0] if sim.results else None
                 if result:
+                    # Calculate net profit
+                    final_val = float(result.final_value)
+                    invested = float(result.total_invested)
+                    net_profit = final_val - invested
+                    
                     history.append({
                         "id": sim.id,
-                        "portfolio_name": sim.portfolio.name if sim.portfolio else "Deleted Portfolio",
+                        "portfolio_name": sim.portfolio.name if sim.portfolio else (sim.name or "Deleted Portfolio"),
                         "start_date": sim.start_date,
                         "end_date": sim.end_date,
-                        "final_value": float(result.final_value),
-                        "total_invested": float(result.total_invested),
+                        "final_value": final_val,
+                        "total_invested": invested,
                         "total_return_percent": float(result.total_return_percent),
+                        "baseline_return_percent": float(getattr(result, 'baseline_return_percent', result.total_return_percent) or result.total_return_percent),
+                        "net_profit": net_profit,
+                        "total_fees": float(getattr(result, 'total_fees', 0.0) or 0.0),
+                        "fees_percentage": float(getattr(result, 'fees_percentage', 0.0) or 0.0),
+                        "volatility": float(getattr(result, 'volatility', 0.0) or 0.0),
+                        "max_drawdown": float(getattr(result, 'max_drawdown', 0.0) or 0.0),
                         "is_favorite": bool(sim.is_favorite),
                         "created_at": sim.created_at
                     })
