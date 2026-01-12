@@ -78,6 +78,8 @@ const METRIC_INFO = {
   concentration: "The Herfindahl-Hirschman Index (HHI) measures portfolio concentration. A lower value indicates better diversification across assets.",
   maxWeight: "The percentage allocated to your largest single position. High concentration increases exposure to specific asset risks.",
   avgWeight: "The mathematical average allocation across all assets in the portfolio.",
+  volatility: "Standard deviation of periodic returns. Represents the historical price instability of the portfolio.",
+  drawdown: "The maximum peak-to-trough decline during the period. Indicates the worst-case historical loss scenario.",
   portfolioIndex: "A simulated index representing the portfolio's historical price performance based on current target weights.",
   assetBreakdown: "Detailed list of assets within the portfolio, showing their individual weight and current price trend.",
   distribution: "A visual representation of how your total capital is distributed across all selected assets.",
@@ -112,6 +114,7 @@ export default function PortfolioBuilderPage() {
   const [portfolioIndexData, setPortfolioIndexData] = useState<{date: string, value: number}[]>([]);
   const [loadingIndex, setLoadingIndex] = useState(false);
   const [showCurrentAmounts, setShowCurrentAmounts] = useState(false);
+  const [portfolioMetrics, setPortfolioMetrics] = useState({ volatility: 0, drawdown: 0 });
 
   // New Portfolio State
   const [newPortfolio, setNewPortfolio] = useState<PortfolioCreate>({
@@ -156,7 +159,7 @@ export default function PortfolioBuilderPage() {
       const startDate = new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0];
       
       const histories = await Promise.all(
-        selectedPortfolio.assets.map(async (pa) => {
+        selectedPortfolio.assets.map(async (pa: any) => {
           const data = await getAssetHistory(pa.asset_id, startDate, endDate);
           return { asset_id: pa.asset_id, weight: pa.weight, data };
         })
@@ -165,8 +168,8 @@ export default function PortfolioBuilderPage() {
       if (histories.length > 0) {
         // 1. Identify all unique dates and sort them
         const allDatesSet = new Set<string>();
-        histories.forEach((h: {data: {date: string}[]}) => {
-          h.data.forEach((d: {date: string}) => allDatesSet.add(d.date));
+        histories.forEach((h: any) => {
+          h.data.forEach((d: any) => allDatesSet.add(d.date));
         });
         const sortedDates = Array.from(allDatesSet).sort();
 
@@ -176,13 +179,13 @@ export default function PortfolioBuilderPage() {
         const indexValues = sortedDates.map(date => {
           let totalWeightedNormalizedPrice = 0;
           
-          histories.forEach((h: {weight: number, data: {date: string, price: number}[]}) => {
+          histories.forEach((h: any) => {
             // Find the price for this date or the last available price before it
-            let pricePoint = h.data.find(d => d.date === date);
+            let pricePoint = h.data.find((d: any) => d.date === date);
             
             // If no exact match, find the latest one before this date
             if (!pricePoint) {
-              const previousPoints = h.data.filter(d => d.date < date);
+              const previousPoints = h.data.filter((d: any) => d.date < date);
               if (previousPoints.length > 0) {
                 pricePoint = previousPoints[previousPoints.length - 1];
               }
@@ -207,6 +210,36 @@ export default function PortfolioBuilderPage() {
         // 3. Filter for weekly data to reduce noise
         const weeklyValues = indexValues.filter((_, idx) => idx % 7 === 0 || idx === indexValues.length - 1);
         setPortfolioIndexData(weeklyValues);
+
+        // 4. Calculate Risk Metrics (Volatility & Max Drawdown)
+        if (indexValues.length > 1) {
+          const returns = [];
+          for (let i = 1; i < indexValues.length; i++) {
+            if (indexValues[i-1].value > 0) {
+              returns.push((indexValues[i].value - indexValues[i-1].value) / indexValues[i-1].value);
+            }
+          }
+          
+          if (returns.length > 0) {
+            // Standard Deviation (Volatility)
+            const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
+            const stdDev = Math.sqrt(returns.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / returns.length);
+            
+            // Max Drawdown
+            let peak = indexValues[0].value;
+            let maxDD = 0;
+            indexValues.forEach(point => {
+              if (point.value > peak) peak = point.value;
+              const dd = (point.value - peak) / peak;
+              if (dd < maxDD) maxDD = dd;
+            });
+
+            setPortfolioMetrics({
+              volatility: stdDev * 100, // as percentage
+              drawdown: maxDD * 100 // as negative percentage
+            });
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to load portfolio index:", error);
@@ -440,9 +473,9 @@ export default function PortfolioBuilderPage() {
   const renderInfoIcon = (text: string) => (
     <div className="group relative cursor-help shrink-0">
       <Info size={12} className="text-text-secondary hover:text-white transition-colors" />
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 p-3 bg-surface-dark border border-border-active rounded-xl shadow-[0_15px_40px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] text-[10px] leading-relaxed font-bold text-white text-center pointer-events-none backdrop-blur-md">
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-52 p-3 bg-[#1c271f] border border-[#13ec5b]/20 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[9999] text-[10px] leading-relaxed font-bold text-white text-center pointer-events-none backdrop-blur-md">
         {text}
-        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-surface-dark"></div>
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-[#1c271f]"></div>
       </div>
     </div>
   );
@@ -644,73 +677,99 @@ export default function PortfolioBuilderPage() {
                 </header>
 
                 {/* Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-4 text-text-secondary">
-                        <DollarSign size={18} className="text-primary" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Total Capital</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 relative z-10">
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-[28px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[140px] relative hover:z-[50]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <DollarSign size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Total Capital</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.initialCapital)}
                     </div>
                     <div>
-                      <p className="text-3xl font-black text-white mb-2 leading-none">${selectedPortfolio.initial_capital?.toLocaleString()}</p>
-                      <p className="text-[10px] text-text-secondary font-bold tracking-widest uppercase opacity-60">USD Liquidity</p>
+                      <p className="text-2xl font-black text-white mb-1 leading-none">${selectedPortfolio.initial_capital?.toLocaleString()}</p>
+                      <p className="text-[9px] text-text-secondary font-bold tracking-widest uppercase opacity-60">USD Liquidity</p>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-4 text-text-secondary">
-                        <PieChartIcon size={18} className="text-primary" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Max Stake</span>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-[28px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[140px] relative hover:z-[50]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <PieChartIcon size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Max Stake</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.maxWeight)}
                     </div>
                     <div>
-                      <p className="text-3xl font-black text-white mb-2 leading-none">
+                      <p className="text-2xl font-black text-white mb-1 leading-none">
                         {Math.max(...selectedPortfolio.assets.map(a => a.weight * 100)).toFixed(0)}%
                       </p>
-                      <p className="text-[10px] text-text-secondary font-bold tracking-widest uppercase opacity-60">
+                      <p className="text-[9px] text-text-secondary font-bold tracking-widest uppercase opacity-60 truncate">
                         Top: {selectedPortfolio.assets.find(a => a.weight === Math.max(...selectedPortfolio.assets.map(pa => pa.weight)))?.asset?.ticker}
                       </p>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-4 text-text-secondary">
-                        <Layers size={18} className="text-primary" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">Avg Stake</span>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-[28px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[140px] relative hover:z-[50]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <Layers size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Avg Stake</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.avgWeight)}
                     </div>
                     <div>
-                      <p className="text-3xl font-black text-white mb-2 leading-none">
+                      <p className="text-2xl font-black text-white mb-1 leading-none">
                         {(100 / selectedPortfolio.assets.length).toFixed(1)}%
                       </p>
-                      <p className="text-[10px] text-text-secondary font-bold tracking-widest uppercase opacity-60">Distribution average</p>
+                      <p className="text-[9px] text-text-secondary font-bold tracking-widest uppercase opacity-60">Distribution avg</p>
                     </div>
                   </div>
-                  <div className="bg-surface-dark/60 border border-border-active/10 p-8 rounded-[32px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[160px]">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className="flex items-center gap-4 text-text-secondary">
-                        <Activity size={18} className="text-primary" />
-                        <span className="text-[11px] font-black uppercase tracking-widest">HHI Index</span>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-[28px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[140px] relative hover:z-[50]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <Activity size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">HHI Index</span>
                       </div>
                       {renderInfoIcon(METRIC_INFO.concentration)}
                     </div>
                     <div>
-                      <p className="text-3xl font-black text-white mb-2 leading-none">{hhiIndex.toFixed(0)}</p>
-                      <div className="w-full h-1.5 bg-surface-light rounded-full mt-4 overflow-hidden">
+                      <p className="text-2xl font-black text-white mb-1 leading-none">{hhiIndex.toFixed(0)}</p>
+                      <div className="w-full h-1.5 bg-surface-light rounded-full mt-3 overflow-hidden">
                          <div className={cn("h-full transition-all duration-1000", hhiIndex < 1500 ? "bg-primary" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")} style={{ width: `${Math.min(100, (hhiIndex / 10000) * 100)}%` }}></div>
                       </div>
+                    </div>
+                  </div>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-[28px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[140px] relative hover:z-[50]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <TrendingUp size={16} className="text-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Volatility</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.volatility)}
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-white mb-1 leading-none">{portfolioMetrics.volatility.toFixed(2)}%</p>
+                      <p className="text-[9px] text-text-secondary font-bold tracking-widest uppercase opacity-60">Historical Std Dev</p>
+                    </div>
+                  </div>
+                  <div className="bg-surface-dark/60 border border-border-active/10 p-6 rounded-[28px] group shadow-xl flex flex-col justify-between hover:border-primary/20 transition-all min-h-[140px] relative hover:z-[50]">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3 text-text-secondary">
+                        <TrendingDown size={16} className="text-red-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Max Drawdown</span>
+                      </div>
+                      {renderInfoIcon(METRIC_INFO.drawdown)}
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black text-red-400 mb-1 leading-none">{portfolioMetrics.drawdown.toFixed(2)}%</p>
+                      <p className="text-[9px] text-text-secondary font-bold tracking-widest uppercase opacity-60">Peak to trough</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Improved Charts Section - Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-0">
                   {/* Price Index Chart - Spans 2 columns */}
-                  <div className="lg:col-span-2 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-8 shadow-2xl relative overflow-hidden group">
+                  <div className="lg:col-span-2 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-8 shadow-2xl relative overflow-visible group hover:z-[10]">
                     <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
                       <Activity size={200} className="text-primary" />
                     </div>
@@ -737,10 +796,6 @@ export default function PortfolioBuilderPage() {
                         <h3 className="text-white text-4xl font-black tabular-nums tracking-tighter">
                           {portfolioIndexData.length > 0 ? portfolioIndexData[portfolioIndexData.length - 1].value.toFixed(2) : "0.00"}
                         </h3>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-text-secondary text-[10px] uppercase font-black tracking-widest mb-1 opacity-60">Period Range</p>
-                        <p className="text-white font-bold text-sm">Last 12 Months</p>
                       </div>
                     </div>
 
@@ -803,7 +858,7 @@ export default function PortfolioBuilderPage() {
                   </div>
 
                   {/* Portfolio Composition Chart - Spans 1 column */}
-                  <div className="lg:col-span-1 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-8 flex flex-col shadow-2xl hover:border-primary/20 transition-all">
+                  <div className="lg:col-span-1 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-8 flex flex-col shadow-2xl hover:border-primary/20 transition-all relative overflow-visible hover:z-[10]">
                     <div className="flex flex-col mb-8">
                       <div className="flex items-center gap-4 mb-2">
                         <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
@@ -877,9 +932,9 @@ export default function PortfolioBuilderPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-12 items-start mb-16">
+                <div className="flex flex-col gap-12 items-start mb-16 relative z-0">
                   {/* Assets List */}
-                  <div className="lg:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl">
+                  <div className="w-full bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl relative overflow-visible hover:z-[10]">
                     <div className="flex items-center justify-between mb-10">
                       <div className="flex items-center gap-5">
                         <div className="p-3 bg-primary/10 rounded-2xl text-primary">
@@ -897,8 +952,8 @@ export default function PortfolioBuilderPage() {
                           <div 
                             onClick={() => toggleAssetExpand(pa.asset_id)}
                             className={cn(
-                              "flex items-center justify-between p-7 bg-background-dark/40 rounded-[32px] border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300 shadow-md",
-                              expandedAssetId === pa.asset_id && "border-primary/40 bg-background-dark ring-2 ring-primary/5"
+                              "flex items-center justify-between p-7 bg-background-dark/40 rounded-[32px] border border-border-dark/30 cursor-pointer group hover:border-primary/40 transition-all duration-300 shadow-md relative hover:z-[20]",
+                              expandedAssetId === pa.asset_id && "border-primary/40 bg-background-dark ring-2 ring-primary/5 z-[20]"
                             )}
                           >
                             <div className="flex items-center gap-8">
