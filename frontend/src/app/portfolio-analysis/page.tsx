@@ -735,7 +735,6 @@ export default function PortfolioSimulationPage() {
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
                       <div className="flex flex-col">
                         <h3 className="text-white text-lg font-bold flex items-center gap-3">
-                          <Activity size={20} className="text-primary" /> 
                           <span>Portfolio Growth Evolution</span>
                           {renderInfoIcon(METRIC_INFO.portfolioGrowth)}
                         </h3>
@@ -793,7 +792,6 @@ export default function PortfolioSimulationPage() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm relative overflow-visible">
                       <h3 className="text-white text-lg font-bold flex items-center gap-3 mb-8">
-                        <PieChartIcon size={20} className="text-primary" /> 
                         <span>Final Portfolio Allocation</span>
                         {renderInfoIcon(METRIC_INFO.finalAllocation)}
                       </h3>
@@ -821,7 +819,6 @@ export default function PortfolioSimulationPage() {
 
                     <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm relative overflow-visible">
                       <h3 className="text-white text-lg font-bold flex items-center gap-3 mb-8">
-                        <Activity size={20} className="text-primary" /> 
                         <span>Individual Asset Performance</span>
                         {renderInfoIcon(METRIC_INFO.individualPerformance)}
                       </h3>
@@ -852,7 +849,6 @@ export default function PortfolioSimulationPage() {
                       <div className="flex justify-between items-center mb-8">
                         <div className="flex flex-col">
                           <h3 className="text-white text-lg font-bold flex items-center gap-3">
-                            <CreditCard size={20} className="text-red-400" />
                             <span>Fees & Maintenance Cost</span>
                             {renderInfoIcon(METRIC_INFO.feesImpact)}
                           </h3>
@@ -886,7 +882,6 @@ export default function PortfolioSimulationPage() {
                     <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 flex flex-col shadow-sm relative overflow-visible">
                       <div className="flex flex-col gap-1 mb-8">
                         <h3 className="text-white text-lg font-bold flex items-center gap-3">
-                          <Scale size={20} className="text-primary" />
                           <span>Gross vs Net Value</span>
                           {renderInfoIcon(METRIC_INFO.grossVsNet)}
                         </h3>
@@ -937,7 +932,6 @@ export default function PortfolioSimulationPage() {
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm mb-12 relative overflow-visible">
                     <div className="flex items-center gap-3 mb-8">
                       <h3 className="text-white text-lg font-bold flex items-center gap-3">
-                        <Activity size={20} className="text-primary" />
                         <span>Strategy Comparison Metrics</span>
                         {renderInfoIcon(METRIC_INFO.strategyMetrics)}
                       </h3>
@@ -989,16 +983,13 @@ export default function PortfolioSimulationPage() {
                   </div>
 
                   {/* Asset Details & Accumulation Section */}
-                  <div className="space-y-16 pb-20">
-                    <div className="flex flex-col gap-2 mb-10">
-                      <h3 className="text-white text-3xl font-black flex items-center gap-4">
-                        <div className="p-2.5 bg-primary/10 rounded-2xl text-primary">
-                          <Layers size={28} />
-                        </div>
+                  <div className="space-y-8 pb-20">
+                    <div className="flex flex-col gap-1 mb-8">
+                      <h3 className="text-white text-2xl font-black flex items-center gap-3">
                         <span>Individual Asset Deep-Dive</span>
                         {renderInfoIcon(METRIC_INFO.assetAccumulation)}
                       </h3>
-                      <p className="text-text-secondary text-sm font-medium opacity-60 ml-16">Granular analysis of price action, accumulation curve and periodic contributions per asset.</p>
+                      <p className="text-text-secondary text-[11px] font-medium opacity-60">Granular analysis of price action, accumulation curve and periodic contributions.</p>
                     </div>
 
                     {simulation.results.asset_results.map((ar, idx) => {
@@ -1006,46 +997,45 @@ export default function PortfolioSimulationPage() {
                       const indicatorType = assetConfig?.smart_indicator || 'RSI';
                       
                       return (
-                        <div key={ar.asset_id} className="bg-surface-dark/40 border border-border-active/20 rounded-[40px] p-10 lg:p-12 shadow-2xl relative overflow-visible group hover:border-primary/20 transition-all duration-500">
+                        <div key={ar.asset_id} className="bg-surface-dark/40 border border-border-active/20 rounded-2xl p-5 lg:p-6 shadow-2xl relative overflow-visible group hover:border-primary/20 transition-all duration-500">
                           {/* Asset Header */}
-                          <div className="flex flex-wrap justify-between items-end gap-8 mb-12 pb-10 border-b border-border-dark/30 relative z-10">
-                            <div className="flex items-center gap-8">
-                              <div className="size-20 rounded-[28px] flex items-center justify-center font-black text-2xl border-2 border-border-dark shadow-2xl transform group-hover:rotate-6 transition-all duration-500" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
+                          <div className="flex flex-wrap justify-between items-center gap-4 mb-6 pb-4 border-b border-border-dark/30 relative z-10">
+                            <div className="flex items-center gap-4">
+                              <div className="size-10 rounded-lg flex items-center justify-center font-black text-sm border border-border-dark shadow-inner transform group-hover:rotate-3 transition-all duration-500" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>
                                 {ar.ticker}
                               </div>
-                              <div className="flex flex-col gap-2">
-                                <h4 className="text-white text-3xl font-black tracking-tight uppercase italic">{ar.ticker} <span className="text-text-secondary/40 not-italic text-lg ml-2 font-medium">Performance</span></h4>
-                                <div className="flex items-center gap-4">
-                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-background-dark/80 rounded-xl border border-border-active/10 shadow-inner">
-                                    <Zap size={12} className="text-yellow-400" />
-                                    <span className="text-[10px] text-text-secondary uppercase font-black tracking-widest">
+                              <div className="flex flex-col">
+                                <h4 className="text-white text-lg font-black tracking-tight uppercase">{ar.ticker} <span className="text-text-secondary/40 text-[10px] ml-1 font-medium">Performance</span></h4>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-background-dark/80 rounded border border-border-active/10">
+                                    <span className="text-[8px] text-text-secondary uppercase font-black tracking-widest">
                                       {indicatorType} Strategy
                                     </span>
                                   </div>
-                                  <div className="size-1.5 rounded-full bg-primary/40 animate-pulse"></div>
-                                  <span className="text-[10px] text-primary font-black uppercase tracking-[0.2em]">
-                                    Live Strategy Simulation
+                                  <div className="size-1 rounded-full bg-primary/40 animate-pulse"></div>
+                                  <span className="text-[8px] text-primary font-black uppercase tracking-widest">
+                                    Active
                                   </span>
                                 </div>
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-12 border-l border-border-dark/30 pl-12">
-                              <div className="flex flex-col gap-1.5">
-                                <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-[0.2em]">Collected</span>
-                                <span className="text-xl font-black text-white tabular-nums tracking-tight">{ar.assets_accumulated.toFixed(4)} <span className="text-[10px] opacity-30 font-medium">{ar.ticker}</span></span>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:border-l border-border-dark/30 md:pl-6">
+                              <div className="flex flex-col">
+                                <span className="text-[7px] font-black uppercase text-text-secondary opacity-40 tracking-widest">Collected</span>
+                                <span className="text-xs font-black text-white tabular-nums tracking-tight">{ar.assets_accumulated.toFixed(4)} <span className="text-[8px] opacity-30 font-medium">{ar.ticker}</span></span>
                               </div>
-                              <div className="flex flex-col gap-1.5">
-                                <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-[0.2em]">Avg. Price</span>
-                                <span className="text-xl font-black text-white tabular-nums tracking-tight">${ar.avg_price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                              <div className="flex flex-col">
+                                <span className="text-[7px] font-black uppercase text-text-secondary opacity-40 tracking-widest">Avg. Price</span>
+                                <span className="text-xs font-black text-white tabular-nums tracking-tight">${ar.avg_price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                               </div>
-                              <div className="flex flex-col gap-1.5">
-                                <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-[0.2em]">Total Invested</span>
-                                <span className="text-xl font-black text-white tabular-nums tracking-tight">${ar.total_invested.toLocaleString()}</span>
+                              <div className="flex flex-col">
+                                <span className="text-[7px] font-black uppercase text-text-secondary opacity-40 tracking-widest">Total Invested</span>
+                                <span className="text-xs font-black text-white tabular-nums tracking-tight">${ar.total_invested.toLocaleString()}</span>
                               </div>
-                              <div className="flex flex-col gap-1.5 text-right">
-                                <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-[0.2em]">ROI</span>
-                                <span className={cn("text-xl font-black tabular-nums tracking-tight", ar.total_return_percent >= 0 ? "text-primary shadow-primary/20" : "text-red-400 shadow-red-400/20")}>
+                              <div className="flex flex-col text-right">
+                                <span className="text-[7px] font-black uppercase text-text-secondary opacity-40 tracking-widest">ROI</span>
+                                <span className={cn("text-xs font-black tabular-nums tracking-tight", ar.total_return_percent >= 0 ? "text-primary" : "text-red-400")}>
                                   {ar.total_return_percent > 0 ? "+" : ""}{ar.total_return_percent.toFixed(1)}%
                                 </span>
                               </div>
@@ -1053,31 +1043,30 @@ export default function PortfolioSimulationPage() {
                           </div>
 
                           {/* Triple Synchronized Charts */}
-                          <div className="space-y-12 relative z-0">
+                          <div className="space-y-6 relative z-0">
                             {/* 1. Price & Indicator Chart */}
-                            <div className="w-full bg-background-dark/20 p-6 rounded-3xl border border-border-active/5">
-                              <div className="flex justify-between items-center mb-6 px-2">
-                                <h5 className="text-white text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                                  <div className="p-1.5 bg-blue-400/10 rounded-lg text-blue-400"><Activity size={14} /></div>
+                            <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
+                              <div className="flex justify-between items-center mb-3 px-1">
+                                <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
                                   <span>Market Price & {indicatorType} Signal</span>
                                   {renderInfoIcon(METRIC_INFO.priceIndicators)}
                                 </h5>
                               </div>
-                              <div className="h-[350px] w-full">
+                              <div className="h-[200px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <ComposedChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                     <XAxis dataKey="date" hide />
-                                    <YAxis yId="left" orientation="left" stroke="#9db9a6" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
-                                    <YAxis yId="right" orientation="right" stroke="#9db9a6" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} domain={indicatorType === 'RSI' ? [0, 100] : ['auto', 'auto']} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '12px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'black', textTransform: 'uppercase' }} />
-                                    <Line yId="left" type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={3} dot={false} name="Market Price" animationDuration={2000} />
+                                    <YAxis yId="left" orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
+                                    <YAxis yId="right" orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={indicatorType === 'RSI' ? [0, 100] : ['auto', 'auto']} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase' }} />
+                                    <Line yId="left" type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={1.5} dot={false} name="Market Price" animationDuration={1000} />
                                     {indicatorType === 'RSI' ? (
-                                      <Line yId="right" type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={2} dot={false} strokeDasharray="4 4" name="RSI Value" />
+                                      <Line yId="right" type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1} dot={false} strokeDasharray="3 3" name="RSI Value" />
                                     ) : (
                                       <>
-                                        <Line yId="left" type="monotone" dataKey="ma_short" stroke="#facc15" strokeWidth={1.5} dot={false} name="Short MA" opacity={0.7} />
-                                        <Line yId="left" type="monotone" dataKey="ma_long" stroke="#fb923c" strokeWidth={1.5} dot={false} name="Long MA" opacity={0.7} />
+                                        <Line yId="left" type="monotone" dataKey="ma_short" stroke="#facc15" strokeWidth={1} dot={false} name="Short MA" opacity={0.7} />
+                                        <Line yId="left" type="monotone" dataKey="ma_long" stroke="#fb923c" strokeWidth={1} dot={false} name="Long MA" opacity={0.7} />
                                       </>
                                     )}
                                   </ComposedChart>
@@ -1086,52 +1075,50 @@ export default function PortfolioSimulationPage() {
                             </div>
 
                             {/* 2. Asset Accumulation Chart */}
-                            <div className="w-full bg-background-dark/20 p-6 rounded-3xl border border-border-active/5">
-                              <div className="flex justify-between items-center mb-6 px-2">
-                                <h5 className="text-white text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                                  <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Coins size={14} /></div>
+                            <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
+                              <div className="flex justify-between items-center mb-3 px-1">
+                                <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
                                   <span>Units Accumulation Curve</span>
                                   {renderInfoIcon(METRIC_INFO.assetAccumulation)}
                                 </h5>
                               </div>
-                              <div className="h-[250px] w-full">
+                              <div className="h-[140px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <AreaChart data={ar.portfolio_history.map(p => ({ ...p, units: p.smart_value / p.price }))} syncId={`syncAsset_${ar.asset_id}`}>
                                     <defs>
                                       <linearGradient id={`gradientUnits_${ar.asset_id}`} x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
+                                        <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.1}/>
                                         <stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/>
                                       </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                     <XAxis dataKey="date" hide />
-                                    <YAxis orientation="left" stroke="#9db9a6" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => val.toFixed(2)} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }} itemStyle={{ fontSize: '12px', color: '#13ec5b', fontWeight: 'bold' }} />
-                                    <Area type="monotone" dataKey="units" stroke="#13ec5b" fillOpacity={1} fill={`url(#gradientUnits_${ar.asset_id})`} strokeWidth={3} name="Total Units" animationDuration={2500} />
+                                    <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => val.toFixed(2)} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px' }} itemStyle={{ fontSize: '10px', color: '#13ec5b', fontWeight: 'bold' }} />
+                                    <Area type="monotone" dataKey="units" stroke="#13ec5b" fillOpacity={1} fill={`url(#gradientUnits_${ar.asset_id})`} strokeWidth={1.5} name="Total Units" animationDuration={1200} />
                                   </AreaChart>
                                 </ResponsiveContainer>
                               </div>
                             </div>
 
                             {/* 3. Contributions Chart */}
-                            <div className="w-full bg-background-dark/20 p-6 rounded-3xl border border-border-active/5">
-                              <div className="flex justify-between items-center mb-6 px-2">
-                                <h5 className="text-white text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3">
-                                  <div className="p-1.5 bg-slate-400/10 rounded-lg text-slate-400"><DollarSign size={14} /></div>
+                            <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
+                              <div className="flex justify-between items-center mb-3 px-1">
+                                <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
                                   <span>Periodic Capital Injections</span>
                                   {renderInfoIcon(METRIC_INFO.contributions)}
                                 </h5>
                               </div>
-                              <div className="h-[200px] w-full">
+                              <div className="h-[120px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <BarChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
-                                    <XAxis dataKey="date" stroke="#9db9a6" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
-                                    <YAxis orientation="left" stroke="#9db9a6" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }} itemStyle={{ fontSize: '12px', fontWeight: 'bold' }} />
-                                    <Bar dataKey="s_contribution" fill="#13ec5b" radius={[6, 6, 0, 0]} name="Smart Buy ($)" />
-                                    <Bar dataKey="b_contribution" fill="#94a3b8" radius={[6, 6, 0, 0]} name="Baseline Buy ($)" opacity={0.2} />
-                                    <Brush dataKey="date" height={40} stroke="#13ec5b30" fill="#0b0f0c" travellerWidth={15} gap={1} />
+                                    <XAxis dataKey="date" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
+                                    <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
+                                    <Bar dataKey="s_contribution" fill="#13ec5b" radius={[3, 3, 0, 0]} name="Smart Buy ($)" />
+                                    <Bar dataKey="b_contribution" fill="#94a3b8" radius={[3, 3, 0, 0]} name="Baseline Buy ($)" opacity={0.2} />
+                                    <Brush dataKey="date" height={25} stroke="#13ec5b30" fill="#0b0f0c" travellerWidth={10} gap={1} />
                                   </BarChart>
                                 </ResponsiveContainer>
                               </div>
@@ -1147,7 +1134,6 @@ export default function PortfolioSimulationPage() {
                   <header className="flex flex-col">
                     <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Portfolio Overview</h2>
                     <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
-                      <LineChartIcon size={14} className="text-primary" />
                       <span>Historical index performance for </span>
                       <span className="text-primary font-bold">{selectedPortfolioDetails.name}</span>
                     </div>
@@ -1231,7 +1217,6 @@ export default function PortfolioSimulationPage() {
                       <div className="flex flex-col gap-1 mb-8">
                         <span className="text-[10px] font-black uppercase text-text-secondary tracking-[0.2em] opacity-50">Strategic Weights</span>
                         <h3 className="text-white text-xl font-bold flex items-center gap-2">
-                          <PieChartIcon size={18} className="text-primary" />
                           Composition
                         </h3>
                       </div>
