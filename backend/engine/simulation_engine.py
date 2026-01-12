@@ -241,9 +241,9 @@ class SimulationEngine:
                 "low": round(float(indicator_df.iloc[0]['low']), 2),
                 "close": round(float(indicator_df.iloc[0]['close']), 2),
                 "price": round(float(indicator_df.iloc[0]['close']), 2),
-                "indicator_value": 0.0,
-                "ma_short": 0.0,
-                "ma_long": 0.0,
+                "indicator_value": None,
+                "ma_short": None,
+                "ma_long": None,
                 "invested": round(float(s_invested), 2),
                 "baseline_value": round(float(s_invested), 2), # At the very start, value equals investment
                 "smart_value": round(float(s_invested), 2),
@@ -385,26 +385,37 @@ class SimulationEngine:
                         s_contribution += actual_buy_amount
             
             # Helper to handle NaNs for JSON serialization
-            def clean_val(val, default=0.0):
+            def clean_val(val, default=None):
                 try:
                     import math
-                    if math.isnan(val) or math.isinf(val):
+                    if val is None or math.isnan(val) or math.isinf(val):
                         return default
                     return float(val)
                 except:
                     return default
 
             # Record history
+            ma_short_val = clean_val(row.get('ma_short_val'))
+            ma_long_val = clean_val(row.get('ma_long_val'))
+            indicator_val = clean_val(row.get('indicator_value'))
+
+            # For MA/EMA, a value of 0.0 is typically an error or "no data" 
+            # at the beginning of a simulation for assets with non-zero price.
+            if (smart_indicator == "MA" or smart_indicator == "EMA"):
+                if ma_short_val == 0.0: ma_short_val = None
+                if ma_long_val == 0.0: ma_long_val = None
+                if indicator_val == 0.0: indicator_val = None
+
             portfolio_history.append({
                 "date": date.strftime("%Y-%m-%d"),
-                "open": round(clean_val(row['open']), 2),
-                "high": round(clean_val(row['high']), 2),
-                "low": round(clean_val(row['low']), 2),
-                "close": round(clean_val(row['close']), 2),
-                "price": round(clean_val(row['close']), 2),
-                "indicator_value": round(clean_val(row['indicator_value']), 4) if 'indicator_value' in row else 0.0,
-                "ma_short": round(clean_val(row['ma_short_val']), 2) if 'ma_short_val' in row else 0.0,
-                "ma_long": round(clean_val(row['ma_long_val']), 2) if 'ma_long_val' in row else 0.0,
+                "open": round(clean_val(row['open'], 0.0), 2),
+                "high": round(clean_val(row['high'], 0.0), 2),
+                "low": round(clean_val(row['low'], 0.0), 2),
+                "close": round(clean_val(row['close'], 0.0), 2),
+                "price": round(clean_val(row['close'], 0.0), 2),
+                "indicator_value": round(indicator_val, 4) if indicator_val is not None else None,
+                "ma_short": round(ma_short_val, 2) if ma_short_val is not None else None,
+                "ma_long": round(ma_long_val, 2) if ma_long_val is not None else None,
                 "invested": round(float(s_invested), 2),
                 "baseline_value": round(float(b_assets * row['close']), 2),
                 "smart_value": round(float(s_assets * row['close']), 2),
