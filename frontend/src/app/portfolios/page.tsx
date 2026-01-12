@@ -162,24 +162,49 @@ export default function PortfolioBuilderPage() {
         })
       );
 
-      // Align dates and calculate weighted index
-      if (histories.length > 0 && histories[0].data.length > 0) {
-        const dates = histories[0].data.map(d => d.date);
-        const indexValues = dates.map(date => {
-          let weightedValue = 0;
-          histories.forEach(h => {
-            const dayData = h.data.find(d => d.date === date);
-            if (dayData && h.data.length > 0) {
+      if (histories.length > 0) {
+        // 1. Identify all unique dates and sort them
+        const allDatesSet = new Set<string>();
+        histories.forEach((h: {data: {date: string}[]}) => {
+          h.data.forEach((d: {date: string}) => allDatesSet.add(d.date));
+        });
+        const sortedDates = Array.from(allDatesSet).sort();
+
+        if (sortedDates.length === 0) return;
+
+        // 2. Build a price map for each asset with ffill (forward fill) logic
+        const indexValues = sortedDates.map(date => {
+          let totalWeightedNormalizedPrice = 0;
+          
+          histories.forEach((h: {weight: number, data: {date: string, price: number}[]}) => {
+            // Find the price for this date or the last available price before it
+            let pricePoint = h.data.find(d => d.date === date);
+            
+            // If no exact match, find the latest one before this date
+            if (!pricePoint) {
+              const previousPoints = h.data.filter(d => d.date < date);
+              if (previousPoints.length > 0) {
+                pricePoint = previousPoints[previousPoints.length - 1];
+              }
+            }
+
+            if (pricePoint && h.data.length > 0) {
               const firstPrice = h.data[0].price;
-              const currentPrice = dayData.price;
+              const currentPrice = pricePoint.price;
               const normalizedPrice = (currentPrice / firstPrice) * 100;
-              weightedValue += normalizedPrice * h.weight;
+              totalWeightedNormalizedPrice += normalizedPrice * h.weight;
+            } else if (h.data.length > 0) {
+              // If we don't even have a previous point but the asset has data, 
+              // it means we are before the asset's first data point. 
+              // We'll treat it as 100 (neutral) for the index.
+              totalWeightedNormalizedPrice += 100 * h.weight;
             }
           });
-          return { date, value: weightedValue };
+          
+          return { date, value: totalWeightedNormalizedPrice };
         });
 
-        // Filter for weekly data to reduce noise (1 point every 7 days)
+        // 3. Filter for weekly data to reduce noise
         const weeklyValues = indexValues.filter((_, idx) => idx % 7 === 0 || idx === indexValues.length - 1);
         setPortfolioIndexData(weeklyValues);
       }
@@ -682,94 +707,173 @@ export default function PortfolioBuilderPage() {
                   </div>
                 </div>
 
-                {/* Price Index Chart */}
-                <div className="bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 shadow-2xl relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-10 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
-                    <Activity size={200} className="text-primary" />
-                  </div>
+                {/* Improved Charts Section - Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Price Index Chart - Spans 2 columns */}
+                  <div className="lg:col-span-2 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-8 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                      <Activity size={200} className="text-primary" />
+                    </div>
 
-                  <div className="flex flex-col mb-10 relative z-10">
-                    <div className="flex items-center gap-5 mb-2">
-                      <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                        <TrendingUp size={24} />
+                    <div className="flex flex-col mb-8 relative z-10">
+                      <div className="flex items-center gap-4 mb-2">
+                        <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                          <TrendingUp size={20} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-white">
+                          Performance Trend (Simulated 1Y)
+                        </h3>
+                        {renderInfoIcon(METRIC_INFO.portfolioIndex)}
                       </div>
-                      <h3 className="text-sm font-black uppercase tracking-widest text-white">
-                        Performance Trend (Simulated 1Y)
-                      </h3>
-                      {renderInfoIcon(METRIC_INFO.portfolioIndex)}
-                    </div>
-                    <div className="flex items-center gap-2 text-text-secondary text-xs font-medium opacity-60 ml-[60px]">
-                      <span>Historical index performance for </span>
-                      <span className="text-primary font-bold">{selectedPortfolio.name}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-end mb-8 relative z-10">
-                    <div>
-                      <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Current Index Value</p>
-                      <h3 className="text-white text-4xl font-black tabular-nums">
-                        {portfolioIndexData.length > 0 ? portfolioIndexData[portfolioIndexData.length - 1].value.toFixed(2) : "0.00"}
-                      </h3>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-text-secondary text-xs uppercase font-black tracking-widest mb-1">Period Range</p>
-                      <p className="text-white font-bold">Last 12 Months</p>
-                    </div>
-                  </div>
-
-                  <div className="h-[450px] w-full relative z-10">
-                    {loadingIndex ? (
-                      <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-8">
-                        <RefreshCcw size={40} className="animate-spin text-primary opacity-50" />
-                        <p className="text-[11px] font-black uppercase tracking-widest opacity-40">Crunching market data...</p>
+                      <div className="flex items-center gap-2 text-text-secondary text-[11px] font-medium opacity-60 ml-[52px]">
+                        <span>Historical index performance for </span>
+                        <span className="text-primary font-bold">{selectedPortfolio.name}</span>
                       </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={portfolioIndexData}>
-                          <defs>
-                            <linearGradient id="colorIndex" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#13ec5b" stopOpacity={0.2}/>
-                              <stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(str) => {
-                              const date = new Date(str);
-                              return date.getFullYear().toString();
-                            }}
-                            interval={Math.floor(portfolioIndexData.length / 6)}
-                          />
-                          <YAxis 
-                            stroke="#9db9a6" 
-                            fontSize={10} 
-                            tickLine={false} 
-                            axisLine={false}
-                            tickFormatter={(value) => value.toFixed(0)}
-                          />
-                          <RechartsTooltip 
-                            contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '24px', padding: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
-                            itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
-                            labelStyle={{ color: '#666', fontSize: '11px', marginBottom: '10px', fontWeight: 'black', textTransform: 'uppercase' }}
-                            formatter={(val: number) => [val.toFixed(2), "Price Index"]}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="value" 
-                            stroke="#13ec5b" 
-                            strokeWidth={5}
-                            fillOpacity={1} 
-                            fill="url(#colorIndex)" 
-                            animationDuration={2500}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    )}
+                    </div>
+
+                    <div className="flex justify-between items-end mb-8 relative z-10">
+                      <div>
+                        <p className="text-text-secondary text-[10px] uppercase font-black tracking-widest mb-1 opacity-60">Current Index Value</p>
+                        <h3 className="text-white text-4xl font-black tabular-nums tracking-tighter">
+                          {portfolioIndexData.length > 0 ? portfolioIndexData[portfolioIndexData.length - 1].value.toFixed(2) : "0.00"}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-text-secondary text-[10px] uppercase font-black tracking-widest mb-1 opacity-60">Period Range</p>
+                        <p className="text-white font-bold text-sm">Last 12 Months</p>
+                      </div>
+                    </div>
+
+                    <div className="h-[400px] w-full relative z-10">
+                      {loadingIndex ? (
+                        <div className="h-full flex flex-col items-center justify-center text-text-secondary gap-6">
+                          <RefreshCcw size={32} className="animate-spin text-primary opacity-40" />
+                          <p className="text-[10px] font-black uppercase tracking-widest opacity-30">Analyzing market trends...</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={portfolioIndexData}>
+                            <defs>
+                              <linearGradient id="colorIndex" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#13ec5b" stopOpacity={0.15}/>
+                                <stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.3} />
+                            <XAxis 
+                              dataKey="date" 
+                              stroke="#666" 
+                              fontSize={11} 
+                              fontWeight="bold"
+                              tickLine={false} 
+                              axisLine={false}
+                              minTickGap={80}
+                              tickFormatter={(str: string) => {
+                                const date = new Date(str);
+                                return date.toLocaleString('default', { month: 'short' });
+                              }}
+                            />
+                            <YAxis 
+                              stroke="#666" 
+                              fontSize={11} 
+                              fontWeight="bold"
+                              tickLine={false} 
+                              axisLine={false}
+                              tickFormatter={(value: number) => value.toFixed(0)}
+                            />
+                            <RechartsTooltip 
+                              contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '20px', padding: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
+                              itemStyle={{ color: '#fff', fontSize: '14px', fontWeight: '900' }}
+                              labelStyle={{ color: '#666', fontSize: '10px', marginBottom: '8px', fontWeight: 'black', textTransform: 'uppercase' }}
+                              formatter={(val: number) => [val.toFixed(2), "Price Index"]}
+                            />
+                            <Area 
+                              type="monotone" 
+                              dataKey="value" 
+                              stroke="#13ec5b" 
+                              strokeWidth={4}
+                              fillOpacity={1} 
+                              fill="url(#colorIndex)" 
+                              animationDuration={2000}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Portfolio Composition Chart - Spans 1 column */}
+                  <div className="lg:col-span-1 bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-8 flex flex-col shadow-2xl hover:border-primary/20 transition-all">
+                    <div className="flex flex-col mb-8">
+                      <div className="flex items-center gap-4 mb-2">
+                        <div className="p-2.5 bg-primary/10 rounded-xl text-primary">
+                          <PieChartIcon size={20} />
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-white">
+                          Strategic Allocation
+                        </h3>
+                        {renderInfoIcon(METRIC_INFO.distribution)}
+                      </div>
+                      <p className="text-text-secondary text-[11px] font-medium opacity-60 ml-[52px]">Target asset distribution</p>
+                    </div>
+                    
+                    <div className="flex-1 flex flex-col items-center justify-center relative py-6">
+                      <div className="w-full h-[320px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={selectedPortfolioChartData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={80}
+                              outerRadius={110}
+                              paddingAngle={8}
+                              dataKey="value"
+                              stroke="none"
+                              label={({ name, percent }: {name: string, percent: number}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              labelLine={{ stroke: '#333', strokeWidth: 1.5, length: 15 }}
+                              animationDuration={1800}
+                            >
+                              {selectedPortfolioChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip 
+                              contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '20px', padding: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
+                              itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: '900' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-4">
+                        <span className="text-5xl font-black text-primary drop-shadow-[0_0_25px_rgba(19,236,91,0.3)] tabular-nums tracking-tighter leading-none">{selectedPortfolio.assets.length}</span>
+                        <span className="text-[10px] text-text-secondary uppercase font-black tracking-widest mt-2 opacity-60">Assets</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-8 pt-8 border-t border-border-dark/30 grid grid-cols-2 gap-6">
+                       <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-50">Concentration</span>
+                            {renderInfoIcon(METRIC_INFO.riskAnalysis)}
+                          </div>
+                          <span className="text-xs font-bold text-white flex items-center gap-2.5">
+                            <div className={cn("size-2 rounded-full", hhiIndex < 1500 ? "bg-primary shadow-[0_0_8px_rgba(19,236,91,0.4)]" : hhiIndex < 2500 ? "bg-yellow-400" : "bg-red-400")}></div>
+                            {concentrationLabel.label}
+                          </span>
+                       </div>
+                       <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-text-secondary opacity-50">Target Yield</span>
+                            {renderInfoIcon(METRIC_INFO.strategicView)}
+                          </div>
+                          <span className="text-xs font-bold text-primary flex items-center gap-2">
+                            <TrendingUp size={14} />
+                            Strategic Alpha
+                          </span>
+                       </div>
+                    </div>
                   </div>
                 </div>
 
@@ -916,82 +1020,6 @@ export default function PortfolioBuilderPage() {
                           )}
                         </div>
                       ))}
-                    </div>
-                  </div>
-
-                  {/* Distribution Summary */}
-                  <div className="lg:col-span-2 flex flex-col gap-12">
-                    {/* Pie Chart Card */}
-                    <div className="bg-surface-dark/60 border border-border-active/10 rounded-[40px] p-10 flex flex-col shadow-2xl min-h-[600px] hover:border-primary/20 transition-all">
-                      <div className="flex items-center justify-between mb-10">
-                        <div className="flex items-center gap-5">
-                          <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                             <PieChartIcon size={22} />
-                          </div>
-                          <h3 className="text-sm font-black uppercase tracking-widest text-white">
-                            Strategic Weights
-                          </h3>
-                          {renderInfoIcon(METRIC_INFO.distribution)}
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 flex flex-col items-center justify-center relative py-8">
-                        <div className="w-full h-[420px]">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={selectedPortfolioChartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={100}
-                                outerRadius={140}
-                                paddingAngle={10}
-                                dataKey="value"
-                                stroke="none"
-                                label={({ name, value }) => `${name} ${value.toFixed(0)}%`}
-                                labelLine={{ stroke: '#333', strokeWidth: 1.5, length: 20 }}
-                                animationDuration={2000}
-                              >
-                                {selectedPortfolioChartData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
-                                ))}
-                              </Pie>
-                              <RechartsTooltip 
-                                contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '24px', padding: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}
-                                itemStyle={{ color: '#fff', fontSize: '15px', fontWeight: '900' }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
-                        
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
-                          <span className="text-6xl font-black text-primary drop-shadow-[0_0_30px_rgba(19,236,91,0.4)] tabular-nums tracking-tighter leading-none">{selectedPortfolio.assets.length}</span>
-                          <span className="text-[11px] text-text-secondary uppercase font-black tracking-widest mt-2 opacity-60">Assets</span>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-10 pt-10 border-t border-border-dark/30 grid grid-cols-2 gap-10">
-                         <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Risk Analysis</span>
-                              {renderInfoIcon(METRIC_INFO.riskAnalysis)}
-                            </div>
-                            <span className="text-sm font-black text-white flex items-center gap-3">
-                              <div className="size-3 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.4)]"></div>
-                              Aggressive-Medium
-                            </span>
-                         </div>
-                         <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60">Objective</span>
-                              {renderInfoIcon(METRIC_INFO.strategicView)}
-                            </div>
-                            <span className="text-sm font-black text-primary flex items-center gap-3">
-                              <TrendingUp size={18} />
-                              Long-term Alpha
-                            </span>
-                         </div>
-                      </div>
                     </div>
                   </div>
                 </div>

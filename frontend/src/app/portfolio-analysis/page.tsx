@@ -127,23 +127,51 @@ export default function PortfolioSimulationPage() {
         portfolio.assets.map(pa => getAssetHistory(pa.asset_id, startStr, endStr))
       );
       
-      const dates = assetHistories[0]?.map(h => h.date) || [];
-      const indexPoints = dates.map((date, idx) => {
-        let weightedSum = 0;
-        portfolio.assets.forEach((pa, assetIdx) => {
-          const history = assetHistories[assetIdx];
-          const priceAtDate = history?.find(h => h.date === date)?.price || 0;
-          const firstPrice = history?.[0]?.price || 1;
-          const normalizedPrice = (priceAtDate / firstPrice) * 100;
-          weightedSum += normalizedPrice * pa.weight;
+      if (assetHistories.length > 0) {
+        // 1. Identify all unique dates and sort them
+        const allDatesSet = new Set<string>();
+        assetHistories.forEach(h => {
+          h?.forEach(d => allDatesSet.add(d.date));
         });
-        return { date, value: weightedSum };
-      });
-      
-      // Filter for weekly data to reduce noise (1 point every 7 days)
-      const weeklyPoints = indexPoints.filter((_, idx) => idx % 7 === 0 || idx === indexPoints.length - 1);
-      
-      setPreviewData(weeklyPoints);
+        const sortedDates = Array.from(allDatesSet).sort();
+
+        if (sortedDates.length === 0) return;
+
+        // 2. Build index with ffill
+        const indexPoints = sortedDates.map(date => {
+          let weightedSum = 0;
+          portfolio.assets.forEach((pa, assetIdx) => {
+            const history = assetHistories[assetIdx];
+            if (!history || history.length === 0) {
+              weightedSum += 100 * pa.weight;
+              return;
+            }
+
+            // Find price at date or last known
+            let pricePoint = history.find(h => h.date === date);
+            if (!pricePoint) {
+              const previousPoints = history.filter(h => h.date < date);
+              if (previousPoints.length > 0) {
+                pricePoint = previousPoints[previousPoints.length - 1];
+              }
+            }
+
+            if (pricePoint) {
+              const firstPrice = history[0].price;
+              const currentPrice = pricePoint.price;
+              const normalizedPrice = (currentPrice / firstPrice) * 100;
+              weightedSum += normalizedPrice * pa.weight;
+            } else {
+              weightedSum += 100 * pa.weight;
+            }
+          });
+          return { date, value: weightedSum };
+        });
+        
+        // Filter for weekly data to reduce noise
+        const weeklyPoints = indexPoints.filter((_, idx) => idx % 7 === 0 || idx === indexPoints.length - 1);
+        setPreviewData(weeklyPoints);
+      }
     } catch (error) {
       console.error("Error loading preview:", error);
     } finally {
@@ -863,7 +891,7 @@ export default function PortfolioSimulationPage() {
                               paddingAngle={8}
                               dataKey="value"
                               stroke="none"
-                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                              label={({ name, percent }: {name: string, percent: number}) => `${name} ${(percent * 100).toFixed(0)}%`}
                               labelLine={{ stroke: '#3b5443', strokeWidth: 1 }}
                             >
                               {selectedPortfolioDetails.assets.map((entry, index) => (
