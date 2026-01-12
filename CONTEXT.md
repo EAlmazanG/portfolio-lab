@@ -200,41 +200,43 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 6. Current Progress (v0.4 Completed)
+## 6. Current Progress (v0.5 Completed)
 
 ### 6.1. Infrastructure & DevOps
 - **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
-- **Database:** PostgreSQL set up with SQLAlchemy ORM and Alembic for migrations.
+- **Database:** PostgreSQL set up with SQLAlchemy ORM and Alembic for migrations (added Risk Metrics support).
 - **Backend:** FastAPI foundation with health checks and CORS configuration.
 - **Frontend:** Next.js (App Router) structure with TypeScript and Tailwind CSS.
 - **Automation:** Refactored `Makefile` with clear commands (`make dev-start`, `make prod-start`, `make start portfolio-lab`).
-- **Icons:** Custom favicon and application branding implemented.
 
 ### 6.2. Data Ingestion & Management
 - **Yahoo Finance Client:** Robust integration for fetching OHLCV data and asset metadata.
 - **Interactive CLI Tool:** A comprehensive data manager (`make backend-cli`).
-- **Data Integrity:** Strict PostgreSQL schemas for `Asset`, `MarketData`, and `Setting`.
+- **Visual Index:** Frontend logic to construct and normalize weighted price indices for portfolios.
 
-### 6.3. Smart DCA Engine (v0.4)
-- **Core Engine:** Enhanced `SimulationEngine` to support algorithmic DCA.
-- **Indicators:** Support for **RSI**, **MA** (Simple Moving Average), and **EMA** (Exponential Moving Average).
-- **Dynamic Timing:** Adjusts contribution dates based on oversold/overbought signals to catch local dips.
-- **Dynamic Sizing:** Varies buy amounts (up to 5x multiplier) ensuring the total annual investment remains identical to the baseline.
-- **Safety Floor:** "Min Sizing" parameter that guarantees a minimum investment percentage even during overbought periods, preventing staying out of the market for too long.
-- **Realistic Backtesting:** All indicators are calculated using only data available up to the day prior to the trade (zero look-ahead bias).
+### 6.3. Advanced Simulation Engine (v0.5)
+- **Portfolio Core Logic:** 
+    - The `PortfolioSimulationEngine` orchestrates multiple `SimulationEngine` instances.
+    - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates, ensuring discrete events (contributions) and cumulative values (invested capital, portfolio value) are mathematically sound across the entire timeline.
+    - **Initial State:** Charts explicitly start at the **Initial Capital** value on Day 1, eliminating artificial zero-spikes and reflecting the true deployment of capital.
+- **Advanced Financial Metrics:** 
+    - **Volatility:** Calculated as the annualized standard deviation of periodic returns.
+    - **Max Drawdown (MDD):** Tracks the peak-to-trough decline to quantify worst-case scenario risk.
+    - **Strategy Alpha:** Measuring the net outperformance of "Smart" logic vs. a standard fixed-interval DCA baseline.
+- **Robust Data Pipeline:** 
+    - **Indicator Safeguards:** Technical indicators (MA/EMA) return `null` instead of `0.0` during their initial calculation windows, preventing visualization distortions.
+    - **Clean Scaling:** All values are rounded and cleaned for JSON serialization to handle edge cases like `NaN` or `Inf`.
 
-### 6.4. Frontend Implementation (v0.4)
-- **Asset Tab:** Advanced simulation dashboard with feature toggles for Smart Timing and Sizing.
-- **Interactive Visualization:**
-    - **Portfolio Growth:** Compare Smart vs. Baseline vs. Invested capital.
-    - **Price Reference:** Line chart with synchronized tooltips.
-    - **Contributions Timeline:** Detailed bar chart showing exact investment dates and amounts.
-    - **Synchronized Zoom:** Global `Brush` component to zoom all charts simultaneously.
-- **History & Persistence:**
-    - **Favorites System:** Star simulations to save them in a dedicated tab.
-    - **Smart Deletion:** Options to clear only non-favorites or specific subsets.
-    - **Date Validation:** Date pickers are dynamically bounded by the available historical data for the selected asset.
-- **UX Improvements:** Collapsible sidebars with discreet handles, sticky simulation controls, and warning modals for input errors.
+### 6.4. Frontend & UX Excellence (v0.5)
+- **High-Fidelity Visualizations:**
+    - **Synchronized Charts:** Leveraging Recharts `syncId` to correlate price action with buy/sell signals and accumulation curves across different chart components.
+    - **Temporal Filtering:** Global `Brush` component allows users to inspect specific market cycles or volatility events in detail.
+    - **RSI Sub-charts:** Professional RSI representation with decoupled axes, reference lines at 30/70, and shaded areas for clarity.
+- **Visual Index Construction:** Frontend logic to normalize and weight multiple assets into a single "Portfolio Index" (Base 100), providing a clean comparative benchmark.
+- **Professional UI/UX:**
+    - **Unified Theme:** Harmonized background colors, typography, and pulsing animations across all views.
+    - **Contextual Intelligence:** Informative tooltips for every metric, providing English explanations of financial concepts.
+    - **Responsive Architecture:** Sidebars utilize fixed widths and `overflow-visible` containers to ensure smooth, flicker-free transitions.
 
 ---
 
@@ -243,7 +245,12 @@ To validate the hypothesis, every simulation must be compared against:
 1.  **Capital Constraint:** In *all* comparisons, the total capital deployed in the "Smart" strategy must exactly match the "Baseline" strategy on an annual basis.
 2.  **Strategy Pattern:** Use the Strategy Design Pattern for Indicators and Buying Logic to ensure modularity and easy extensibility.
 3.  **Strict Decoupling:** The Frontend is a view layer only. All financial calculations, simulations, and data processing happen in the Python Backend.
-4.  **Vectorization:** Use Pandas/NumPy vectorization for simulation loops to ensure high performance, especially for the Optimizer.
-5.  **Security:** NEVER include passwords or API keys in the code. Always use environment variables and the `.env` file.
+4.  **Vectorization & Robustness:** 
+    - Use Pandas/NumPy for performance and data alignment.
+    - Always use `ffill()` for cumulative values and `fillna(0)` for discrete events when aggregating time-series data.
+5.  **Chart Fidelity:**
+    - Indicators (MA/EMA/RSI) must never plot artificial zero-values. Use `null` if the calculation window is incomplete.
+    - Cumulative charts must start at the **Initial Capital** value on the selected start date.
 6.  **Type Safety:** Use Pydantic models for all Backend API request/response structures. Use TypeScript interfaces for all Frontend data.
-7.  **Documentation:** Keep this `CONTEXT.md` updated as the "Source of Truth" for the project scope.
+7.  **Educational UI:** Every chart and non-trivial metric must include an "Info" tooltip explaining its financial significance.
+8.  **Source of Truth:** Keep this `CONTEXT.md` updated as the primary reference for system behavior.
