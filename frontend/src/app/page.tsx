@@ -34,6 +34,7 @@ import {
   RefreshCcw,
   Star
 } from "lucide-react";
+import Header from "../components/Header";
 import { 
   getAssets, 
   runSimulation, 
@@ -233,6 +234,7 @@ export default function AssetSimulationPage() {
     try {
       const details = await getSimulationDetails(id);
       setSimulation(details);
+      
       // Update config form to match the loaded simulation
       setConfig({
         ...details.config,
@@ -248,7 +250,17 @@ export default function AssetSimulationPage() {
         dynamic_timing_enabled: !!details.config.dynamic_timing_enabled,
         dynamic_sizing_enabled: !!details.config.dynamic_sizing_enabled,
       } as any);
+
+      // Sincronización de Smart DCA
       setIsSmartDcaEnabled(!!details.config.dynamic_timing_enabled || !!details.config.dynamic_sizing_enabled);
+
+      // Sincronizar el estado visual de los fees
+      setIsFeesEnabled(
+        (details.config.commission_fee_percent ?? 0) > 0 || 
+        (details.config.minimum_fee_per_trade ?? 0) > 0 || 
+        (details.config.maintenance_fee_annual_percent ?? 0) > 0
+      );
+
     } catch (error) {
       console.error("Error loading simulation details:", error);
       alert("Error loading simulation details.");
@@ -269,7 +281,7 @@ export default function AssetSimulationPage() {
     }
   };
 
-  const selectedAsset = assets.find((a: Asset) => a.id === config.asset_id);
+  const selectedAsset = assets.find(a => a.id === config.asset_id);
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
@@ -356,34 +368,14 @@ export default function AssetSimulationPage() {
         </div>
       )}
 
-      {/* Top Navigation */}
-      <header className="flex items-center justify-between border-b border-border-dark px-6 py-3 flex-shrink-0 z-20 bg-background-dark">
-        <div className="flex items-center gap-4 text-white">
-          <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-            <LineChartIcon size={20} />
-          </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-[-0.015em] hidden sm:block">Portfolio-Lab</h2>
-        </div>
-
-        <div className="flex flex-1 justify-end items-center gap-4">
-          <div className="hidden md:flex items-center gap-6 border-l border-border-dark pl-6">
-            <div className="flex items-center gap-6">
-            <a className="text-white text-sm font-medium leading-normal border-b-2 border-primary pb-0.5" href="#">Asset</a>
-            <a className="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
-          </div>
-          <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
-             <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" alt="Profile" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Layout */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Sidebar: Configuration */}
         <aside className={cn(
-          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
-          leftSidebarOpen ? "w-full max-w-[400px]" : "w-0 border-r-0"
+          "relative flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
+          leftSidebarOpen ? "w-[400px]" : "w-0 border-r-0"
         )}>
           {/* Toggle Handle Left */}
           <button 
@@ -398,7 +390,7 @@ export default function AssetSimulationPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[400px] transition-opacity duration-300",
+            "flex flex-col h-full w-[400px] transition-opacity duration-300",
             leftSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -925,7 +917,7 @@ export default function AssetSimulationPage() {
           {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative flex flex-col">
             {simulation ? (
               <>
                 <header className="flex justify-between items-start mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -1638,7 +1630,7 @@ export default function AssetSimulationPage() {
 
         {/* Right Sidebar: History */}
         <aside className={cn(
-          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20",
+          "relative flex flex-col border-l border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
           rightSidebarOpen ? "w-[320px]" : "w-0 border-l-0"
         )}>
           {/* Toggle Handle Right */}
@@ -1654,7 +1646,7 @@ export default function AssetSimulationPage() {
           </button>
 
           <div className={cn(
-            "flex flex-col h-full min-w-[320px] transition-opacity duration-300",
+            "flex flex-col h-full w-[320px] transition-opacity duration-300",
             rightSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
           )}>
           <div className="p-6 border-b border-border-dark/30">
@@ -1678,7 +1670,7 @@ export default function AssetSimulationPage() {
                   >
                     <Trash2 size={16} />
                   </button>
-                </div>
+          </div>
               </div>
               <p className="text-text-secondary text-[11px] mb-4">Recover your previous analyses</p>
               

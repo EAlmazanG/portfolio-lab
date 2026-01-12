@@ -16,8 +16,12 @@ class Simulation(Base):
     name = Column(String(255), nullable=True)
     
     # Asset association
-    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=False)
+    asset_id = Column(Integer, ForeignKey("assets.id"), nullable=True)
     asset = relationship("Asset", back_populates="simulations")
+
+    # Portfolio association
+    portfolio_id = Column(Integer, ForeignKey("portfolios.id"), nullable=True)
+    portfolio = relationship("Portfolio", back_populates="simulations")
 
     # Configuration
     start_date = Column(DateTime, nullable=False)
@@ -27,12 +31,17 @@ class Simulation(Base):
     frequency = Column(String(20), nullable=False)  # 'daily', 'weekly', 'monthly'
     investment_mode = Column(String(20), default="per_contribution")  # 'annual' or 'per_contribution'
     
+    # Portfolio-specific configuration
+    rebalancing_mode = Column(String(20), default="none") # 'none', 'periodic', 'contribution'
+    rebalancing_interval_months = Column(Integer, default=6)
+    asset_configs = Column(Text, nullable=True) # Stored as JSON string
+    
     # Fees
     commission_fee_percent = Column(Float, default=0.0)
     minimum_fee_per_trade = Column(Float, default=0.0)
     maintenance_fee_annual_percent = Column(Float, default=0.0)
 
-    # Smart Features
+    # Smart Features (mostly for single asset, but kept for compatibility)
     dynamic_timing_enabled = Column(Boolean, default=False)
     timing_aggressiveness = Column(Float, default=0.5)
     dynamic_sizing_enabled = Column(Boolean, default=False)
@@ -42,8 +51,8 @@ class Simulation(Base):
     rsi_threshold_high = Column(Float, default=70.0)
     ma_period_short = Column(Integer, default=50)
     ma_period_long = Column(Integer, default=200)
-    expensive_buy_ratio = Column(Float, default=0.0) # New parameter
-    is_favorite = Column(Boolean, default=False) # New field
+    expensive_buy_ratio = Column(Float, default=0.0)
+    is_favorite = Column(Boolean, default=False)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -52,7 +61,7 @@ class Simulation(Base):
     results = relationship("SimulationResult", back_populates="simulation", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<Simulation(id={self.id}, asset_id={self.asset_id})>"
+        return f"<Simulation(id={self.id}, asset_id={self.asset_id}, portfolio_id={self.portfolio_id})>"
 
 
 class SimulationResult(Base):
@@ -64,9 +73,9 @@ class SimulationResult(Base):
     simulation_id = Column(Integer, ForeignKey("simulations.id"), nullable=False)
     simulation = relationship("Simulation", back_populates="results")
 
-    # Time-series data stored as JSON strings for simplicity in this version
-    # formats: [{"date": "2021-01-01", "value": 100.0}, ...]
+    # Time-series data stored as JSON strings
     portfolio_history = Column(Text, nullable=True) 
+    asset_results = Column(Text, nullable=True) # Stored as JSON string
 
     # Key Metrics
     final_value = Column(Float, nullable=False)
@@ -86,6 +95,10 @@ class SimulationResult(Base):
     # Fee metrics
     total_fees = Column(Float, nullable=True)
     fees_percentage = Column(Float, nullable=True)
+
+    # Risk metrics
+    volatility = Column(Float, nullable=True)
+    max_drawdown = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

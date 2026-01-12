@@ -67,6 +67,8 @@ class SimulationResultSchema(BaseModel):
     dca_efficiency: float
     total_fees: float
     fees_percentage: float
+    volatility: Optional[float] = 0.0
+    max_drawdown: Optional[float] = 0.0
     portfolio_history: List[PortfolioPoint]
 
 
