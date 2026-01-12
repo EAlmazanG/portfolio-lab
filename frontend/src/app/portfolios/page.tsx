@@ -554,7 +554,11 @@ export default function PortfolioBuilderPage() {
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
           <div className="flex-1 overflow-y-auto p-8 lg:p-12 z-10 custom-scrollbar flex flex-col">
-            {selectedPortfolio ? (
+            <div className={cn(
+              "max-w-[1760px] mx-auto w-full flex-1 flex flex-col",
+              !selectedPortfolio && "justify-center"
+            )}>
+              {selectedPortfolio ? (
               <div className="max-w-[1760px] mx-auto animate-in fade-in slide-in-from-top-4 duration-500 space-y-10">
                 {/* Header */}
                 <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-surface-dark/40 p-10 rounded-[40px] border border-border-active/20 backdrop-blur-sm shadow-2xl">
@@ -961,7 +965,7 @@ export default function PortfolioBuilderPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
+              <div className="flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-700 flex-1">
                 <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group">
                   <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
                   <PieChartIcon size={48} className="text-primary relative z-10" />
@@ -972,6 +976,7 @@ export default function PortfolioBuilderPage() {
                 </p>
               </div>
             )}
+            </div>
           </div>
         </main>
       </div>

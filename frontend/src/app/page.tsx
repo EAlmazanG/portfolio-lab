@@ -234,6 +234,7 @@ export default function AssetSimulationPage() {
     try {
       const details = await getSimulationDetails(id);
       setSimulation(details);
+      
       // Update config form to match the loaded simulation
       setConfig({
         ...details.config,
@@ -249,7 +250,17 @@ export default function AssetSimulationPage() {
         dynamic_timing_enabled: !!details.config.dynamic_timing_enabled,
         dynamic_sizing_enabled: !!details.config.dynamic_sizing_enabled,
       } as any);
+
+      // Sincronización de Smart DCA
       setIsSmartDcaEnabled(!!details.config.dynamic_timing_enabled || !!details.config.dynamic_sizing_enabled);
+
+      // Sincronizar el estado visual de los fees
+      setIsFeesEnabled(
+        (details.config.commission_fee_percent ?? 0) > 0 || 
+        (details.config.minimum_fee_per_trade ?? 0) > 0 || 
+        (details.config.maintenance_fee_annual_percent ?? 0) > 0
+      );
+
     } catch (error) {
       console.error("Error loading simulation details:", error);
       alert("Error loading simulation details.");
@@ -270,7 +281,7 @@ export default function AssetSimulationPage() {
     }
   };
 
-  const selectedAsset = assets.find((a: Asset) => a.id === config.asset_id);
+  const selectedAsset = assets.find(a => a.id === config.asset_id);
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">

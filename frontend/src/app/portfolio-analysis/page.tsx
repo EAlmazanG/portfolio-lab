@@ -585,8 +585,11 @@ export default function PortfolioSimulationPage() {
           {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative">
-            <div className="max-w-[1600px] mx-auto min-h-full flex flex-col">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative flex flex-col">
+            <div className={cn(
+              "max-w-[1600px] mx-auto w-full flex-1 flex flex-col",
+              !simulation && !selectedPortfolioDetails && "justify-center"
+            )}>
               {simulation ? (
                 <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-10">
                   {/* Result Header */}
@@ -804,7 +807,7 @@ export default function PortfolioSimulationPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
+                <div className="flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-700 flex-1">
                   <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group">
                     <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
                     <Sliders size={48} className="text-primary relative z-10" />
