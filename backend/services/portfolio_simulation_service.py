@@ -99,6 +99,13 @@ class PortfolioSimulationService:
                     total_fees=result["total_fees"],
                     fees_percentage=result["fees_percentage"]
                 )
+                
+                # Only add risk metrics if columns exist in the DB
+                if hasattr(res, 'volatility'):
+                    res.volatility = result.get("volatility", 0.0)
+                if hasattr(res, 'max_drawdown'):
+                    res.max_drawdown = result.get("max_drawdown", 0.0)
+                    
                 db.add(res)
                 db.commit()
             finally:
@@ -128,9 +135,9 @@ class PortfolioSimulationService:
                         "portfolio_name": sim.portfolio.name if sim.portfolio else "Deleted Portfolio",
                         "start_date": sim.start_date,
                         "end_date": sim.end_date,
-                        "final_value": result.final_value,
-                        "total_invested": result.total_invested,
-                        "total_return_percent": result.total_return_percent,
+                        "final_value": float(result.final_value),
+                        "total_invested": float(result.total_invested),
+                        "total_return_percent": float(result.total_return_percent),
                         "is_favorite": bool(sim.is_favorite),
                         "created_at": sim.created_at
                     })
@@ -201,15 +208,15 @@ class PortfolioSimulationService:
                     max_drawdown = float(min(drawdowns) * 100)
 
             result_schema = PortfolioSimulationResultSchema(
-                final_value=result.final_value,
-                total_invested=result.total_invested,
-                total_return_percent=result.total_return_percent,
-                baseline_final_value=result.baseline_final_value or result.final_value,
-                baseline_return_percent=result.baseline_return_percent or result.total_return_percent,
-                total_fees=result.total_fees or 0.0,
-                fees_percentage=result.fees_percentage or 0.0,
-                volatility=round(volatility, 2),
-                max_drawdown=round(max_drawdown, 2),
+                final_value=float(result.final_value),
+                total_invested=float(result.total_invested),
+                total_return_percent=float(result.total_return_percent),
+                baseline_final_value=float(getattr(result, 'baseline_final_value', result.final_value) or result.final_value),
+                baseline_return_percent=float(getattr(result, 'baseline_return_percent', result.total_return_percent) or result.total_return_percent),
+                total_fees=float(getattr(result, 'total_fees', 0.0) or 0.0),
+                fees_percentage=float(getattr(result, 'fees_percentage', 0.0) or 0.0),
+                volatility=round(getattr(result, 'volatility', volatility) or volatility, 2),
+                max_drawdown=round(getattr(result, 'max_drawdown', max_drawdown) or max_drawdown, 2),
                 portfolio_history=portfolio_history,
                 asset_results=asset_results,
                 # Fill mandatory single-asset fields with defaults for compatibility

@@ -17,50 +17,41 @@ export default function Header() {
   const tabs = [
     { name: "Asset Simulation", href: "/" },
     { name: "Portfolio Management", href: "/portfolios" },
-    { name: "Portfolio Analysis", href: "/portfolio-analysis" },
-    { name: "Settings", href: "#" },
+    { name: "Portfolio Simulation", href: "/portfolio-analysis" },
   ];
 
   return (
-    <header className="flex items-center justify-between border-b border-border-dark px-6 py-3 flex-shrink-0 z-20 bg-background-dark">
+    <header className="flex items-center justify-between border-b border-border-dark px-8 py-4 flex-shrink-0 z-20 bg-background-dark/80 backdrop-blur-md sticky top-0">
       <div className="flex items-center gap-4 text-white">
         <Link href="/" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-          <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-            <LineChartIcon size={20} />
+          <div className="size-10 text-primary flex items-center justify-center rounded-xl bg-primary/10 border border-primary/20 shadow-[0_0_20px_rgba(19,236,91,0.15)]">
+            <LineChartIcon size={24} />
           </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-tight hidden sm:block">Portfolio-Lab</h2>
+          <div className="flex flex-col">
+            <h2 className="text-white text-xl font-black leading-tight tracking-tighter hidden sm:block uppercase">Portfolio-Lab</h2>
+            <span className="text-[10px] text-primary font-bold tracking-[0.3em] uppercase opacity-50 hidden sm:block">Research Engine</span>
+          </div>
         </Link>
       </div>
 
-      <div className="flex flex-1 justify-end items-center gap-4">
-        <div className="hidden md:flex items-center gap-6 border-l border-border-dark pl-6">
-          <div className="flex items-center gap-6">
-            {tabs.map((tab) => {
-              const isActive = pathname === tab.href;
-              return (
-                <Link
-                  key={tab.name}
-                  href={tab.href}
-                  className={cn(
-                    "text-sm font-medium leading-normal transition-colors pb-0.5",
-                    isActive 
-                      ? "text-white border-b-2 border-primary" 
-                      : "text-text-secondary hover:text-white"
-                  )}
-                >
-                  {tab.name}
-                </Link>
-              );
-            })}
-          </div>
-          <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-border-dark overflow-hidden">
-            <img 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6FEfyCMU5tIgsG5lpl75XFWc16gRg42Yb9rxpGvHRi_s4_kosZicLAFzxAdGrmN9ENPAqBDRkAFt7OTV5peIv8MkTG7QYA9lyWuxQ5JbmPSsa6IxFPO8uwF-K8whM2vt_vcTxgZbfX4iWo9vBkhcg6t86lnbMRfiUZL4RSJot7ojvOWvoC3GRiToh3FhzylUnEgrczl5VhSaUSF-V_eqQ4cz8-uG4Et6rXDz4shvZRk1Mq12gjpw9S9U-IfGDY0bPZ6RyjRzSeO7d" 
-              alt="Profile" 
-              className="w-full h-full object-cover" 
-            />
-          </div>
-        </div>
+      <div className="flex items-center gap-2 bg-surface-dark/50 p-1.5 rounded-2xl border border-border-dark/50">
+        {tabs.map((tab) => {
+          const isActive = pathname === tab.href;
+          return (
+            <Link
+              key={tab.name}
+              href={tab.href}
+              className={cn(
+                "px-5 py-2.5 text-[11px] font-black uppercase tracking-wider transition-all duration-300 rounded-xl flex items-center gap-2",
+                isActive 
+                  ? "bg-primary text-background-dark shadow-[0_4px_20px_rgba(19,236,91,0.3)] scale-105" 
+                  : "text-text-secondary hover:text-white hover:bg-surface-dark"
+              )}
+            >
+              {tab.name}
+            </Link>
+          );
+        })}
       </div>
     </header>
   );

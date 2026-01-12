@@ -28,6 +28,9 @@ class DCAResult:
     # Fee metrics
     total_fees: float
     fees_percentage: float
+    # Risk metrics
+    volatility: float = 0.0
+    max_drawdown: float = 0.0
 
 
 class SimulationEngine:
@@ -398,6 +401,34 @@ class SimulationEngine:
         first_price = float(indicator_df.iloc[0]['close'])
         dca_efficiency = ((first_price - s_avg_price) / first_price * 100) if first_price > 0 else 0.0
 
+        # Calculate advanced metrics (Volatility, Max Drawdown)
+        smart_values = [p["smart_value"] for p in portfolio_history]
+        
+        # Volatility (Standard Deviation of Periodic Returns)
+        volatility = 0.0
+        if len(smart_values) > 1:
+            import numpy as np
+            returns = []
+            for i in range(1, len(smart_values)):
+                if smart_values[i-1] > 0:
+                    returns.append((smart_values[i] - smart_values[i-1]) / smart_values[i-1])
+            if returns:
+                volatility = float(np.std(returns) * 100) # Percentage
+
+        # Max Drawdown
+        max_drawdown = 0.0
+        if smart_values:
+            peak = smart_values[0]
+            drawdowns = []
+            for val in smart_values:
+                if val > peak:
+                    peak = val
+                if peak > 0:
+                    drawdown = (val - peak) / peak
+                    drawdowns.append(drawdown)
+            if drawdowns:
+                max_drawdown = float(min(drawdowns) * 100) # Negative percentage
+
         return DCAResult(
             portfolio_history=portfolio_history,
             final_value=round(s_final_value, 2),
@@ -410,5 +441,7 @@ class SimulationEngine:
             baseline_avg_purchase_price=round(float(b_avg_price), 2),
             dca_efficiency=round(float(dca_efficiency), 2),
             total_fees=round(float(s_fees), 2),
-            fees_percentage=round(float((s_fees / s_invested) * 100), 2) if s_invested > 0 else 0.0
+            fees_percentage=round(float((s_fees / s_invested) * 100), 2) if s_invested > 0 else 0.0,
+            volatility=round(volatility, 2),
+            max_drawdown=round(max_drawdown, 2)
         )

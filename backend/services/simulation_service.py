@@ -146,19 +146,46 @@ class SimulationService:
                 is_favorite=bool(sim.is_favorite)
             )
             
+            portfolio_history = json.loads(result.portfolio_history) if result.portfolio_history else []
+            
+            # Calculate Risk metrics on the fly from history
+            volatility = 0.0
+            max_drawdown = 0.0
+            if portfolio_history:
+                import numpy as np
+                smart_values = [p["smart_value"] for p in portfolio_history]
+                if len(smart_values) > 1:
+                    returns = []
+                    for i in range(1, len(smart_values)):
+                        if smart_values[i-1] > 0:
+                            returns.append((smart_values[i] - smart_values[i-1]) / smart_values[i-1])
+                    if returns:
+                        volatility = float(np.std(returns) * 100)
+                
+                if smart_values:
+                    peak = smart_values[0]
+                    drawdowns = []
+                    for val in smart_values:
+                        if val > peak: peak = val
+                        if peak > 0: drawdowns.append((val - peak) / peak)
+                    if drawdowns:
+                        max_drawdown = float(min(drawdowns) * 100)
+
             result_schema = SimulationResultSchema(
-                final_value=result.final_value,
-                total_invested=result.total_invested,
-                total_return_percent=result.total_return_percent,
-                avg_purchase_price=result.avg_purchase_price or 0.0,
-                total_assets_accumulated=result.total_assets_accumulated or 0.0,
-                baseline_final_value=result.baseline_final_value or result.final_value,
-                baseline_return_percent=result.baseline_return_percent or result.total_return_percent,
-                baseline_avg_purchase_price=result.baseline_avg_purchase_price or result.avg_purchase_price or 0.0,
-                dca_efficiency=result.dca_efficiency or 0.0,
-                total_fees=result.total_fees or 0.0,
-                fees_percentage=result.fees_percentage or 0.0,
-                portfolio_history=json.loads(result.portfolio_history) if result.portfolio_history else []
+                final_value=float(result.final_value),
+                total_invested=float(result.total_invested),
+                total_return_percent=float(result.total_return_percent),
+                avg_purchase_price=float(result.avg_purchase_price or 0.0),
+                total_assets_accumulated=float(result.total_assets_accumulated or 0.0),
+                baseline_final_value=float(result.baseline_final_value or result.final_value),
+                baseline_return_percent=float(result.baseline_return_percent or result.total_return_percent),
+                baseline_avg_purchase_price=float(result.baseline_avg_purchase_price or 0.0),
+                dca_efficiency=float(result.dca_efficiency or 0.0),
+                total_fees=float(result.total_fees or 0.0),
+                fees_percentage=float(result.fees_percentage or 0.0),
+                volatility=round(volatility, 2),
+                max_drawdown=round(max_drawdown, 2),
+                portfolio_history=portfolio_history
             )
             
             return SimulationResponse(
@@ -212,6 +239,8 @@ class SimulationService:
             dca_efficiency=dca_result.dca_efficiency,
             total_fees=dca_result.total_fees,
             fees_percentage=dca_result.fees_percentage,
+            volatility=dca_result.volatility,
+            max_drawdown=dca_result.max_drawdown,
             portfolio_history=dca_result.portfolio_history
         )
         
@@ -251,7 +280,6 @@ class SimulationService:
                 
                 simulation_id = sim.id
                 
-                # Create SimulationResult record
                 res = SimulationResult(
                     simulation_id=sim.id,
                     portfolio_history=json.dumps(dca_result.portfolio_history),
@@ -267,6 +295,7 @@ class SimulationService:
                     total_fees=dca_result.total_fees,
                     fees_percentage=dca_result.fees_percentage
                 )
+                
                 db.add(res)
                 db.commit()
             finally:

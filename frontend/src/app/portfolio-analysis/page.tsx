@@ -37,7 +37,7 @@ function cn(...inputs: ClassValue[]) {
 
 const COLORS = ["#13ec5b", "#8884d8", "#82ca9d", "#ffc658", "#ff7300", "#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
-export default function PortfolioAnalysisPage() {
+export default function PortfolioSimulationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
@@ -176,7 +176,7 @@ export default function PortfolioAnalysisPage() {
         ...prev, 
         portfolio_id: portfolioId, 
         asset_configs: assetConfigs,
-        name: `Analysis: ${details.name}`
+        name: `Simulation: ${details.name}`
       }));
       
       loadPortfolioPreview(details);
@@ -369,7 +369,7 @@ export default function PortfolioAnalysisPage() {
                   className="w-full py-3 px-4 bg-surface-dark border border-border-active hover:border-primary hover:bg-background-dark text-white rounded-xl flex items-center justify-center gap-2 font-bold transition-all group"
                 >
                   <Plus size={18} className="text-primary group-hover:scale-110 transition-transform" />
-                  New Analysis
+                  New Simulation
                 </button>
               </div>
 
@@ -579,201 +579,217 @@ export default function PortfolioAnalysisPage() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-8 z-10 custom-scrollbar relative">
+        <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
+          {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
-          <div className="max-w-[1600px] mx-auto z-10 relative">
-            {simulation ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                {/* Result Header */}
-                <header className="flex justify-between items-start mb-8">
-                  <div className="flex flex-col">
-                    <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Portfolio Simulation Results</h2>
-                    <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
-                      <Calendar size={14} />
-                      <span>{new Date(simulation.config.start_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(simulation.config.end_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                      <span className="mx-2 opacity-30">•</span>
-                      <span className="text-primary font-bold tracking-tight">{selectedPortfolioDetails?.name}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-text-secondary text-[10px] uppercase font-black tracking-[0.2em] mb-1 opacity-60">Final Portfolio Value</p>
-                    <h2 className="text-primary text-4xl font-black tabular-nums tracking-tighter drop-shadow-[0_0_15px_rgba(19,236,91,0.2)]">
-                      ${simulation.results.final_value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </h2>
-                  </div>
-                </header>
 
-                {/* KPI Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><TrendingUp size={48} className="text-primary" /></div>
-                    <p className="text-text-secondary text-sm font-medium mb-1">Total Return</p>
-                    <div className="flex items-baseline gap-2">
-                      <h3 className={cn("text-3xl font-bold", simulation.results.total_return_percent >= 0 ? "text-white" : "text-red-400")}>
-                        {simulation.results.total_return_percent > 0 ? "+" : ""}{simulation.results.total_return_percent}%
-                      </h3>
-                      <span className="text-primary text-xs font-bold bg-primary/10 px-2 py-0.5 rounded-full flex items-center">
-                        <TrendingUp size={10} className="mr-1" /> {(simulation.results.total_return_percent - simulation.results.baseline_return_percent).toFixed(1)}% Alpha
-                      </span>
-                    </div>
-                  </div>
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-10"><Download size={48} className="text-slate-400" /></div>
-                    <p className="text-text-secondary text-sm font-medium mb-1">Total Invested</p>
-                    <h3 className="text-white text-3xl font-bold">${simulation.results.total_invested.toLocaleString()}</h3>
-                  </div>
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Gauge size={48} className="text-yellow-400" /></div>
-                    <p className="text-text-secondary text-sm font-medium mb-1">Volatility (Std Dev)</p>
-                    <div className="flex items-baseline gap-2">
-                      <h3 className="text-white text-3xl font-bold">{simulation.results.volatility || "0.0"}%</h3>
-                      <span className="text-text-secondary text-[10px] font-bold opacity-40 uppercase tracking-widest">Risk Index</span>
-                    </div>
-                  </div>
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><ShieldAlert size={48} className="text-red-400" /></div>
-                    <p className="text-text-secondary text-sm font-medium mb-1">Max Drawdown</p>
-                    <h3 className="text-red-400 text-3xl font-bold">{simulation.results.max_drawdown || "0.0"}%</h3>
-                  </div>
-                </div>
-
-                {/* Wealth Accumulation Chart */}
-                <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm w-full">
-                  <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative">
+            <div className="max-w-[1600px] mx-auto min-h-full">
+              {simulation ? (
+                <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-10">
+                  {/* Result Header */}
+                  <header className="flex justify-between items-start mb-8">
                     <div className="flex flex-col">
-                      <h3 className="text-white text-lg font-bold flex items-center gap-2"><Activity size={18} className="text-primary" /> Portfolio Growth Evolution</h3>
-                      <p className="text-text-secondary text-[11px]">Weekly performance baseline vs smart simulation</p>
+                      <h2 className="text-white text-[28px] font-bold leading-tight mb-2">Portfolio Simulation Results</h2>
+                      <div className="flex items-center gap-2 text-text-secondary text-sm font-medium opacity-80">
+                        <Calendar size={14} />
+                        <span>{new Date(simulation.config.start_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })} — {new Date(simulation.config.end_date).toLocaleDateString("en-US", { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span className="mx-2 opacity-30">•</span>
+                        <span className="text-primary font-bold tracking-tight">{selectedPortfolioDetails?.name}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                      <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-primary"></span><span className="text-xs text-white font-bold">Smart Portfolio</span></div>
-                      <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-slate-400"></span><span className="text-xs text-text-secondary">Standard DCA</span></div>
-                      <div className="flex items-center gap-2"><span className="w-3 h-3 border-t-2 border-slate-500 border-dashed"></span><span className="text-xs text-text-secondary">Invested Amount</span></div>
+                    <div className="text-right">
+                      <p className="text-text-secondary text-[10px] uppercase font-black tracking-[0.2em] mb-1 opacity-60">Final Portfolio Value</p>
+                      <h2 className="text-primary text-4xl font-black tabular-nums tracking-tighter drop-shadow-[0_0_15px_rgba(19,236,91,0.2)]">
+                        ${simulation.results.final_value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </h2>
                     </div>
-                  </div>
-                  <div className="w-full h-[450px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={simulation.results.portfolio_history}>
-                        <defs><linearGradient id="gradientSmartPort" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#13ec5b" stopOpacity={0.15}/><stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/></linearGradient></defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
-                        <XAxis dataKey="date" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
-                        <YAxis stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '13px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(value: any) => [`$${Math.round(value).toLocaleString()}`]} />
-                        <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
-                        <Area type="monotone" dataKey="baseline_value" stroke="#94a3b8" strokeWidth={2} fill="transparent" name="Standard DCA" strokeDasharray="4 4" />
-                        <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Invested Amount" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                  </header>
 
-                {/* Individual Asset Breakdown Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Final Allocation Pie Chart */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
-                    <h3 className="text-white text-lg font-bold flex items-center gap-2 mb-6"><PieChartIcon size={18} className="text-primary" /> Final Portfolio Allocation</h3>
-                    <div className="h-[350px]">
+                  {/* KPI Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><TrendingUp size={48} className="text-primary" /></div>
+                      <p className="text-text-secondary text-sm font-medium mb-1">Total Return</p>
+                      <div className="flex items-baseline gap-2">
+                        <h3 className={cn("text-3xl font-bold", simulation.results.total_return_percent >= 0 ? "text-white" : "text-red-400")}>
+                          {simulation.results.total_return_percent > 0 ? "+" : ""}{simulation.results.total_return_percent}%
+                        </h3>
+                        <span className="text-primary text-xs font-bold bg-primary/10 px-2 py-0.5 rounded-full flex items-center">
+                          <TrendingUp size={10} className="mr-1" /> {(simulation.results.total_return_percent - simulation.results.baseline_return_percent).toFixed(1)}% Alpha
+                        </span>
+                      </div>
+                    </div>
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 p-4 opacity-10"><Download size={48} className="text-slate-400" /></div>
+                      <p className="text-text-secondary text-sm font-medium mb-1">Total Invested</p>
+                      <h3 className="text-white text-3xl font-bold">${simulation.results.total_invested.toLocaleString()}</h3>
+                    </div>
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Gauge size={48} className="text-yellow-400" /></div>
+                      <p className="text-text-secondary text-sm font-medium mb-1">Volatility (Std Dev)</p>
+                      <div className="flex items-baseline gap-2">
+                        <h3 className="text-white text-3xl font-bold">{simulation.results.volatility || "0.0"}%</h3>
+                      </div>
+                    </div>
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><ShieldAlert size={48} className="text-red-400" /></div>
+                      <p className="text-text-secondary text-sm font-medium mb-1">Max Drawdown</p>
+                      <h3 className="text-red-400 text-3xl font-bold">{simulation.results.max_drawdown || "0.0"}%</h3>
+                    </div>
+                  </div>
+
+                  {/* Wealth Accumulation Chart */}
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm w-full mb-6">
+                    <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+                      <div className="flex flex-col">
+                        <h3 className="text-white text-lg font-bold flex items-center gap-2"><Activity size={18} className="text-primary" /> Portfolio Growth Evolution</h3>
+                        <p className="text-text-secondary text-[11px]">Weekly performance: Smart Optimization vs Standard DCA</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-primary"></span><span className="text-xs text-white font-bold">Smart Portfolio</span></div>
+                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-slate-400"></span><span className="text-xs text-text-secondary">Standard DCA</span></div>
+                        <div className="flex items-center gap-2"><span className="w-3 h-3 border-t-2 border-slate-500 border-dashed"></span><span className="text-xs text-text-secondary">Principal</span></div>
+                      </div>
+                    </div>
+                    <div className="w-full h-[450px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie data={simulation.results.asset_results.map(ar => ({ name: ar.ticker, value: ar.final_value }))} cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={8} dataKey="value" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                            {simulation.results.asset_results.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} itemStyle={{ fontWeight: 'bold', color: '#fff' }} />
-                        </RechartsPieChart>
+                        <AreaChart data={simulation.results.portfolio_history}>
+                          <defs>
+                            <linearGradient id="gradientSmartPort" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#13ec5b" stopOpacity={0.15}/><stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/></linearGradient>
+                            <linearGradient id="gradientBaseline" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1}/><stop offset="100%" stopColor="#94a3b8" stopOpacity={0}/></linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
+                          <XAxis dataKey="date" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
+                          <YAxis stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                          <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '13px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(value: any) => [`$${Math.round(value).toLocaleString()}`]} />
+                          <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
+                          <Area type="monotone" dataKey="baseline_value" stroke="#94a3b8" strokeWidth={2} fillOpacity={1} fill="url(#gradientBaseline)" name="Standard DCA" strokeDasharray="4 4" />
+                          <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Principal" />
+                        </AreaChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
-                  {/* Asset Performance Table */}
-                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6">
-                    <h3 className="text-white text-lg font-bold flex items-center gap-2 mb-6"><Activity size={18} className="text-primary" /> Individual Asset Performance</h3>
-                    <div className="space-y-3">
-                      {simulation.results.asset_results.map((ar, idx) => (
-                        <div key={ar.asset_id} className="bg-background-dark/40 border border-border-active/10 p-4 rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
-                          <div className="flex items-center gap-4">
-                            <div className="size-10 rounded-lg flex items-center justify-center font-black text-xs border-2 border-border-dark" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>{ar.ticker}</div>
-                            <div className="flex flex-col"><span className="text-white font-bold text-sm">{ar.ticker}</span><span className="text-[10px] text-text-secondary opacity-50">{ar.assets_accumulated.toFixed(4)} Units</span></div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className={cn("text-lg font-bold tabular-nums", ar.total_return_percent >= 0 ? "text-primary" : "text-red-400")}>{ar.total_return_percent > 0 ? "+" : ""}{ar.total_return_percent.toFixed(1)}%</span>
-                            <span className="text-[10px] text-text-secondary opacity-40 font-bold">${Math.round(ar.final_value).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cumulative Fees Chart */}
-                <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm w-full">
-                  <h3 className="text-white text-lg font-bold flex items-center gap-2 mb-6"><CreditCard size={18} className="text-red-400" /> Cumulative Fees & Strategy Leakage</h3>
-                  <div className="w-full h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={simulation.results.portfolio_history}>
-                        <defs><linearGradient id="colorFees" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f87171" stopOpacity={0.1}/><stop offset="95%" stopColor="#f87171" stopOpacity={0}/></linearGradient></defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
-                        <XAxis dataKey="date" hide />
-                        <YAxis orientation="right" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} itemStyle={{ color: '#f87171' }} formatter={(val: any) => [`$${val.toLocaleString()}`, "Cumulative Fees"]} />
-                        <Area type="monotone" dataKey="cumulative_fees" stroke="#f87171" fillOpacity={1} fill="url(#colorFees)" strokeWidth={2} name="Fees" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-4 flex justify-between items-center text-[11px] font-bold uppercase tracking-widest text-text-secondary/60">
-                    <span>Total Fees: ${simulation.results.total_fees.toLocaleString()}</span>
-                    <span>Fees Percentage: {simulation.results.fees_percentage}% of Principal</span>
-                  </div>
-                </div>
-              </div>
-            ) : selectedPortfolioDetails ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                <div className="bg-surface-dark/40 border border-border-active/20 p-8 rounded-[32px] backdrop-blur-sm shadow-xl flex items-center justify-between">
-                  <div className="min-w-0">
-                    <h2 className="text-3xl font-black text-white tracking-tight leading-tight truncate">{selectedPortfolioDetails.name}</h2>
-                    <div className="flex items-center gap-4 text-[10px] text-text-secondary font-black uppercase tracking-widest mt-2 opacity-60">
-                      <span className="flex items-center gap-1.5"><Layers size={12} className="text-primary" /> {selectedPortfolioDetails.assets.length} Assets</span>
-                      <div className="size-1 rounded-full bg-border-dark"></div>
-                      <span className="flex items-center gap-1.5"><Calendar size={12} className="text-primary" /> Target: {config.start_date} → {config.end_date}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6 pl-10 border-l border-border-dark/30"><div className="flex flex-col items-end"><span className="text-[9px] font-black uppercase tracking-widest text-text-secondary mb-1 opacity-50">Portfolio Size</span><span className="text-3xl font-black text-white tabular-nums">{selectedPortfolioDetails.assets.length}</span></div></div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                  <div className="lg:col-span-3 bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 shadow-2xl group hover:border-primary/10 transition-all">
-                    <div className="flex items-center gap-3 mb-8"><div className="p-2 bg-primary/10 rounded-xl text-primary"><TrendingUp size={18} /></div><h3 className="text-[11px] font-black uppercase tracking-widest text-white">Portfolio Index (1Y)</h3></div>
-                    <div className="h-[320px]">
-                      {loadingPreview ? <div className="h-full flex flex-col items-center justify-center gap-6"><RefreshCcw size={32} className="animate-spin text-primary opacity-40" /><span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Syncing index data...</span></div> : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
+                      <h3 className="text-white text-lg font-bold flex items-center gap-2 mb-6"><PieChartIcon size={18} className="text-primary" /> Final Portfolio Allocation</h3>
+                      <div className="h-[350px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={previewData}><defs><linearGradient id="colorPreview" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#13ec5b" stopOpacity={0.1}/><stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/></linearGradient></defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
-                            <XAxis dataKey="date" hide /><YAxis hide domain={['dataMin - 5', 'dataMax + 5']} /><Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }} itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: '900' }} labelStyle={{ display: 'none' }} formatter={(val: number) => [val.toFixed(2), "Price Index"]} />
-                            <Area type="monotone" dataKey="value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#colorPreview)" animationDuration={2000} />
-                          </AreaChart>
+                          <RechartsPieChart>
+                            <Pie data={simulation.results.asset_results.map(ar => ({ name: ar.ticker, value: ar.final_value }))} cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={8} dataKey="value" stroke="none" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                              {simulation.results.asset_results.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} itemStyle={{ fontWeight: 'bold', color: '#fff' }} />
+                          </RechartsPieChart>
                         </ResponsiveContainer>
-                      )}
+                      </div>
+                    </div>
+
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
+                      <h3 className="text-white text-lg font-bold flex items-center gap-2 mb-6"><Activity size={18} className="text-primary" /> Individual Asset Performance</h3>
+                      <div className="space-y-3">
+                        {simulation.results.asset_results.map((ar, idx) => (
+                          <div key={ar.asset_id} className="bg-background-dark/40 border border-border-active/10 p-4 rounded-xl flex items-center justify-between group hover:border-primary/30 transition-all">
+                            <div className="flex items-center gap-4">
+                              <div className="size-10 rounded-lg flex items-center justify-center font-black text-xs border-2 border-border-dark" style={{ color: COLORS[idx % COLORS.length], backgroundColor: `${COLORS[idx % COLORS.length]}08` }}>{ar.ticker}</div>
+                              <div className="flex flex-col"><span className="text-white font-bold text-sm">{ar.ticker}</span><span className="text-[10px] text-text-secondary opacity-50">{ar.assets_accumulated.toFixed(4)} Units</span></div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className={cn("text-lg font-bold tabular-nums", ar.total_return_percent >= 0 ? "text-primary" : "text-red-400")}>{ar.total_return_percent > 0 ? "+" : ""}{ar.total_return_percent.toFixed(1)}%</span>
+                              <span className="text-[10px] text-text-secondary opacity-40 font-bold">${Math.round(ar.final_value).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                  <div className="lg:col-span-2 bg-surface-dark/60 border border-border-active/10 rounded-[32px] p-8 shadow-2xl group hover:border-primary/10 transition-all">
-                    <div className="flex items-center gap-3 mb-8"><div className="p-2 bg-primary/10 rounded-xl text-primary"><PieChartIcon size={18} /></div><h3 className="text-[11px] font-black uppercase tracking-widest text-white">Strategic Weights</h3></div>
-                    <div className="h-[320px]">
+
+                  <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm w-full">
+                    <h3 className="text-white text-lg font-bold flex items-center gap-2 mb-6"><CreditCard size={18} className="text-red-400" /> Cumulative Fees & Strategy Leakage</h3>
+                    <div className="w-full h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPieChart>
-                          <Pie data={selectedPortfolioDetails.assets.map(pa => ({ name: pa.asset?.ticker || "Unknown", value: pa.weight * 100 }))} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value" stroke="none" label={({ name, value }) => `${name} ${value.toFixed(0)}%`} labelLine={{ stroke: '#333', strokeWidth: 1.5 }} animationDuration={2000}>
-                            {selectedPortfolioDetails.assets.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />)}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }} itemStyle={{ fontWeight: '900', color: '#fff' }} />
-                        </RechartsPieChart>
+                        <AreaChart data={simulation.results.portfolio_history}>
+                          <defs><linearGradient id="colorFees" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f87171" stopOpacity={0.1}/><stop offset="95%" stopColor="#f87171" stopOpacity={0}/></linearGradient></defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
+                          <XAxis dataKey="date" hide />
+                          <YAxis orientation="right" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                          <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} itemStyle={{ color: '#f87171' }} formatter={(val: any) => [`$${val.toLocaleString()}`, "Cumulative Fees"]} />
+                          <Area type="monotone" dataKey="cumulative_fees" stroke="#f87171" fillOpacity={1} fill="url(#colorFees)" strokeWidth={2} name="Fees" />
+                        </AreaChart>
                       </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 flex justify-between items-center text-[11px] font-bold uppercase tracking-widest text-text-secondary/60">
+                      <span>Total Fees: ${simulation.results.total_fees.toLocaleString()}</span>
+                      <span>Fees Percentage: {simulation.results.fees_percentage}% of Principal</span>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-center py-20 animate-in fade-in duration-700">
-                <div className="size-24 rounded-[32px] bg-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-8"><PieChartIcon size={48} /></div>
-                <h2 className="text-3xl font-black text-white tracking-tight mb-4">Portfolio Analysis</h2>
-                <p className="text-text-secondary max-w-md mx-auto font-medium leading-relaxed mb-10">Select a portfolio from the configuration panel to begin backtesting and optimization.</p>
-              </div>
-            )}
+              ) : selectedPortfolioDetails ? (
+                <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-10">
+                  <header className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <h2 className="text-white text-[28px] font-bold leading-tight mb-2">{selectedPortfolioDetails.name}</h2>
+                      <div className="flex items-center gap-4 text-[10px] text-text-secondary font-black uppercase tracking-widest mt-2 opacity-60">
+                        <span className="flex items-center gap-1.5"><Layers size={12} className="text-primary" /> {selectedPortfolioDetails.assets.length} Assets</span>
+                        <div className="size-1 rounded-full bg-border-dark"></div>
+                        <span className="flex items-center gap-1.5"><Calendar size={12} className="text-primary" /> {config.start_date} → {config.end_date}</span>
+                      </div>
+                    </div>
+                  </header>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    <div className="lg:col-span-3 bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
+                      <h3 className="text-white text-[11px] font-black uppercase tracking-widest mb-6 opacity-50">Portfolio Index (1Y)</h3>
+                      <div className="h-[320px]">
+                        {loadingPreview ? <div className="h-full flex flex-col items-center justify-center gap-6"><RefreshCcw size={32} className="animate-spin text-primary opacity-40" /><span className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-40">Syncing index data...</span></div> : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={previewData}><defs><linearGradient id="colorPreview" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#13ec5b" stopOpacity={0.1}/><stop offset="95%" stopColor="#13ec5b" stopOpacity={0}/></linearGradient></defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} opacity={0.4} />
+                              <XAxis dataKey="date" hide /><YAxis hide domain={['dataMin - 5', 'dataMax + 5']} /><Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px', padding: '12px' }} itemStyle={{ color: '#fff', fontSize: '13px', fontWeight: '900' }} labelStyle={{ display: 'none' }} formatter={(val: number) => [val.toFixed(2), "Price Index"]} />
+                              <Area type="monotone" dataKey="value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#colorPreview)" animationDuration={2000} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+                    <div className="lg:col-span-2 bg-surface-dark border border-border-active/50 rounded-xl p-6 shadow-sm">
+                      <h3 className="text-white text-[11px] font-black uppercase tracking-widest mb-6 opacity-50">Strategic Weights</h3>
+                      <div className="h-[320px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <Pie data={selectedPortfolioDetails.assets.map(pa => ({ name: pa.asset?.ticker || "Unknown", value: pa.weight * 100 }))} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value" stroke="none" label={({ name, value }) => `${name} ${value.toFixed(0)}%`} labelLine={{ stroke: '#333', strokeWidth: 1.5 }} animationDuration={2000}>
+                              {selectedPortfolioDetails.assets.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />)}
+                            </Pie>
+                            <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '16px' }} itemStyle={{ fontWeight: '900', color: '#fff' }} />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-8 flex items-center justify-center gap-4 py-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <span className="text-primary">
+                      <Info size={18} />
+                    </span>
+                    <p className="text-sm text-text-secondary">
+                      You are viewing the <span className="text-white font-bold text-base">historical index</span>. Adjust your strategy and click <span className="text-primary font-black uppercase tracking-tight">Analyze Portfolio</span> to simulate results.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
+                  <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group">
+                    <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
+                    <PieChartIcon size={48} className="text-primary relative z-10" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-white mb-3">Ready to Start?</h2>
+                  <p className="text-text-secondary max-w-sm leading-relaxed">
+                    Select a portfolio from the list to see its history and configure your smart DCA strategy.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </main>
 
