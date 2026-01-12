@@ -185,68 +185,97 @@ class PortfolioSimulationEngine:
         df['date'] = pd.to_datetime(df['date'])
         df.set_index('date', inplace=True)
         
-        # Resample to weekly (last value of each week)
-        weekly = df.resample('W').last().ffill()
+        # Resample logic:
+        # 1. For stateful/cumulative values, take the last value of the week
+        cumulative_cols = ["invested", "baseline_value", "smart_value", "cumulative_fees", "price"]
+        weekly_cumulative = df[cumulative_cols].resample('W').last().ffill()
+        
+        # 2. For discrete events (contributions), sum them up for the week
+        contribution_cols = ["b_contribution", "s_contribution"]
+        weekly_contributions = df[contribution_cols].resample('W').sum()
+        
+        # Combine them
+        weekly = pd.concat([weekly_cumulative, weekly_contributions], axis=1)
         
         # Convert back to list of dicts
         weekly_history = []
         for date, row in weekly.iterrows():
             point = row.to_dict()
             point['date'] = date.strftime("%Y-%m-%d")
+            # Round values
+            for col in cumulative_cols + contribution_cols:
+                point[col] = round(float(point[col]), 2)
             weekly_history.append(point)
             
         return weekly_history
 
     def _aggregate_history(self, asset_results: Dict[int, Any]) -> List[Dict[str, Any]]:
         """Combines individual asset histories into a single portfolio history."""
-        all_dates = set()
-        for data in asset_results.values():
-            for point in data["result"].portfolio_history:
-                all_dates.add(point["date"])
-        
-        sorted_dates = sorted(list(all_dates))
-        
-        agg_history = []
-        for date_str in sorted_dates:
-            point = {
-                "date": date_str,
-                "invested": 0.0,
-                "baseline_value": 0.0,
-                "smart_value": 0.0,
-                "cumulative_fees": 0.0,
-                "b_contribution": 0.0,
-                "s_contribution": 0.0,
-                "price": 0.0
-            }
-            
-            weighted_normalized_price = 0.0
-            
-            for asset_id, data in asset_results.items():
-                asset_history = data["result"].portfolio_history
-                asset_point = next((p for p in asset_history if p["date"] == date_str), None)
-                
-                if asset_point:
-                    point["invested"] += asset_point["invested"]
-                    point["baseline_value"] += asset_point["baseline_value"]
-                    point["smart_value"] += asset_point["smart_value"]
-                    point["cumulative_fees"] += asset_point["cumulative_fees"]
-                    point["b_contribution"] += asset_point["b_contribution"]
-                    point["s_contribution"] += asset_point["s_contribution"]
-                    
-                    # Normalized price (base 100)
-                    if asset_history:
-                        first_price = asset_history[0]["price"]
-                        normalized_price = (asset_point["price"] / first_price * 100) if first_price > 0 else 0
-                        weighted_normalized_price += normalized_price * data["weight"]
+        if not asset_results:
+            return []
 
-            point["price"] = round(weighted_normalized_price, 2)
-            point["invested"] = round(point["invested"], 2)
-            point["baseline_value"] = round(point["baseline_value"], 2)
-            point["smart_value"] = round(point["smart_value"], 2)
-            point["cumulative_fees"] = round(point["cumulative_fees"], 2)
-            point["b_contribution"] = round(point["b_contribution"], 2)
-            point["s_contribution"] = round(point["s_contribution"], 2)
+        # Convert each asset history to a DataFrame
+        asset_dfs = []
+        for asset_id, data in asset_results.items():
+            df = pd.DataFrame(data["result"].portfolio_history)
+            if df.empty:
+                continue
+            df['date'] = pd.to_datetime(df['date'])
+            df.set_index('date', inplace=True)
             
+            # For each asset, we want to normalize its price contribution (base 100)
+            first_price = df['price'].iloc[0] if not df.empty and 'price' in df.columns else 1.0
+            df['normalized_price'] = (df['price'] / first_price * 100) if first_price > 0 else 0
+            df['weighted_price'] = df['normalized_price'] * data["weight"]
+            
+            asset_dfs.append(df)
+
+        if not asset_dfs:
+            return []
+
+        # Get all unique dates
+        all_dates = pd.concat([df.index.to_series() for df in asset_dfs]).unique()
+        all_dates = np.sort(all_dates)
+        
+        # Create a combined dataframe with all dates
+        combined_df = pd.DataFrame(index=all_dates)
+        combined_df.index.name = 'date'
+
+        # Initialize aggregate columns
+        cols_to_sum = ["invested", "baseline_value", "smart_value", "cumulative_fees", "b_contribution", "s_contribution", "weighted_price"]
+        for col in cols_to_sum:
+            combined_df[col] = 0.0
+
+        for df in asset_dfs:
+            # Reindex each asset's DF to match all dates, filling missing values with the last known value
+            # Note: b_contribution and s_contribution should be 0 if the date is missing (as they are discrete events)
+            # but invested, baseline_value, smart_value and cumulative_fees are cumulative/stateful.
+            
+            reindexed = df.reindex(all_dates)
+            
+            # Cumulative values use ffill
+            for col in ["invested", "baseline_value", "smart_value", "cumulative_fees", "weighted_price"]:
+                if col in reindexed.columns:
+                    # Logic: ffill() propagates the last known value for gaps.
+                    # fillna(0.0) handles the period before the asset was added/simulated.
+                    combined_df[col] += reindexed[col].ffill().fillna(0.0)
+            
+            # Contribution values use fillna(0) because they are non-cumulative daily events
+            for col in ["b_contribution", "s_contribution"]:
+                if col in reindexed.columns:
+                    combined_df[col] += reindexed[col].fillna(0.0)
+
+        # Rename weighted_price to price for consistency
+        combined_df.rename(columns={"weighted_price": "price"}, inplace=True)
+
+        # Convert back to list of dicts
+        agg_history = []
+        for date, row in combined_df.iterrows():
+            point = row.to_dict()
+            point['date'] = date.strftime("%Y-%m-%d")
+            # Round values
+            for col in ["invested", "baseline_value", "smart_value", "cumulative_fees", "b_contribution", "s_contribution", "price"]:
+                point[col] = round(float(point[col]), 2)
             agg_history.append(point)
             
         return agg_history
