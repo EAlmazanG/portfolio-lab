@@ -553,7 +553,7 @@ export default function PortfolioBuilderPage() {
         <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-8 lg:p-12 z-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-8 lg:p-12 z-10 custom-scrollbar flex flex-col">
             {selectedPortfolio ? (
               <div className="max-w-[1760px] mx-auto animate-in fade-in slide-in-from-top-4 duration-500 space-y-10">
                 {/* Header */}
@@ -961,23 +961,15 @@ export default function PortfolioBuilderPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-1000">
-                <div className="size-40 rounded-[48px] bg-surface-dark border border-border-active flex items-center justify-center mb-12 relative group mx-auto transform rotate-6 hover:rotate-0 transition-all duration-700 shadow-2xl">
-                  <div className="absolute inset-0 rounded-[48px] bg-primary/20 animate-pulse group-hover:animate-none opacity-20 blur-3xl"></div>
-                  <PieChartIcon size={80} className="text-primary relative z-10" />
+              <div className="flex flex-col items-center justify-center h-full text-center animate-in fade-in zoom-in duration-700">
+                <div className="size-24 rounded-full bg-surface-dark border border-border-active flex items-center justify-center mb-8 relative group">
+                  <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping group-hover:animate-none opacity-20"></div>
+                  <PieChartIcon size={48} className="text-primary relative z-10" />
                 </div>
-                <h2 className="text-4xl font-black text-white mb-4 tracking-tight leading-tight">Investment Architect</h2>
-                <p className="text-text-secondary max-w-lg leading-relaxed mx-auto font-medium text-base opacity-60 px-6">
-                  Select a saved framework from your database or architect a new multi-asset investment strategy.
+                <h2 className="text-3xl font-bold text-white mb-3">Ready to Architect?</h2>
+                <p className="text-text-secondary max-w-sm leading-relaxed">
+                  Select a saved framework from the list or architect a new multi-asset investment strategy.
                 </p>
-                <div className="mt-12">
-                  <button 
-                    onClick={() => { setIsEditing(false); setNewPortfolio({name: "", initial_capital: 0, assets: [], is_favorite: false}); setShowCreateModal(true); setShowCurrentAmounts(false); }}
-                    className="px-10 py-4 bg-primary text-background-dark font-black uppercase tracking-wider rounded-[18px] hover:bg-[#3af578] transition-all shadow-xl shadow-primary/10 active:scale-95 text-sm"
-                  >
-                    Architect New Strategy
-                  </button>
-                </div>
               </div>
             )}
           </div>

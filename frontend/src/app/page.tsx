@@ -906,7 +906,7 @@ export default function AssetSimulationPage() {
           {/* Background Grid Pattern */}
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative">
+          <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative flex flex-col">
             {simulation ? (
               <>
                 <header className="flex justify-between items-start mb-8 animate-in fade-in slide-in-from-top-4 duration-500">

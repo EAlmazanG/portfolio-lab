@@ -60,10 +60,12 @@ export default function PortfolioSimulationPage() {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [hiddenSeries, setHiddenSeries] = useState<Record<string, boolean>>({});
 
   // Toggles for enabling/disabling sections
   const [isFeesEnabled, setIsFeesEnabled] = useState(false);
   const [isSmartDcaEnabled, setIsSmartDcaEnabled] = useState(false);
+  const [hiddenKeys, setHiddenKeys] = useState<Record<string, boolean>>({});
 
   const [config, setConfig] = useState<PortfolioSimulationConfig>({
     portfolio_id: 0,
@@ -584,7 +586,7 @@ export default function PortfolioSimulationPage() {
           <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(#9db9a6 1px, transparent 1px), linear-gradient(90deg, #9db9a6 1px, transparent 1px)", backgroundSize: "40px 40px" }}></div>
 
           <div className="flex-1 overflow-y-auto p-6 lg:p-10 z-10 custom-scrollbar relative">
-            <div className="max-w-[1600px] mx-auto min-h-full">
+            <div className="max-w-[1600px] mx-auto min-h-full flex flex-col">
               {simulation ? (
                 <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 pb-10">
                   {/* Result Header */}
@@ -647,9 +649,27 @@ export default function PortfolioSimulationPage() {
                         <p className="text-text-secondary text-[11px]">Weekly performance: Smart Optimization vs Standard DCA</p>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-primary"></span><span className="text-xs text-white font-bold">Smart Portfolio</span></div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-slate-400"></span><span className="text-xs text-text-secondary">Standard DCA</span></div>
-                        <div className="flex items-center gap-2"><span className="w-3 h-3 border-t-2 border-slate-500 border-dashed"></span><span className="text-xs text-text-secondary">Principal</span></div>
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", hiddenKeys.smart_value && "opacity-30")}
+                          onClick={() => setHiddenKeys(prev => ({ ...prev, smart_value: !prev.smart_value }))}
+                        >
+                          <span className="w-3 h-3 rounded-full bg-primary"></span>
+                          <span className="text-xs text-white font-bold">Smart Portfolio</span>
+                        </div>
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", hiddenKeys.baseline_value && "opacity-30")}
+                          onClick={() => setHiddenKeys(prev => ({ ...prev, baseline_value: !prev.baseline_value }))}
+                        >
+                          <span className="w-3 h-3 rounded-full bg-slate-400"></span>
+                          <span className="text-xs text-text-secondary">Standard DCA</span>
+                        </div>
+                        <div 
+                          className={cn("flex items-center gap-2 cursor-pointer transition-opacity", hiddenKeys.invested && "opacity-30")}
+                          onClick={() => setHiddenKeys(prev => ({ ...prev, invested: !prev.invested }))}
+                        >
+                          <span className="w-3 h-3 border-t-2 border-slate-500 border-dashed"></span>
+                          <span className="text-xs text-text-secondary">Principal</span>
+                        </div>
                       </div>
                     </div>
                     <div className="w-full h-[450px]">
@@ -663,9 +683,15 @@ export default function PortfolioSimulationPage() {
                           <XAxis dataKey="date" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
                           <YAxis stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
                           <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '13px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(value: any) => [`$${Math.round(value).toLocaleString()}`]} />
-                          <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
-                          <Area type="monotone" dataKey="baseline_value" stroke="#94a3b8" strokeWidth={2} fillOpacity={1} fill="url(#gradientBaseline)" name="Standard DCA" strokeDasharray="4 4" />
-                          <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Principal" />
+                          {!hiddenKeys.smart_value && (
+                            <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
+                          )}
+                          {!hiddenKeys.baseline_value && (
+                            <Area type="monotone" dataKey="baseline_value" stroke="#94a3b8" strokeWidth={2} fillOpacity={1} fill="url(#gradientBaseline)" name="Standard DCA" strokeDasharray="4 4" />
+                          )}
+                          {!hiddenKeys.invested && (
+                            <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Principal" />
+                          )}
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
