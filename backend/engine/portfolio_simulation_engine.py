@@ -104,6 +104,36 @@ class PortfolioSimulationEngine:
         # 2. Aggregate results
         portfolio_history = self._aggregate_history(asset_results)
         
+        # 3. Calculate advanced metrics (Volatility, Max Drawdown)
+        smart_values = [p["smart_value"] for p in portfolio_history]
+        
+        # Volatility (Standard Deviation of Periodic Returns)
+        volatility = 0.0
+        if len(smart_values) > 1:
+            returns = []
+            for i in range(1, len(smart_values)):
+                if smart_values[i-1] > 0:
+                    returns.append((smart_values[i] - smart_values[i-1]) / smart_values[i-1])
+            if returns:
+                volatility = float(np.std(returns) * 100) # Percentage
+
+        # Max Drawdown
+        max_drawdown = 0.0
+        if smart_values:
+            peak = smart_values[0]
+            drawdowns = []
+            for val in smart_values:
+                if val > peak:
+                    peak = val
+                if peak > 0:
+                    drawdown = (val - peak) / peak
+                    drawdowns.append(drawdown)
+            if drawdowns:
+                max_drawdown = float(min(drawdowns) * 100) # Negative percentage
+
+        # 4. Weekly aggregation for smoother charts
+        clean_history = self._aggregate_history_weekly(portfolio_history)
+
         # Calculate totals
         total_invested = sum(res["result"].total_invested for res in asset_results.values())
         final_value = sum(res["result"].final_value for res in asset_results.values())
@@ -137,12 +167,35 @@ class PortfolioSimulationEngine:
             "baseline_return_percent": round(baseline_return_percent, 2),
             "total_fees": round(total_fees, 2),
             "fees_percentage": round((total_fees / total_invested * 100), 2) if total_invested > 0 else 0,
-            "portfolio_history": portfolio_history,
+            "volatility": round(volatility, 2),
+            "max_drawdown": round(max_drawdown, 2),
+            "portfolio_history": clean_history,
             "asset_results": formatted_asset_results,
             "dca_efficiency": 0.0,
             "avg_purchase_price": 0.0,
             "total_assets_accumulated": 0.0
         }
+
+    def _aggregate_history_weekly(self, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Aggregates daily history into weekly points for cleaner visualization."""
+        if not history:
+            return []
+        
+        df = pd.DataFrame(history)
+        df['date'] = pd.to_datetime(df['date'])
+        df.set_index('date', inplace=True)
+        
+        # Resample to weekly (last value of each week)
+        weekly = df.resample('W').last().ffill()
+        
+        # Convert back to list of dicts
+        weekly_history = []
+        for date, row in weekly.iterrows():
+            point = row.to_dict()
+            point['date'] = date.strftime("%Y-%m-%d")
+            weekly_history.append(point)
+            
+        return weekly_history
 
     def _aggregate_history(self, asset_results: Dict[int, Any]) -> List[Dict[str, Any]]:
         """Combines individual asset histories into a single portfolio history."""

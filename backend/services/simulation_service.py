@@ -64,32 +64,48 @@ class SimulationService:
         """Returns past simulations with basic info."""
         db = SessionLocal()
         try:
-            simulations = db.query(Simulation).order_by(Simulation.created_at.desc()).limit(limit).all()
+            # Filter for single asset simulations only (no portfolio_id)
+            # and ensure they have an asset associated
+            simulations = db.query(Simulation).filter(
+                Simulation.portfolio_id.is_(None),
+                Simulation.asset_id.isnot(None)
+            ).order_by(Simulation.created_at.desc()).limit(limit).all()
+            
             history = []
             for sim in simulations:
                 # Get the latest result for this simulation
                 result = sim.results[0] if sim.results else None
                 if result:
-                    gross_profit = result.final_value + (result.total_fees or 0.0) - result.total_invested
-                    net_profit = result.final_value - result.total_invested
-                    smart_vs_baseline = result.total_return_percent - (result.baseline_return_percent or result.total_return_percent)
-                    
-                    history.append({
-                        "id": sim.id,
-                        "asset_ticker": sim.asset.ticker,
-                        "asset_name": sim.asset.name,
-                        "start_date": sim.start_date,
-                        "end_date": sim.end_date,
-                        "final_value": result.final_value,
-                        "total_invested": result.total_invested,
-                        "gross_profit": round(float(gross_profit), 2),
-                        "net_profit": round(float(net_profit), 2),
-                        "total_fees": round(float(result.total_fees or 0.0), 2),
-                        "total_return_percent": result.total_return_percent,
-                        "smart_vs_baseline_diff": round(float(smart_vs_baseline), 2),
-                        "is_favorite": bool(sim.is_favorite),
-                        "created_at": sim.created_at
-                    })
+                    try:
+                        final_val = float(result.final_value)
+                        total_inv = float(result.total_invested)
+                        total_fees = float(result.total_fees or 0.0)
+                        total_ret = float(result.total_return_percent)
+                        base_ret = float(result.baseline_return_percent or total_ret)
+                        
+                        gross_profit = final_val + total_fees - total_inv
+                        net_profit = final_val - total_inv
+                        smart_vs_baseline = total_ret - base_ret
+                        
+                        history.append({
+                            "id": int(sim.id),
+                            "asset_ticker": str(sim.asset.ticker) if sim.asset else "Unknown",
+                            "asset_name": str(sim.asset.name) if sim.asset else "Unknown Asset",
+                            "start_date": sim.start_date,
+                            "end_date": sim.end_date,
+                            "final_value": round(final_val, 2),
+                            "total_invested": round(total_inv, 2),
+                            "gross_profit": round(float(gross_profit), 2),
+                            "net_profit": round(float(net_profit), 2),
+                            "total_fees": round(total_fees, 2),
+                            "total_return_percent": round(total_ret, 2),
+                            "smart_vs_baseline_diff": round(float(smart_vs_baseline), 2),
+                            "is_favorite": bool(sim.is_favorite),
+                            "created_at": sim.created_at
+                        })
+                    except (AttributeError, ValueError, TypeError) as e:
+                        print(f"Error processing simulation {sim.id}: {e}")
+                        continue
             return history
         finally:
             db.close()
