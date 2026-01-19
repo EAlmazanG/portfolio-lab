@@ -200,7 +200,7 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 6. Current Progress (v0.5 Completed)
+## 6. Current Progress (v0.6 Completed)
 
 ### 6.1. Infrastructure & DevOps
 - **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
@@ -214,11 +214,14 @@ To validate the hypothesis, every simulation must be compared against:
 - **Interactive CLI Tool:** A comprehensive data manager (`make backend-cli`).
 - **Visual Index:** Frontend logic to construct and normalize weighted price indices for portfolios.
 
-### 6.3. Advanced Simulation Engine (v0.5)
+### 6.3. Advanced Simulation Engine (v0.6)
 - **Portfolio Core Logic:** 
     - The `PortfolioSimulationEngine` orchestrates multiple `SimulationEngine` instances.
-    - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates, ensuring discrete events (contributions) and cumulative values (invested capital, portfolio value) are mathematically sound across the entire timeline.
-    - **Initial State:** Charts explicitly start at the **Initial Capital** value on Day 1, eliminating artificial zero-spikes and reflecting the true deployment of capital.
+    - **Rebalancing Engine:** Supports two distinct rebalancing layers:
+        1. **Periodic Rebalancing:** Automatically resets asset weights to original targets every N months (6-24), selling winners and buying laggards to maintain strategy integrity.
+        2. **Constant Rebalancing (Contribution Allocation):** Dynamically distributes periodic contributions based on real-time indicators (RSI, MA, EMA). Allocates more capital to undervalued/oversold assets.
+    - **Smart DCA Compatibility:** Seamlessly integrates with per-asset Smart DCA features (Timing and Sizing), allowing for complex multi-layered strategies.
+    - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates.
 - **Advanced Financial Metrics:** 
     - **Volatility:** Calculated as the annualized standard deviation of periodic returns.
     - **Max Drawdown (MDD):** Tracks the peak-to-trough decline to quantify worst-case scenario risk.

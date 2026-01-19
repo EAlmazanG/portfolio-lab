@@ -32,8 +32,11 @@ class Simulation(Base):
     investment_mode = Column(String(20), default="per_contribution")  # 'annual' or 'per_contribution'
     
     # Portfolio-specific configuration
-    rebalancing_mode = Column(String(20), default="none") # 'none', 'periodic', 'contribution'
-    rebalancing_interval_months = Column(Integer, default=6)
+    rebalancing_enabled = Column(Boolean, default=False)
+    periodic_rebalancing_enabled = Column(Boolean, default=False)
+    periodic_rebalancing_interval = Column(Integer, default=12)
+    constant_rebalancing_enabled = Column(Boolean, default=False)
+    constant_rebalancing_metric = Column(String(20), default="RSI")
     asset_configs = Column(Text, nullable=True) # Stored as JSON string
     
     # Fees

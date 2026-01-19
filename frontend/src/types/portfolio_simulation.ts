@@ -23,8 +23,11 @@ export interface PortfolioSimulationConfig {
   base_amount: number;
   frequency: 'daily' | 'weekly' | 'monthly' | 'bi-monthly';
   investment_mode: 'annual' | 'per_contribution';
-  rebalancing_mode: 'none' | 'periodic' | 'contribution';
-  rebalancing_interval_months: number;
+  rebalancing_enabled: boolean;
+  periodic_rebalancing_enabled: boolean;
+  periodic_rebalancing_interval: number;
+  constant_rebalancing_enabled: boolean;
+  constant_rebalancing_metric: 'RSI' | 'MA' | 'EMA';
   commission_fee_percent: number;
   minimum_fee_per_trade: number;
   maintenance_fee_annual_percent: number;

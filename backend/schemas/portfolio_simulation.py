@@ -31,8 +31,12 @@ class PortfolioSimulationCreate(BaseModel):
     minimum_fee_per_trade: float = Field(default=0.0, ge=0)
     maintenance_fee_annual_percent: float = Field(default=0.0, ge=0)
     
-    rebalancing_mode: str = Field(default="none", pattern="^(none|periodic|contribution)$")
-    rebalancing_interval_months: int = Field(default=6, ge=1)
+    # Rebalancing
+    rebalancing_enabled: bool = Field(default=False)
+    periodic_rebalancing_enabled: bool = Field(default=False)
+    periodic_rebalancing_interval: int = Field(default=12, ge=6) # 6, 12, 18, 24
+    constant_rebalancing_enabled: bool = Field(default=False)
+    constant_rebalancing_metric: str = Field(default="RSI", pattern="^(RSI|MA|EMA)$")
     
     # Per-asset configuration overrides
     asset_configs: Dict[int, AssetSimulationConfig] = {}

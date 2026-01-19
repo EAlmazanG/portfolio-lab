@@ -71,7 +71,8 @@ export default function PortfolioSimulationPage() {
     section1: false,
     section2: false,
     section3: true,
-    section4: true
+    section4: true,
+    section5: true
   });
   const [collapsedAssets, setCollapsedAssets] = useState<Record<number, boolean>>({});
   const [collapsedHistory, setCollapsedHistory] = useState<Record<number, boolean>>({});
@@ -97,8 +98,11 @@ export default function PortfolioSimulationPage() {
     base_amount: 1000,
     frequency: "monthly",
     investment_mode: "per_contribution",
-    rebalancing_mode: "none",
-    rebalancing_interval_months: 6,
+    rebalancing_enabled: false,
+    periodic_rebalancing_enabled: false,
+    periodic_rebalancing_interval: 12,
+    constant_rebalancing_enabled: false,
+    constant_rebalancing_metric: "RSI",
     commission_fee_percent: 0.1,
     minimum_fee_per_trade: 0,
     maintenance_fee_annual_percent: 0,
@@ -318,6 +322,16 @@ export default function PortfolioSimulationPage() {
       setIsFeesEnabled(details.config.commission_fee_percent > 0 || details.config.minimum_fee_per_trade > 0 || details.config.maintenance_fee_annual_percent > 0);
       const hasSmart = Object.values(details.config.asset_configs).some(c => c.dynamic_timing_enabled || c.dynamic_sizing_enabled);
       setIsSmartDcaEnabled(hasSmart);
+      
+      // Sync rebalancing state
+      setConfig(prev => ({
+        ...prev,
+        rebalancing_enabled: details.config.rebalancing_enabled,
+        periodic_rebalancing_enabled: details.config.periodic_rebalancing_enabled,
+        periodic_rebalancing_interval: details.config.periodic_rebalancing_interval,
+        constant_rebalancing_enabled: details.config.constant_rebalancing_enabled,
+        constant_rebalancing_metric: details.config.constant_rebalancing_metric
+      }));
       
     } catch (error) {
       console.error("Error loading simulation details:", error);
@@ -626,6 +640,99 @@ export default function PortfolioSimulationPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </div>
+
+              {/* 5. Rebalancing */}
+              <div className="border-b border-border-dark/30">
+                <div onClick={() => setCollapsedSections(prev => ({ ...prev, section5: !prev.section5 }))} className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-dark/30 transition-colors">
+                  <h3 className="text-white text-xs font-bold uppercase tracking-wider opacity-50 flex items-center gap-2">
+                    <Scale size={14} className="text-primary" /> 5. PORTFOLIO REBALANCING
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setConfig(prev => ({ ...prev, rebalancing_enabled: !prev.rebalancing_enabled }));
+                      }} 
+                      className={cn(
+                        "px-2 py-0.5 rounded text-[9px] font-bold uppercase transition-all", 
+                        config.rebalancing_enabled ? "bg-primary/10 text-primary border border-primary/20" : "bg-surface-dark text-text-secondary border border-border-dark"
+                      )}
+                    >
+                      {config.rebalancing_enabled ? "ENABLED" : "DISABLED"}
+                    </button>
+                    <ChevronDown size={14} className={cn("text-text-secondary transition-transform", collapsedSections.section5 && "-rotate-90")} />
+                  </div>
+                </div>
+                {config.rebalancing_enabled && !collapsedSections.section5 && (
+                  <div className="px-6 pb-5 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-200">
+                    
+                    {/* Feature 1: Periodic Rebalancing */}
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase text-white tracking-widest">Periodic Rebalancing</span>
+                          <span className="text-[9px] text-text-secondary opacity-60">Reset assets to target weights</span>
+                        </div>
+                        <button 
+                          onClick={() => setConfig(prev => ({ ...prev, periodic_rebalancing_enabled: !prev.periodic_rebalancing_enabled }))} 
+                          className={cn("transition-colors", config.periodic_rebalancing_enabled ? "text-primary" : "text-text-secondary opacity-30")}
+                        >
+                          {config.periodic_rebalancing_enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                        </button>
+                      </div>
+                      {config.periodic_rebalancing_enabled && (
+                        <div className="flex flex-col gap-2 animate-in fade-in duration-200">
+                          <label className="text-[9px] uppercase font-bold text-text-secondary">Interval (Months)</label>
+                          <select 
+                            className="bg-background-dark border border-border-active rounded-lg h-9 px-3 text-xs text-white" 
+                            value={config.periodic_rebalancing_interval} 
+                            onChange={(e) => setConfig({ ...config, periodic_rebalancing_interval: Number(e.target.value) })}
+                          >
+                            <option value={6}>Every 6 Months</option>
+                            <option value={12}>Every 12 Months (Yearly)</option>
+                            <option value={18}>Every 18 Months</option>
+                            <option value={24}>Every 24 Months (2 Years)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Feature 2: Constant Rebalancing (Contribution Allocation) */}
+                    <div className="flex flex-col gap-3 pt-4 border-t border-border-dark/30">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-black uppercase text-white tracking-widest">Constant Rebalancing</span>
+                          <span className="text-[9px] text-text-secondary opacity-60">Dynamic contribution distribution</span>
+                        </div>
+                        <button 
+                          onClick={() => setConfig(prev => ({ ...prev, constant_rebalancing_enabled: !prev.constant_rebalancing_enabled }))} 
+                          className={cn("transition-colors", config.constant_rebalancing_enabled ? "text-primary" : "text-text-secondary opacity-30")}
+                        >
+                          {config.constant_rebalancing_enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                        </button>
+                      </div>
+                      {config.constant_rebalancing_enabled && (
+                        <div className="flex flex-col gap-2 animate-in fade-in duration-200">
+                          <label className="text-[9px] uppercase font-bold text-text-secondary">Optimization Metric</label>
+                          <select 
+                            className="bg-background-dark border border-border-active rounded-lg h-9 px-3 text-xs text-white" 
+                            value={config.constant_rebalancing_metric} 
+                            onChange={(e) => setConfig({ ...config, constant_rebalancing_metric: e.target.value as any })}
+                          >
+                            <option value="RSI">RSI (Relative Strength)</option>
+                            <option value="MA">MA (Moving Average)</option>
+                            <option value="EMA">EMA (Exponential MA)</option>
+                          </select>
+                          <p className="text-[8px] text-text-secondary opacity-40 leading-relaxed italic">
+                            Allocates more capital to assets that are oversold/bearish according to the selected metric.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                   </div>
                 )}
               </div>
