@@ -53,8 +53,14 @@ async def run_simulation(data: SimulationCreate):
     try:
         return SimulationService.run_simulation(data)
     except ValueError as e:
+        print(f"ValueError in run_simulation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"Exception in run_simulation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 
