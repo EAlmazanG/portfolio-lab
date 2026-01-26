@@ -895,20 +895,24 @@ export default function PortfolioSimulationPage() {
                             if (props?.payload?.is_rebalanced && name === "Smart DCA") return [`$${Math.round(value).toLocaleString()} (REB)`, name];
                             return [`$${Math.round(value).toLocaleString()}`, name];
                           }} />
-                          {simulation.config.rebalancing_enabled && simulation.results.portfolio_history.map((p, i) => 
-                            (p.is_rebalanced) ? (
+                          
+                          {simulation.results.portfolio_history.map((p, i) => (
+                            (p.is_rebalanced === true || p.is_rebalanced === 1) ? (
                               <ReferenceLine 
                                 key={`reb-main-line-${i}`} 
                                 x={p.date} 
                                 stroke="#13ec5b" 
                                 strokeDasharray="3 3" 
                                 opacity={1} 
-                                strokeWidth={2} 
-                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 10, fontWeight: '900', offset: 25 }} 
+                                strokeWidth={3} 
+                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 12, fontWeight: '900', offset: 25 }} 
                                 isFront={true}
                               />
                             ) : null
-                          )}
+                          ))}
+
+                          <ReferenceLine x="2022-01-01" stroke="#ff0000" strokeWidth={5} label="FIXED DATE" isFront={true} />
+
                           {!hiddenKeys.smart_value && (
                             <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
                           )}
@@ -918,6 +922,20 @@ export default function PortfolioSimulationPage() {
                           {!hiddenKeys.invested && (
                             <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Principal" />
                           )}
+                          {simulation.results.portfolio_history.map((p, i) => (
+                            p.is_rebalanced ? (
+                              <ReferenceArea 
+                                key={`reb-area-${i}`} 
+                                x1={p.date} 
+                                x2={p.date} 
+                                stroke="#13ec5b" 
+                                strokeWidth={3} 
+                                strokeDasharray="3 3"
+                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 10, fontWeight: '900' }} 
+                                isFront={true}
+                              />
+                            ) : null
+                          ))}
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -1063,19 +1081,6 @@ export default function PortfolioSimulationPage() {
                                 return [value, ticker];
                               }}
                             />
-                            {simulation.config.rebalancing_enabled && simulation.results.portfolio_history.map((p, i) => 
-                              (p.is_rebalanced) ? (
-                                <ReferenceLine 
-                                  key={`reb-dist-line-${i}`} 
-                                  x={p.date} 
-                                  stroke="#13ec5b" 
-                                  strokeDasharray="3 3" 
-                                  opacity={1} 
-                                  strokeWidth={2} 
-                                  isFront={true}
-                                />
-                              ) : null
-                            )}
                             {selectedPortfolioDetails?.assets.map((pa, idx) => (
                               <Area 
                                 key={pa.asset_id}
@@ -1088,6 +1093,20 @@ export default function PortfolioSimulationPage() {
                                 name={`asset_${pa.asset_id}_val`}
                                 animationDuration={1000}
                               />
+                            ))}
+                            {/* Rebalancing Lines */}
+                            {simulation.results.portfolio_history.map((p, i) => (
+                              p.is_rebalanced ? (
+                                <ReferenceArea 
+                                  key={`reb-dist-area-${i}`} 
+                                  x1={p.date} 
+                                  x2={p.date} 
+                                  stroke="#13ec5b" 
+                                  strokeWidth={3} 
+                                  strokeDasharray="3 3"
+                                  isFront={true}
+                                />
+                              ) : null
                             ))}
                           </AreaChart>
                         </ResponsiveContainer>
