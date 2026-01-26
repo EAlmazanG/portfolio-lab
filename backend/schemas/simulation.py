@@ -52,6 +52,10 @@ class PortfolioPoint(BaseModel):
     cumulative_fees: float
     b_contribution: float = 0.0
     s_contribution: float = 0.0
+    is_rebalanced: Optional[bool] = False
+
+    class Config:
+        extra = "allow"
 
 
 class SimulationResultSchema(BaseModel):

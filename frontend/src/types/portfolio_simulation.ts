@@ -69,4 +69,8 @@ export interface PortfolioSimulationHistoryItem {
   max_drawdown: number;
   is_favorite: boolean;
   created_at: string;
+  config?: {
+    rebalancing_enabled: boolean;
+    periodic_rebalancing_interval: number;
+  };
 }

@@ -23,6 +23,7 @@ export interface PortfolioPoint {
   cumulative_fees: number;
   b_contribution: number;
   s_contribution: number;
+  is_rebalanced: boolean;
 }
 
 export interface SimulationResults {

@@ -154,7 +154,11 @@ class PortfolioSimulationService:
                         "volatility": float(getattr(result, 'volatility', 0.0) or 0.0),
                         "max_drawdown": float(getattr(result, 'max_drawdown', 0.0) or 0.0),
                         "is_favorite": bool(sim.is_favorite),
-                        "created_at": sim.created_at
+                        "created_at": sim.created_at,
+                        "config": {
+                            "rebalancing_enabled": bool(sim.rebalancing_enabled),
+                            "periodic_rebalancing_interval": int(sim.periodic_rebalancing_interval or 12)
+                        }
                     })
             return history
         finally:

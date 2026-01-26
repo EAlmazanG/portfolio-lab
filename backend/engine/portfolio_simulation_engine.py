@@ -166,15 +166,22 @@ class PortfolioSimulationEngine:
                         s_state["units"][aid] *= (1.0 - daily_maintenance_factor)
 
             # 3. Periodic Rebalancing
+            is_rebalanced = False
             if config.rebalancing_enabled:
+                # Calculate months passed more precisely
                 months_passed = (date.year - last_rebalance_date.year) * 12 + (date.month - last_rebalance_date.month)
-                if months_passed >= config.periodic_rebalancing_interval:
+                
+                # Trigger rebalance if interval reached
+                if months_passed >= config.periodic_rebalancing_interval and idx > 0:
                     total_val = sum(s_state["units"][aid] * row_prices[aid] for aid in s_state["units"])
                     if total_val > 0:
+                        is_rebalanced = True
                         for aid in s_state["units"]:
                             target_val = total_val * float(asset_data[aid]["weight"])
                             current_val = s_state["units"][aid] * row_prices[aid]
                             diff = target_val - current_val
+                            
+                            # Only execute if difference is significant (> $1)
                             if abs(diff) > 1.0:
                                 sell_buy_val = abs(diff)
                                 fee = max(sell_buy_val * (float(config.commission_fee_percent) / 100.0), float(config.minimum_fee_per_trade))
@@ -185,7 +192,9 @@ class PortfolioSimulationEngine:
                                     if sell_buy_val > fee:
                                         s_state["units"][aid] += (sell_buy_val - fee) / row_prices[aid]
                                         s_state["fees"] += fee
-                    last_rebalance_date = date
+                        
+                        # Crucial: Reset the reference date to the exact date of rebalance
+                        last_rebalance_date = date
 
             # 4. Contributions
             is_baseline_day = b_state["next_idx"] < len(baseline_dates) and date >= baseline_dates[b_state["next_idx"]]
@@ -206,14 +215,10 @@ class PortfolioSimulationEngine:
                 b_state["next_idx"] += 1
 
                 # 4.2 Smart
-                # Distribution is always based on target weights now (Constant Rebalancing removed)
                 smart_weights = {aid: float(asset_data[aid]["weight"]) for aid in asset_data}
-                
-                # Total amount to distribute today = periodic_amount + pending_portfolio
                 total_to_distribute = periodic_amount + s_state["pending_portfolio"]
                 s_state["pending_portfolio"] = 0.0
                 
-                # Check if any asset is overbought and should wait (Timing Logic)
                 assets_to_buy = []
                 total_wait_amount = 0.0
                 
@@ -221,11 +226,9 @@ class PortfolioSimulationEngine:
                     a_cfg = asset_data[aid]["config"]
                     indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
                     signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
-                    
                     a_amount = total_to_distribute * smart_weights[aid]
                     
                     if a_cfg.dynamic_timing_enabled and signal == 1:
-                        # Overbought: respect floor, wait with the rest
                         buy_floor = a_amount * float(a_cfg.expensive_buy_ratio)
                         total_wait_amount += (a_amount - buy_floor)
                         assets_to_buy.append((aid, buy_floor))
@@ -234,20 +237,15 @@ class PortfolioSimulationEngine:
                 
                 s_state["pending_portfolio"] = total_wait_amount
                 
-                # Execute buys
                 for aid, amount in assets_to_buy:
                     a_cfg = asset_data[aid]["config"]
                     actual_buy = amount
-                    
-                    # Sizing Logic
                     if a_cfg.dynamic_sizing_enabled:
                         indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
                         signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
-                        
                         if signal == -1: actual_buy *= float(a_cfg.sizing_multiplier)
                         elif signal == 1: actual_buy *= float(a_cfg.expensive_buy_ratio)
                     
-                    # Cap by annual budget
                     actual_buy = min(actual_buy, s_state["annual_budget_remaining"][current_year])
                     
                     if actual_buy > 0 and row_prices[aid] > 0:
@@ -265,7 +263,6 @@ class PortfolioSimulationEngine:
             if is_end_of_year:
                 rem = s_state["annual_budget_remaining"][current_year] + s_state["pending_portfolio"]
                 if rem > 1.0:
-                    # Distribute remaining budget according to target weights
                     for aid in asset_data:
                         a_rem = rem * float(asset_data[aid]["weight"])
                         if a_rem > 0 and row_prices[aid] > 0:
@@ -282,16 +279,21 @@ class PortfolioSimulationEngine:
             b_val = sum(b_state["units"][aid] * row_prices[aid] for aid in asset_data)
             s_val = sum(s_state["units"][aid] * row_prices[aid] for aid in asset_data)
             avg_p = sum(float(asset_data[aid]["weight"]) * row_prices[aid] for aid in asset_data)
+            
+            # Asset distribution for area chart - ensure keys are strings and values are floats
+            asset_distribution = {f"asset_{aid}_val": float(s_state["units"][aid] * row_prices[aid]) for aid in asset_data}
 
             portfolio_history.append({
                 "date": date.strftime("%Y-%m-%d"),
-                "invested": float(round(float(s_state["invested"]), 2)),
-                "baseline_value": float(round(float(b_val), 2)),
-                "smart_value": float(round(float(s_val), 2)),
-                "cumulative_fees": float(round(float(s_state["fees"]), 2)),
-                "b_contribution": float(round(sum(b_contributions_today.values()), 2)),
-                "s_contribution": float(round(sum(s_contributions_today.values()), 2)),
-                "price": float(round(float(avg_p), 2))
+                "invested": float(s_state["invested"]),
+                "baseline_value": float(b_val),
+                "smart_value": float(s_val),
+                "cumulative_fees": float(s_state["fees"]),
+                "b_contribution": float(sum(b_contributions_today.values())),
+                "s_contribution": float(sum(s_contributions_today.values())),
+                "price": float(avg_p),
+                "is_rebalanced": 1 if is_rebalanced else 0, # Force to int for reliable aggregation
+                **asset_distribution
             })
 
             for aid in asset_data:
@@ -369,20 +371,51 @@ class PortfolioSimulationEngine:
         df = pd.DataFrame(history)
         df['date'] = pd.to_datetime(df['date'])
         df.set_index('date', inplace=True)
+        
+        # Identify columns
         c_cols = ["invested", "baseline_value", "smart_value", "cumulative_fees", "price"]
-        w_c = df[c_cols].resample('W').last().ffill()
         cont_cols = ["b_contribution", "s_contribution"]
+        # Ensure we catch all asset value columns
+        asset_val_cols = [str(c) for c in df.columns if str(c).startswith("asset_") and str(c).endswith("_val")]
+        
+        # Resample values (last known value of the week)
+        # We use 'last' for cumulative values and 'sum' for periodic ones
+        w_values = df[c_cols + asset_val_cols].resample('W').last().ffill()
         w_cont = df[cont_cols].resample('W').sum()
-        w = pd.concat([w_c, w_cont], axis=1)
+        
+        # Resample rebalancing flag: 1 if ANY day in the week had a rebalance
+        if "is_rebalanced" in df.columns:
+            # Important: Use max() to catch the '1' flag if it happened any day
+            w_reb = df["is_rebalanced"].resample('W').max().fillna(0)
+        else:
+            w_reb = pd.Series(0, index=w_values.index, name="is_rebalanced")
+        
+        # Combine everything
+        w = pd.concat([w_values, w_cont, w_reb], axis=1)
+        
+        # Ensure the first day is always included to avoid starting with a gap
         f_idx = df.index[0]
         if f_idx not in w.index:
-            f = df.loc[f_idx:f_idx].copy()
-            w = pd.concat([f, w]).sort_index()
+            f_row = df.loc[f_idx:f_idx].copy()
+            w = pd.concat([f_row, w]).sort_index()
+            
         res = []
         for date, row in w.iterrows():
             p = row.to_dict()
             p['date'] = date.strftime("%Y-%m-%d")
-            for col in c_cols + cont_cols: p[col] = float(round(float(p[col]), 2))
+            
+            # Clean and round numeric values
+            for col in c_cols + cont_cols + asset_val_cols:
+                if col in p:
+                    val = p[col]
+                    if pd.isna(val):
+                        p[col] = 0.0
+                    else:
+                        p[col] = float(round(float(val), 2))
+            
+            # Explicitly cast is_rebalanced to boolean for frontend
+            # We check if it's > 0 because max() of [0, 1, 0] is 1
+            p['is_rebalanced'] = bool(p.get('is_rebalanced', 0) > 0)
             res.append(p)
         return res
 

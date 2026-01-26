@@ -45,6 +45,9 @@ const METRIC_INFO = {
   volatility: "Standard deviation of periodic returns. Higher values indicate greater price instability.",
   maxDrawdown: "The largest peak-to-trough decline observed during the simulation period.",
   portfolioGrowth: "Comparison of cumulative wealth accumulation between smart and baseline strategies.",
+  rebalancingPoints: "Markers indicating when the portfolio was rebalanced to its target allocation.",
+  distributionOverTime: "Evolution of asset weights within the portfolio throughout the simulation.",
+  rebalancingGain: "The difference in final value between the rebalanced and non-rebalanced strategy.",
   finalAllocation: "The final distribution of assets in the portfolio after the simulation period.",
   individualPerformance: "Detailed results for each specific asset within the portfolio.",
   feesImpact: "Cumulative cost of trading commissions and maintenance fees over time.",
@@ -731,7 +734,7 @@ export default function PortfolioSimulationPage() {
                   </header>
 
                   {/* KPI Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div className="bg-surface-dark border border-border-active/50 rounded-xl p-6 relative overflow-visible group hover:border-primary/30 transition-all">
                       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none"><TrendingUp size={48} className="text-primary" /></div>
                       <div className="flex items-center gap-2 mb-2">
@@ -786,6 +789,63 @@ export default function PortfolioSimulationPage() {
                     </div>
                   </div>
 
+                  {/* Integrated Rebalancing Impact Widget */}
+                  {simulation.config.rebalancing_enabled && (
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-5 mb-6 relative overflow-hidden group hover:border-primary/20 transition-all duration-500">
+                      <div className="absolute top-0 right-0 p-6 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity pointer-events-none">
+                        <Scale size={120} className="text-primary" />
+                      </div>
+                      <div className="flex flex-col md:flex-row items-center gap-6 relative z-10">
+                        <div className="flex items-center gap-4 border-r border-border-dark/30 pr-6">
+                          <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-[0_0_20px_rgba(19,236,91,0.15)]">
+                            <Scale size={24} />
+                          </div>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-white font-black text-sm uppercase tracking-wider">Rebalancing Impact</h3>
+                              {renderInfoIcon(METRIC_INFO.rebalancingGain)}
+                            </div>
+                            <span className="text-[10px] text-primary font-black uppercase tracking-widest">Strategy Active</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1 grid grid-cols-3 gap-8">
+                          <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-widest mb-1">Total Executions</span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-white text-2xl font-black tabular-nums">
+                                {simulation.results.portfolio_history.filter(p => p.is_rebalanced === true || p.is_rebalanced === 1).length}
+                              </span>
+                              <span className="text-[10px] text-text-secondary font-bold uppercase">Points</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-widest mb-1">Interval Period</span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-white text-2xl font-black tabular-nums">{simulation.config.periodic_rebalancing_interval}</span>
+                              <span className="text-[10px] text-text-secondary font-bold uppercase">Months</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-widest mb-1">DCA Alpha</span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-primary text-2xl font-black tabular-nums">
+                                {((simulation.results.total_return_percent - simulation.results.baseline_return_percent)).toFixed(1)}%
+                              </span>
+                              <span className="text-[10px] text-text-secondary font-bold uppercase">Gain</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="hidden lg:block w-64 p-3 bg-primary/5 rounded-xl border border-primary/10">
+                          <p className="text-text-secondary text-[10px] font-medium leading-relaxed italic">
+                            Weights reset every {simulation.config.periodic_rebalancing_interval}m to maintain risk profile.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Wealth Accumulation Chart */}
                   <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm w-full mb-8 relative overflow-visible">
                     <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
@@ -830,7 +890,25 @@ export default function PortfolioSimulationPage() {
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
                           <XAxis dataKey="date" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
                           <YAxis stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                          <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '13px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(value: any) => [`$${Math.round(value).toLocaleString()}`]} />
+                          <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '13px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(value: any, name: string, props: any) => {
+                            if (name === "Rebalanced") return [value ? "Yes" : "No", name];
+                            if (props?.payload?.is_rebalanced && name === "Smart DCA") return [`$${Math.round(value).toLocaleString()} (REB)`, name];
+                            return [`$${Math.round(value).toLocaleString()}`, name];
+                          }} />
+                          {simulation.config.rebalancing_enabled && simulation.results.portfolio_history.map((p, i) => 
+                            (p.is_rebalanced) ? (
+                              <ReferenceLine 
+                                key={`reb-main-line-${i}`} 
+                                x={p.date} 
+                                stroke="#13ec5b" 
+                                strokeDasharray="3 3" 
+                                opacity={1} 
+                                strokeWidth={2} 
+                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 10, fontWeight: '900', offset: 25 }} 
+                                isFront={true}
+                              />
+                            ) : null
+                          )}
                           {!hiddenKeys.smart_value && (
                             <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
                           )}
@@ -898,10 +976,10 @@ export default function PortfolioSimulationPage() {
                     </div>
                   </div>
 
-                  {/* Fees & Net Value Impact Section */}
+                  {/* Fees & Portfolio Distribution Section */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                     {/* Cumulative Fees Over Time */}
-                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm relative overflow-visible">
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm relative overflow-visible flex flex-col">
                       <div className="flex justify-between items-center mb-8">
                         <div className="flex flex-col">
                           <h3 className="text-white text-lg font-bold flex items-center gap-3">
@@ -915,7 +993,7 @@ export default function PortfolioSimulationPage() {
                           <p className="text-text-secondary text-[10px] uppercase font-black tracking-widest opacity-40">{simulation.results.fees_percentage}% of Principal</p>
                         </div>
                       </div>
-                      <div className="w-full h-[250px]">
+                      <div className="w-full h-[300px] mt-auto">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={simulation.results.portfolio_history} syncId="portfolioSync">
                             <defs>
@@ -928,58 +1006,91 @@ export default function PortfolioSimulationPage() {
                             <XAxis dataKey="date" hide />
                             <YAxis orientation="right" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
                             <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} itemStyle={{ color: '#f87171', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(val: any) => [`$${val.toLocaleString()}`, "Cumulative Fees"]} />
+                            {simulation.config.rebalancing_enabled && simulation.results.portfolio_history.map((p, i) => 
+                              (p.is_rebalanced) ? (
+                                <ReferenceLine key={`reb-fees-line-${i}`} x={p.date} stroke="#ef4444" strokeDasharray="2 2" opacity={0.3} strokeWidth={1} isFront={true} />
+                              ) : null
+                            )}
                             <Area type="monotone" dataKey="cumulative_fees" stroke="#f87171" fillOpacity={1} fill="url(#colorFees)" strokeWidth={2} name="Fees" />
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
                     </div>
 
-                    {/* Gross vs Net Final Value */}
-                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 flex flex-col shadow-sm relative overflow-visible">
+                    {/* Portfolio Distribution Area Chart */}
+                    <div className="bg-surface-dark border border-border-active/50 rounded-xl p-8 shadow-sm relative overflow-visible flex flex-col">
                       <div className="flex flex-col gap-1 mb-8">
                         <h3 className="text-white text-lg font-bold flex items-center gap-3">
-                          <span>Gross vs Net Value</span>
-                          {renderInfoIcon(METRIC_INFO.grossVsNet)}
+                          <span>Portfolio Distribution Over Time</span>
+                          {renderInfoIcon(METRIC_INFO.distributionOverTime)}
                         </h3>
-                        <p className="text-text-secondary text-[11px] font-medium opacity-60">Capital impact after all deduction costs</p>
+                        <p className="text-text-secondary text-[11px] font-medium opacity-60">Relative weight of each asset in the portfolio</p>
                       </div>
-                      
-                      <div className="flex-1 flex flex-col justify-center gap-8">
-                        {/* Comparison Bars */}
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                              <span className="text-text-secondary opacity-60">Gross Value (Before Fees)</span>
-                              <span className="text-white">${(simulation.results.final_value + simulation.results.total_fees).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                            </div>
-                            <div className="w-full h-5 bg-background-dark rounded-full overflow-hidden border border-border-active/10 p-1">
-                              <div className="h-full bg-slate-500 rounded-full w-full opacity-40"></div>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                              <span className="text-primary">Net Value (After Fees)</span>
-                              <span className="text-primary">${simulation.results.final_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                            </div>
-                            <div className="w-full h-5 bg-background-dark rounded-full overflow-hidden border border-border-active/10 p-1 shadow-inner">
-                              <div 
-                                className="h-full bg-primary rounded-full shadow-[0_0_15px_rgba(19,236,91,0.5)] transition-all duration-1000" 
-                                style={{ width: `${(simulation.results.final_value / (simulation.results.final_value + simulation.results.total_fees) * 100)}%` }}
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Fee Impact Info */}
-                        <div className="bg-background-dark/50 rounded-2xl p-6 border border-border-active/10 flex items-center gap-6 group hover:border-red-400/20 transition-all">
-                          <div className="size-14 rounded-full border-4 border-red-400/20 border-t-red-400 flex items-center justify-center text-xs font-black text-red-400 shadow-lg">
-                            {simulation.results.fees_percentage}%
-                          </div>
-                          <div>
-                            <p className="text-white text-sm font-black uppercase tracking-tight mb-1">Fee Impact Detected</p>
-                            <p className="text-text-secondary text-xs font-medium opacity-60 leading-relaxed text-left">The strategy costs have reduced your final portfolio performance by {simulation.results.fees_percentage}%.</p>
-                          </div>
-                        </div>
+                      <div className="w-full h-[300px] mt-auto">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={simulation.results.portfolio_history} syncId="portfolioSync" stackOffset="expand">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
+                            <XAxis dataKey="date" hide />
+                            <YAxis stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} 
+                              itemStyle={{ fontSize: '11px', fontWeight: 'bold' }} 
+                              labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }}
+                              formatter={(value: any, name: string, props: any) => {
+                                const ticker = name.replace('asset_', '').replace('_val', '');
+                                const asset = selectedPortfolioDetails?.assets.find(a => a.asset_id === Number(ticker));
+                                
+                                // When stackOffset="expand" is used, the value is already a proportion (0 to 1)
+                                // but if it's coming as absolute value, we calculate it manually
+                                const payload = props?.payload;
+                                if (payload) {
+                                  // Sum all asset values in the payload to get the total
+                                  const total = Object.keys(payload)
+                                    .filter(k => k.startsWith('asset_') && k.endsWith('_val'))
+                                    .reduce((sum, k) => sum + (Number(payload[k]) || 0), 0);
+                                  
+                                  if (total > 0) {
+                                    const percent = (Number(payload[name]) / total) * 100;
+                                    return [`${percent.toFixed(1)}%`, asset?.asset?.ticker || ticker];
+                                  }
+                                }
+                                
+                                // Fallback: if value is already a proportion (0-1)
+                                if (value <= 1 && value >= 0) {
+                                  return [`${(value * 100).toFixed(1)}%`, asset?.asset?.ticker || ticker];
+                                }
+                                
+                                return [value, ticker];
+                              }}
+                            />
+                            {simulation.config.rebalancing_enabled && simulation.results.portfolio_history.map((p, i) => 
+                              (p.is_rebalanced) ? (
+                                <ReferenceLine 
+                                  key={`reb-dist-line-${i}`} 
+                                  x={p.date} 
+                                  stroke="#13ec5b" 
+                                  strokeDasharray="3 3" 
+                                  opacity={1} 
+                                  strokeWidth={2} 
+                                  isFront={true}
+                                />
+                              ) : null
+                            )}
+                            {selectedPortfolioDetails?.assets.map((pa, idx) => (
+                              <Area 
+                                key={pa.asset_id}
+                                type="monotone" 
+                                dataKey={`asset_${pa.asset_id}_val`}
+                                stackId="1"
+                                stroke={COLORS[idx % COLORS.length]} 
+                                fill={COLORS[idx % COLORS.length]} 
+                                fillOpacity={0.6}
+                                name={`asset_${pa.asset_id}_val`}
+                                animationDuration={1000}
+                              />
+                            ))}
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
                   </div>
@@ -1394,6 +1505,11 @@ export default function PortfolioSimulationPage() {
                           <div className="flex items-center gap-2 mt-0.5"><span className="text-text-secondary text-[10px] font-mono flex items-center gap-1"><Clock size={10} /> {new Date(item.created_at).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' })}</span></div>
                         </div>
                         <div className="flex items-center gap-0.5">
+                          {item.config?.rebalancing_enabled && (
+                            <div className="px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary text-[8px] font-black uppercase flex items-center gap-1 shadow-sm">
+                              <Scale size={8} /> REB
+                            </div>
+                          )}
                           <button onClick={(e) => handleToggleFavorite(e, item.id)} className={cn("p-2 transition-all rounded-full hover:bg-primary/10", item.is_favorite ? "text-primary" : "text-text-secondary hover:text-primary")}><Star size={14} fill={item.is_favorite ? "currentColor" : "none"} /></button>
                           <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(item.id); }} className="p-2 text-text-secondary hover:text-red-400 transition-all rounded-full hover:bg-red-400/10"><Trash2 size={14} /></button>
                           <div onClick={(e) => { e.stopPropagation(); setCollapsedHistory(prev => ({ ...prev, [item.id]: !prev[item.id] })); }} className="p-2 text-text-secondary hover:text-white transition-colors"><div className={cn("transition-transform duration-200", collapsedHistory[item.id] ? "-rotate-90" : "rotate-0")}><ChevronDown size={14} /></div></div>
