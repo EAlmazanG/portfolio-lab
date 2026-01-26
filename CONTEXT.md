@@ -217,9 +217,8 @@ To validate the hypothesis, every simulation must be compared against:
 ### 6.3. Advanced Simulation Engine (v0.6)
 - **Portfolio Core Logic:** 
     - The `PortfolioSimulationEngine` orchestrates multiple `SimulationEngine` instances.
-    - **Rebalancing Engine:** Supports two distinct rebalancing layers:
-        1. **Periodic Rebalancing:** Automatically resets asset weights to original targets every N months (6-24), selling winners and buying laggards to maintain strategy integrity.
-        2. **Constant Rebalancing (Contribution Allocation):** Dynamically distributes periodic contributions based on real-time indicators (RSI, MA, EMA). Allocates more capital to undervalued/oversold assets.
+    - **Rebalancing Engine:** Supports periodic rebalancing:
+        1. **Periodic Rebalancing:** Automatically resets asset weights to original targets every N months (1-24), selling winners and buying laggards to maintain strategy integrity.
     - **Smart DCA Compatibility:** Seamlessly integrates with per-asset Smart DCA features (Timing and Sizing), allowing for complex multi-layered strategies.
     - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates.
 - **Advanced Financial Metrics:** 

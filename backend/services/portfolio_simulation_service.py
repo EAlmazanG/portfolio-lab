@@ -77,10 +77,7 @@ class PortfolioSimulationService:
                     minimum_fee_per_trade=data.minimum_fee_per_trade,
                     maintenance_fee_annual_percent=data.maintenance_fee_annual_percent,
                     rebalancing_enabled=data.rebalancing_enabled,
-                    periodic_rebalancing_enabled=data.periodic_rebalancing_enabled,
                     periodic_rebalancing_interval=data.periodic_rebalancing_interval,
-                    constant_rebalancing_enabled=data.constant_rebalancing_enabled,
-                    constant_rebalancing_metric=data.constant_rebalancing_metric,
                     asset_configs=json.dumps(asset_configs_json),
                     is_favorite=data.is_favorite
                 )
@@ -189,10 +186,7 @@ class PortfolioSimulationService:
                 frequency=sim.frequency,
                 investment_mode=sim.investment_mode,
                 rebalancing_enabled=sim.rebalancing_enabled or False,
-                periodic_rebalancing_enabled=sim.periodic_rebalancing_enabled or False,
                 periodic_rebalancing_interval=sim.periodic_rebalancing_interval or 12,
-                constant_rebalancing_enabled=sim.constant_rebalancing_enabled or False,
-                constant_rebalancing_metric=sim.constant_rebalancing_metric or "RSI",
                 commission_fee_percent=sim.commission_fee_percent,
                 minimum_fee_per_trade=sim.minimum_fee_per_trade,
                 maintenance_fee_annual_percent=sim.maintenance_fee_annual_percent,

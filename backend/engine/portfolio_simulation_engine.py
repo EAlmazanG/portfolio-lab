@@ -47,7 +47,7 @@ class PortfolioSimulationEngine:
 
     def run_simulation(self, config: PortfolioSimulationCreate) -> Dict[str, Any]:
         """
-        Runs a multi-asset simulation with support for periodic and constant rebalancing.
+        Runs a multi-asset simulation with support for periodic rebalancing.
         """
         # 1. Load data and calculate indicators for all assets
         asset_data = {}
@@ -109,16 +109,15 @@ class PortfolioSimulationEngine:
             "units": {aid: 0.0 for aid in asset_data},
             "invested": 0.0,
             "fees": 0.0,
-            "pending": {aid: 0.0 for aid in asset_data},
+            "pending_portfolio": 0.0, # Global pending for timing logic
             "next_idx": 0,
-            "annual_budget_remaining": {year: {aid: 0.0 for aid in asset_data} for year in set(d.year for d in all_dates)}
+            "annual_budget_remaining": {year: 0.0 for year in set(d.year for d in all_dates)}
         }
 
         # Initialize annual budgets
         for year in s_state["annual_budget_remaining"]:
             year_dates = [d for d in baseline_dates if d.year == year]
-            for aid in asset_data:
-                s_state["annual_budget_remaining"][year][aid] = float(len(year_dates) * periodic_amount * asset_data[aid]["weight"])
+            s_state["annual_budget_remaining"][year] = float(len(year_dates) * periodic_amount)
 
         initial_cap = float(self.portfolio.initial_capital or 0.0)
         
@@ -126,7 +125,7 @@ class PortfolioSimulationEngine:
         if initial_cap > 0:
             for aid, data in asset_data.items():
                 price = float(data["df"]["close"].iloc[0])
-                a_cap = float(data["initial_amount"]) if data["initial_amount"] > 0 else initial_cap * float(data["weight"])
+                a_cap = data["initial_amount"] if data["initial_amount"] > 0 else initial_cap * float(data["weight"])
                 if a_cap > 0:
                     fee = max(a_cap * (float(config.commission_fee_percent) / 100.0), float(config.minimum_fee_per_trade))
                     units = (a_cap - fee) / price
@@ -167,7 +166,7 @@ class PortfolioSimulationEngine:
                         s_state["units"][aid] *= (1.0 - daily_maintenance_factor)
 
             # 3. Periodic Rebalancing
-            if config.rebalancing_enabled and config.periodic_rebalancing_enabled:
+            if config.rebalancing_enabled:
                 months_passed = (date.year - last_rebalance_date.year) * 12 + (date.month - last_rebalance_date.month)
                 if months_passed >= config.periodic_rebalancing_interval:
                     total_val = sum(s_state["units"][aid] * row_prices[aid] for aid in s_state["units"])
@@ -207,76 +206,77 @@ class PortfolioSimulationEngine:
                 b_state["next_idx"] += 1
 
                 # 4.2 Smart
+                # Distribution is always based on target weights now (Constant Rebalancing removed)
                 smart_weights = {aid: float(asset_data[aid]["weight"]) for aid in asset_data}
-                if config.rebalancing_enabled and config.constant_rebalancing_enabled:
-                    scores = {}
-                    for aid in asset_data:
-                        indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
-                        if indicator_row is not None:
-                            val = float(indicator_row["indicator_value"]) if pd.notna(indicator_row["indicator_value"]) else 1.0
-                            if config.constant_rebalancing_metric == "RSI":
-                                scores[aid] = max(0.1, 100.0 - val)
-                            else: # MA/EMA
-                                scores[aid] = 1.0 / max(0.1, val)
-                        else: scores[aid] = 1.0
-                    
-                    total_score = sum(float(asset_data[aid]["weight"]) * scores[aid] for aid in asset_data)
-                    if total_score > 0:
-                        for aid in asset_data:
-                            smart_weights[aid] = (float(asset_data[aid]["weight"]) * scores[aid]) / total_score
-
+                
+                # Total amount to distribute today = periodic_amount + pending_portfolio
+                total_to_distribute = periodic_amount + s_state["pending_portfolio"]
+                s_state["pending_portfolio"] = 0.0
+                
+                # Check if any asset is overbought and should wait (Timing Logic)
+                assets_to_buy = []
+                total_wait_amount = 0.0
+                
                 for aid in asset_data:
                     a_cfg = asset_data[aid]["config"]
-                    a_amount = periodic_amount * smart_weights[aid]
                     indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
                     signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
                     
-                    actual_buy = 0.0
-                    if a_cfg.dynamic_timing_enabled:
-                        if signal == 1:
-                            buy_floor = a_amount * float(a_cfg.expensive_buy_ratio)
-                            actual_buy = buy_floor
-                            s_state["pending"][aid] += (a_amount - buy_floor)
-                        else:
-                            actual_buy = a_amount + s_state["pending"][aid]
-                            s_state["pending"][aid] = 0
-                    else: actual_buy = a_amount
-
+                    a_amount = total_to_distribute * smart_weights[aid]
+                    
+                    if a_cfg.dynamic_timing_enabled and signal == 1:
+                        # Overbought: respect floor, wait with the rest
+                        buy_floor = a_amount * float(a_cfg.expensive_buy_ratio)
+                        total_wait_amount += (a_amount - buy_floor)
+                        assets_to_buy.append((aid, buy_floor))
+                    else:
+                        assets_to_buy.append((aid, a_amount))
+                
+                s_state["pending_portfolio"] = total_wait_amount
+                
+                # Execute buys
+                for aid, amount in assets_to_buy:
+                    a_cfg = asset_data[aid]["config"]
+                    actual_buy = amount
+                    
+                    # Sizing Logic
                     if a_cfg.dynamic_sizing_enabled:
+                        indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
+                        signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
+                        
                         if signal == -1: actual_buy *= float(a_cfg.sizing_multiplier)
                         elif signal == 1: actual_buy *= float(a_cfg.expensive_buy_ratio)
-                        
-                        max_allowed = s_state["annual_budget_remaining"][current_year][aid]
-                        is_last_day_of_year = (s_state["next_idx"] == len(baseline_dates) - 1 or (s_state["next_idx"] < len(baseline_dates) and baseline_dates[s_state["next_idx"]+1].year > current_year))
-                        if is_last_day_of_year:
-                            actual_buy = max_allowed
-                        else:
-                            actual_buy = min(actual_buy, max_allowed * 0.8)
-
-                    actual_buy = min(actual_buy, s_state["annual_budget_remaining"][current_year][aid])
+                    
+                    # Cap by annual budget
+                    actual_buy = min(actual_buy, s_state["annual_budget_remaining"][current_year])
+                    
                     if actual_buy > 0 and row_prices[aid] > 0:
                         fee = max(actual_buy * (float(config.commission_fee_percent) / 100.0), float(config.minimum_fee_per_trade))
                         if actual_buy > fee:
                             s_state["units"][aid] += (actual_buy - fee) / row_prices[aid]
                             s_state["invested"] += actual_buy
                             s_state["fees"] += fee
-                            s_state["annual_budget_remaining"][current_year][aid] -= actual_buy
+                            s_state["annual_budget_remaining"][current_year] -= actual_buy
                             s_contributions_today[aid] = actual_buy
                 s_state["next_idx"] += 1
 
             # 5. End of year cleanup
             is_end_of_year = (idx == len(all_dates) - 1 or all_dates[idx+1].year > current_year)
             if is_end_of_year:
-                for aid in asset_data:
-                    rem = s_state["annual_budget_remaining"][current_year][aid]
-                    if rem > 1.0 and row_prices[aid] > 0:
-                        fee = max(rem * (float(config.commission_fee_percent) / 100.0), float(config.minimum_fee_per_trade))
-                        if rem > fee:
-                            s_state["units"][aid] += (rem - fee) / row_prices[aid]
-                            s_state["invested"] += rem
-                            s_state["fees"] += fee
-                            s_contributions_today[aid] += rem
-                            s_state["annual_budget_remaining"][current_year][aid] = 0
+                rem = s_state["annual_budget_remaining"][current_year] + s_state["pending_portfolio"]
+                if rem > 1.0:
+                    # Distribute remaining budget according to target weights
+                    for aid in asset_data:
+                        a_rem = rem * float(asset_data[aid]["weight"])
+                        if a_rem > 0 and row_prices[aid] > 0:
+                            fee = max(a_rem * (float(config.commission_fee_percent) / 100.0), float(config.minimum_fee_per_trade))
+                            if a_rem > fee:
+                                s_state["units"][aid] += (a_rem - fee) / row_prices[aid]
+                                s_state["invested"] += a_rem
+                                s_state["fees"] += fee
+                                s_contributions_today[aid] += a_rem
+                    s_state["annual_budget_remaining"][current_year] = 0
+                    s_state["pending_portfolio"] = 0
 
             # 6. Record history
             b_val = sum(b_state["units"][aid] * row_prices[aid] for aid in asset_data)

@@ -33,10 +33,7 @@ class PortfolioSimulationCreate(BaseModel):
     
     # Rebalancing
     rebalancing_enabled: bool = Field(default=False)
-    periodic_rebalancing_enabled: bool = Field(default=False)
-    periodic_rebalancing_interval: int = Field(default=12, ge=6) # 6, 12, 18, 24
-    constant_rebalancing_enabled: bool = Field(default=False)
-    constant_rebalancing_metric: str = Field(default="RSI", pattern="^(RSI|MA|EMA)$")
+    periodic_rebalancing_interval: int = Field(default=12, ge=1) # 1, 2, 3, 6, 12, 18, 24
     
     # Per-asset configuration overrides
     asset_configs: Dict[int, AssetSimulationConfig] = {}

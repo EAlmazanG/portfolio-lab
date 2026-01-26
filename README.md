@@ -40,7 +40,7 @@
 
 ### Dashboard Features
 - **Smart DCA Engine:** Toggle Dynamic Timing and Dynamic Sizing based on RSI, MA, or EMA. Features zero look-ahead bias for realistic backtesting.
-- **Portfolio Simulation Suite:** Orchestrate multi-asset simulations with independent configurations per asset and dynamic weighted allocations.
+- **Portfolio Simulation Suite:** Orchestrate multi-asset simulations with independent configurations per asset and periodic rebalancing (1-24 months).
 - **Advanced Asset Analytics:** Deep-dive into each asset's performance within a portfolio using synchronized charts for Price, Indicators, Contributions, and Accumulation.
 - **Risk & Performance Hub:** Comprehensive tracking of **Portfolio Volatility**, **Max Drawdown (MDD)**, and **Strategy Alpha** (outperformance vs. baseline).
 - **Interactive Visualization:** Global time-brush filtering across all charts, interactive legends for visibility toggling, and clean "zero-jump" start logic for initial investments.
