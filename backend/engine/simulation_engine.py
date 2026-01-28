@@ -232,25 +232,47 @@ class SimulationEngine:
         
         # Add Initial Investment Point at start_date if it's before the first market data point
         # This prevents the chart from starting at 0 and showing a "spike"
-        first_market_date = indicator_df.index[0]
-        if self.start_date < first_market_date:
-            portfolio_history.append({
-                "date": self.start_date.strftime("%Y-%m-%d"),
-                "open": round(float(indicator_df.iloc[0]['open']), 2),
-                "high": round(float(indicator_df.iloc[0]['high']), 2),
-                "low": round(float(indicator_df.iloc[0]['low']), 2),
-                "close": round(float(indicator_df.iloc[0]['close']), 2),
-                "price": round(float(indicator_df.iloc[0]['close']), 2),
-                "indicator_value": None,
-                "ma_short": None,
-                "ma_long": None,
-                "invested": round(float(s_invested), 2),
-                "baseline_value": round(float(s_invested), 2), # At the very start, value equals investment
-                "smart_value": round(float(s_invested), 2),
-                "cumulative_fees": round(float(s_fees), 2),
-                "b_contribution": 0.0,
-                "s_contribution": 0.0
-            })
+        if not indicator_df.empty:
+            first_market_date = indicator_df.index[0]
+            # Use the actual first market price for the initial state
+            valid_prices = indicator_df[indicator_df['close'] > 0]['close']
+            initial_price_real = float(valid_prices.iloc[0]) if not valid_prices.empty else float(indicator_df.iloc[0]['close'])
+            
+            # CRITICAL: If start_date is before first_market_date, we need to show the value
+            # at that start_date. The price should be the first available price.
+            if self.start_date < first_market_date:
+                initial_val = float(s_assets * initial_price_real)
+                
+                # Check if we already have an entry for this date to avoid duplicates
+                if not portfolio_history or portfolio_history[0]["date"] != self.start_date.strftime("%Y-%m-%d"):
+                    portfolio_history.append({
+                        "date": self.start_date.strftime("%Y-%m-%d"),
+                        "open": round(initial_price_real, 2),
+                        "high": round(initial_price_real, 2),
+                        "low": round(initial_price_real, 2),
+                        "close": round(initial_price_real, 2),
+                        "price": round(initial_price_real, 2),
+                        "indicator_value": None,
+                        "ma_short": None,
+                        "ma_long": None,
+                        "invested": round(float(s_invested), 2),
+                        "baseline_value": round(initial_val, 2),
+                        "smart_value": round(initial_val, 2),
+                        "cumulative_fees": round(float(s_fees), 2),
+                        "b_contribution": 0.0,
+                        "s_contribution": 0.0
+                    })
+                else:
+                    # If we already have the first day, ensure it doesn't have 0 values
+                    if portfolio_history[0]["price"] <= 0:
+                        portfolio_history[0]["price"] = round(initial_price_real, 2)
+                        portfolio_history[0]["close"] = round(initial_price_real, 2)
+                        portfolio_history[0]["baseline_value"] = round(initial_val, 2)
+                        portfolio_history[0]["smart_value"] = round(initial_val, 2)
+            
+            # Ensure the VERY FIRST day of market data doesn't have a 0 price in history
+            # if it's being added in the loop later.
+            # We will handle this inside the loop by ensuring p_close is never 0.
 
         current_year = indicator_df.index[0].year
         
@@ -398,6 +420,19 @@ class SimulationEngine:
             ma_short_val = clean_val(row.get('ma_short_val'))
             ma_long_val = clean_val(row.get('ma_long_val'))
             indicator_val = clean_val(row.get('indicator_value'))
+            
+            p_close = round(clean_val(row['close'], 0.0), 2)
+            # Safeguard: if price is 0, use previous price or the first available price
+            if p_close <= 0:
+                if len(portfolio_history) > 0:
+                    p_close = portfolio_history[-1]["close"]
+                else:
+                    # If it's the very first row and it's 0, look ahead for the first non-zero price
+                    valid_prices = indicator_df[indicator_df['close'] > 0]['close']
+                    if not valid_prices.empty:
+                        p_close = round(float(valid_prices.iloc[0]), 2)
+                    else:
+                        p_close = 0.01 # Absolute fallback
 
             # For MA/EMA, a value of 0.0 is typically an error or "no data" 
             # at the beginning of a simulation for assets with non-zero price.
@@ -411,14 +446,14 @@ class SimulationEngine:
                 "open": round(clean_val(row['open'], 0.0), 2),
                 "high": round(clean_val(row['high'], 0.0), 2),
                 "low": round(clean_val(row['low'], 0.0), 2),
-                "close": round(clean_val(row['close'], 0.0), 2),
-                "price": round(clean_val(row['close'], 0.0), 2),
+                "close": p_close,
+                "price": p_close,
                 "indicator_value": round(indicator_val, 4) if indicator_val is not None else None,
                 "ma_short": round(ma_short_val, 2) if ma_short_val is not None else None,
                 "ma_long": round(ma_long_val, 2) if ma_long_val is not None else None,
                 "invested": round(float(s_invested), 2),
-                "baseline_value": round(float(b_assets * row['close']), 2),
-                "smart_value": round(float(s_assets * row['close']), 2),
+                "baseline_value": round(float(b_assets * p_close), 2),
+                "smart_value": round(float(s_assets * p_close), 2),
                 "cumulative_fees": round(float(s_fees), 2),
                 "b_contribution": round(float(b_contribution), 2),
                 "s_contribution": round(float(s_contribution), 2)

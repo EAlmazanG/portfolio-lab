@@ -138,6 +138,47 @@ class PortfolioSimulationEngine:
                     s_state["fees"] += fee
 
         portfolio_history = []
+        
+        # Add Initial Investment Point at start_date if it's before the first market data point
+        # This prevents the chart from starting at 0 and showing a "spike"
+        if all_dates:
+            first_market_date = all_dates[0]
+            if self.start_date < first_market_date:
+                # Calculate initial values using the first available market price
+                first_prices = {}
+                for aid in asset_data:
+                    valid_prices = asset_data[aid]["df"][asset_data[aid]["df"]["close"] > 0]["close"]
+                    first_prices[aid] = float(valid_prices.iloc[0]) if not valid_prices.empty else float(asset_data[aid]["df"]["close"].iloc[0])
+                
+                b_val_init = sum(b_state["units"][aid] * first_prices[aid] for aid in asset_data)
+                s_val_init = sum(s_state["units"][aid] * first_prices[aid] for aid in asset_data)
+                avg_p_init = sum(float(asset_data[aid]["weight"]) * first_prices[aid] for aid in asset_data)
+                
+                asset_distribution_init = {f"asset_{aid}_val": float(s_state["units"][aid] * first_prices[aid]) for aid in asset_data}
+
+                # Check if we already have an entry for this date to avoid duplicates
+                if not portfolio_history or portfolio_history[0]["date"] != self.start_date.strftime("%Y-%m-%d"):
+                    portfolio_history.append({
+                        "date": self.start_date.strftime("%Y-%m-%d"),
+                        "invested": float(s_state["invested"]),
+                        "baseline_value": float(b_val_init),
+                        "smart_value": float(s_val_init),
+                        "cumulative_fees": float(s_state["fees"]),
+                        "b_contribution": 0.0,
+                        "s_contribution": 0.0,
+                        "price": float(avg_p_init),
+                        "is_rebalanced": False,
+                        **asset_distribution_init
+                    })
+                else:
+                    # If we already have the first day, ensure it doesn't have 0 values
+                    if portfolio_history[0]["price"] <= 0:
+                        portfolio_history[0]["price"] = float(avg_p_init)
+                        portfolio_history[0]["baseline_value"] = float(b_val_init)
+                        portfolio_history[0]["smart_value"] = float(s_val_init)
+                        for aid in asset_distribution_init:
+                            portfolio_history[0][aid] = asset_distribution_init[aid]
+
         last_rebalance_date = all_dates[0]
 
         # --- MAIN LOOP ---
@@ -148,10 +189,27 @@ class PortfolioSimulationEngine:
             row_prices = {}
             for aid in asset_data:
                 if date in asset_data[aid]["df"].index:
-                    row_prices[aid] = float(asset_data[aid]["df"].loc[date, "close"])
+                    price = float(asset_data[aid]["df"].loc[date, "close"])
+                    # If price is 0, try to use the previous price from history
+                    if price <= 0 and len(asset_data[aid]["history"]) > 0:
+                        price = asset_data[aid]["history"][-1]["price"]
+                    # If still 0, try to look ahead for the first valid price
+                    if price <= 0:
+                        valid_prices = asset_data[aid]["df"][asset_data[aid]["df"]["close"] > 0]["close"]
+                        if not valid_prices.empty:
+                            price = float(valid_prices.iloc[0])
+                        else:
+                            # If NO valid price in the entire dataset, use a safe default
+                            price = 0.01 
+                    row_prices[aid] = price
                 else:
                     prev_df = asset_data[aid]["df"][asset_data[aid]["df"].index < date]
-                    row_prices[aid] = float(prev_df["close"].iloc[-1]) if not prev_df.empty else 0.0
+                    if not prev_df.empty:
+                        row_prices[aid] = float(prev_df["close"].iloc[-1])
+                    else:
+                        # Look ahead
+                        valid_prices = asset_data[aid]["df"][asset_data[aid]["df"]["close"] > 0]["close"]
+                        row_prices[aid] = float(valid_prices.iloc[0]) if not valid_prices.empty else 0.01
 
             # 2. Maintenance Fees
             if daily_maintenance_factor > 0:
@@ -280,6 +338,22 @@ class PortfolioSimulationEngine:
             s_val = sum(s_state["units"][aid] * row_prices[aid] for aid in asset_data)
             avg_p = sum(float(asset_data[aid]["weight"]) * row_prices[aid] for aid in asset_data)
             
+            # CRITICAL: Ensure price is never 0 in history if we have assets
+            if avg_p <= 0 and idx > 0:
+                avg_p = portfolio_history[-1]["price"]
+            if b_val <= 0 and idx > 0:
+                b_val = portfolio_history[-1]["baseline_value"]
+            if s_val <= 0 and idx > 0:
+                s_val = portfolio_history[-1]["smart_value"]
+            
+            # If it's the very first point and it's still 0, we must force it to the first valid price
+            if avg_p <= 0 and idx == 0:
+                # This should have been handled by the initial point logic, but as a last resort:
+                first_prices = {aid: float(asset_data[aid]["df"][asset_data[aid]["df"]["close"] > 0]["close"].iloc[0]) for aid in asset_data}
+                avg_p = sum(float(asset_data[aid]["weight"]) * first_prices[aid] for aid in asset_data)
+                b_val = sum(b_state["units"][aid] * first_prices[aid] for aid in asset_data)
+                s_val = sum(s_state["units"][aid] * first_prices[aid] for aid in asset_data)
+
             # Asset distribution for area chart - ensure keys are strings and values are floats
             asset_distribution = {f"asset_{aid}_val": float(s_state["units"][aid] * row_prices[aid]) for aid in asset_data}
 
