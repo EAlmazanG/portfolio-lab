@@ -86,10 +86,20 @@ class SimulationEngine:
         
         if indicator_type == "RSI":
             delta = df['close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-            rs = gain / loss
-            df['indicator_value'] = 100 - (100 / (1 + rs))
+            # Wilder's smoothing method
+            gain = (delta.where(delta > 0, 0))
+            loss = (-delta.where(delta < 0, 0))
+            
+            # Using EWM for standard RSI calculation
+            avg_gain = gain.ewm(com=13, adjust=False).mean()
+            avg_loss = loss.ewm(com=13, adjust=False).mean()
+            
+            # Use a safe division to avoid inf/nan issues
+            rs = avg_gain / avg_loss.replace(0, np.nan)
+            df['indicator_value'] = 100 - (100 / (1 + rs.fillna(np.inf)))
+            # Final fallback for any remaining NaNs
+            df['indicator_value'] = df['indicator_value'].fillna(50.0)
+            
             # Signal: -1 (oversold/buy more), 0 (neutral), 1 (overbought/buy less)
             df['signal'] = 0
             df.loc[df['indicator_value'] < rsi_low, 'signal'] = -1
@@ -244,9 +254,10 @@ class SimulationEngine:
                 initial_val = float(s_assets * initial_price_real)
                 
                 # Check if we already have an entry for this date to avoid duplicates
-                if not portfolio_history or portfolio_history[0]["date"] != self.start_date.strftime("%Y-%m-%d"):
+                date_str = self.start_date.strftime("%Y-%m-%d")
+                if not portfolio_history or portfolio_history[0]["date"] != date_str:
                     portfolio_history.append({
-                        "date": self.start_date.strftime("%Y-%m-%d"),
+                        "date": date_str,
                         "open": round(initial_price_real, 2),
                         "high": round(initial_price_real, 2),
                         "low": round(initial_price_real, 2),
@@ -265,6 +276,9 @@ class SimulationEngine:
                 else:
                     # If we already have the first day, ensure it doesn't have 0 values
                     if portfolio_history[0]["price"] <= 0:
+                        portfolio_history[0]["open"] = round(initial_price_real, 2)
+                        portfolio_history[0]["high"] = round(initial_price_real, 2)
+                        portfolio_history[0]["low"] = round(initial_price_real, 2)
                         portfolio_history[0]["price"] = round(initial_price_real, 2)
                         portfolio_history[0]["close"] = round(initial_price_real, 2)
                         portfolio_history[0]["baseline_value"] = round(initial_val, 2)
@@ -433,6 +447,17 @@ class SimulationEngine:
                         p_close = round(float(valid_prices.iloc[0]), 2)
                     else:
                         p_close = 0.01 # Absolute fallback
+            
+            # Additional check: if it's the first actual market day, we might need to 
+            # fix the very first entry if it was added as a start_date dummy with 0s
+            if i == 0 and len(portfolio_history) > 0 and portfolio_history[0]["price"] <= 0:
+                portfolio_history[0]["price"] = p_close
+                portfolio_history[0]["close"] = p_close
+                portfolio_history[0]["open"] = p_close
+                portfolio_history[0]["high"] = p_close
+                portfolio_history[0]["low"] = p_close
+                portfolio_history[0]["baseline_value"] = round(float(b_assets * p_close), 2)
+                portfolio_history[0]["smart_value"] = round(float(s_assets * p_close), 2)
 
             # For MA/EMA, a value of 0.0 is typically an error or "no data" 
             # at the beginning of a simulation for assets with non-zero price.

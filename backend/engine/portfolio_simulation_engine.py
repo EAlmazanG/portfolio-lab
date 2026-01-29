@@ -45,6 +45,15 @@ class PortfolioSimulationEngine:
             )
         return engines
 
+    def _clean_val(self, val: Any, default: Any = 0.0) -> Any:
+        """Helper to handle NaNs and Infs for JSON serialization."""
+        try:
+            if val is None or (isinstance(val, float) and (np.isnan(val) or np.isinf(val))):
+                return default
+            return float(val)
+        except:
+            return default
+
     def run_simulation(self, config: PortfolioSimulationCreate) -> Dict[str, Any]:
         """
         Runs a multi-asset simulation with support for periodic rebalancing.
@@ -108,6 +117,7 @@ class PortfolioSimulationEngine:
         s_state = {
             "units": {aid: 0.0 for aid in asset_data},
             "invested": 0.0,
+            "invested_per_asset": {aid: 0.0 for aid in asset_data},
             "fees": 0.0,
             "pending_portfolio": 0.0, # Global pending for timing logic
             "next_idx": 0,
@@ -135,6 +145,7 @@ class PortfolioSimulationEngine:
                     
                     s_state["units"][aid] += units
                     s_state["invested"] += a_cap
+                    s_state["invested_per_asset"][aid] += a_cap
                     s_state["fees"] += fee
 
         portfolio_history = []
@@ -170,6 +181,17 @@ class PortfolioSimulationEngine:
                         "is_rebalanced": False,
                         **asset_distribution_init
                     })
+                    # Also add to individual asset history
+                    for aid in asset_data:
+                        asset_data[aid]["history"].append({
+                            "date": self.start_date.strftime("%Y-%m-%d"),
+                            "price": first_prices[aid],
+                            "indicator_value": None,
+                            "ma_short": None,
+                            "ma_long": None,
+                            "s_contribution": 0.0,
+                            "b_contribution": 0.0
+                        })
                 else:
                     # If we already have the first day, ensure it doesn't have 0 values
                     if portfolio_history[0]["price"] <= 0:
@@ -178,6 +200,11 @@ class PortfolioSimulationEngine:
                         portfolio_history[0]["smart_value"] = float(s_val_init)
                         for aid in asset_distribution_init:
                             portfolio_history[0][aid] = asset_distribution_init[aid]
+                        
+                        # Also fix individual asset history if needed
+                        for aid in asset_data:
+                            if asset_data[aid]["history"] and asset_data[aid]["history"][0]["price"] <= 0:
+                                asset_data[aid]["history"][0]["price"] = first_prices[aid]
 
         last_rebalance_date = all_dates[0]
 
@@ -311,6 +338,7 @@ class PortfolioSimulationEngine:
                         if actual_buy > fee:
                             s_state["units"][aid] += (actual_buy - fee) / row_prices[aid]
                             s_state["invested"] += actual_buy
+                            s_state["invested_per_asset"][aid] += actual_buy
                             s_state["fees"] += fee
                             s_state["annual_budget_remaining"][current_year] -= actual_buy
                             s_contributions_today[aid] = actual_buy
@@ -328,6 +356,7 @@ class PortfolioSimulationEngine:
                             if a_rem > fee:
                                 s_state["units"][aid] += (a_rem - fee) / row_prices[aid]
                                 s_state["invested"] += a_rem
+                                s_state["invested_per_asset"][aid] += a_rem
                                 s_state["fees"] += fee
                                 s_contributions_today[aid] += a_rem
                     s_state["annual_budget_remaining"][current_year] = 0
@@ -370,24 +399,59 @@ class PortfolioSimulationEngine:
                 **asset_distribution
             })
 
+            # Record individual asset history
             for aid in asset_data:
+                # Ensure price is never 0 in history
+                p_close_hist = self._clean_val(row_prices[aid])
+                if p_close_hist <= 0 and len(asset_data[aid]["history"]) > 0:
+                    p_close_hist = asset_data[aid]["history"][-1]["price"]
+                
                 indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
+                
+                # CRITICAL: If indicator_row is None (missing date for this asset), 
+                # we should ffill the indicator values to avoid gaps in the chart
+                ind_val = None
+                ma_s = None
+                ma_l = None
+                if indicator_row is not None:
+                    ind_val = self._clean_val(indicator_row.get("indicator_value"), None)
+                    ma_s = self._clean_val(indicator_row.get("ma_short_val"), None)
+                    ma_l = self._clean_val(indicator_row.get("ma_long_val"), None)
+                
+                # If values are None, try to get them from previous history entry (Forward Fill)
+                if ind_val is None and len(asset_data[aid]["history"]) > 0:
+                    ind_val = asset_data[aid]["history"][-1].get("indicator_value")
+                    ma_s = asset_data[aid]["history"][-1].get("ma_short")
+                    ma_l = asset_data[aid]["history"][-1].get("ma_long")
+                
+                # If it's the very first point and still None, try to find the first valid indicator value in the DF
+                if ind_val is None and not asset_data[aid]["df"].empty:
+                    valid_inds = asset_data[aid]["df"][pd.notna(asset_data[aid]["df"]["indicator_value"])]["indicator_value"]
+                    if not valid_inds.empty:
+                        ind_val = self._clean_val(valid_inds.iloc[0], None)
+                    elif asset_data[aid]["config"].smart_indicator == "RSI":
+                        ind_val = 50.0 # Neutral fallback for RSI
+
                 asset_data[aid]["history"].append({
                     "date": date.strftime("%Y-%m-%d"),
-                    "price": float(round(float(row_prices[aid]), 2)),
-                    "indicator_value": float(round(float(indicator_row["indicator_value"]), 4)) if indicator_row is not None and pd.notna(indicator_row["indicator_value"]) else None,
-                    "ma_short": float(round(float(indicator_row["ma_short_val"]), 2)) if indicator_row is not None and pd.notna(indicator_row.get("ma_short_val")) else None,
-                    "ma_long": float(round(float(indicator_row["ma_long_val"]), 2)) if indicator_row is not None and pd.notna(indicator_row.get("ma_long_val")) else None,
-                    "s_contribution": float(round(float(s_contributions_today[aid]), 2)),
-                    "b_contribution": float(round(float(b_contributions_today[aid]), 2))
+                    "price": float(round(p_close_hist, 2)),
+                    "indicator_value": round(ind_val, 4) if ind_val is not None else None,
+                    "ma_short": round(ma_s, 2) if ma_s is not None else None,
+                    "ma_long": round(ma_l, 2) if ma_l is not None else None,
+                    "s_contribution": float(round(self._clean_val(s_contributions_today[aid]), 2)),
+                    "b_contribution": float(round(self._clean_val(b_contributions_today[aid]), 2))
                 })
 
         # --- FINAL AGGREGATION ---
         formatted_asset_results = []
         for aid, data in asset_data.items():
-            final_p = row_prices[aid]
-            s_units = s_state["units"][aid]
-            total_inv_asset = initial_cap * float(data["weight"]) + (len(baseline_dates) * periodic_amount * float(data["weight"]))
+            final_p = self._clean_val(row_prices[aid])
+            s_units = self._clean_val(s_state["units"][aid])
+            total_inv_asset = self._clean_val(s_state.get("invested_per_asset", {}).get(aid, initial_cap * float(data["weight"])))
+            # Fallback if invested_per_asset is not yet tracked correctly in all paths
+            if total_inv_asset <= 0:
+                total_inv_asset = initial_cap * float(data["weight"]) + (len(baseline_dates) * periodic_amount * float(data["weight"]))
+            
             final_val_asset = s_units * final_p
             roi = ((final_val_asset - total_inv_asset) / total_inv_asset * 100) if total_inv_asset > 0 else 0
             formatted_asset_results.append({
