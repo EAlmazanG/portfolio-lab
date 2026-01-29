@@ -401,6 +401,9 @@ class PortfolioSimulationEngine:
 
             # Record individual asset history
             for aid in asset_data:
+                a_cfg = asset_data[aid]["config"]
+                show_indicators = a_cfg.dynamic_timing_enabled or a_cfg.dynamic_sizing_enabled
+                
                 # Ensure price is never 0 in history
                 p_close_hist = self._clean_val(row_prices[aid])
                 if p_close_hist <= 0 and len(asset_data[aid]["history"]) > 0:
@@ -431,6 +434,12 @@ class PortfolioSimulationEngine:
                         ind_val = self._clean_val(valid_inds.iloc[0], None)
                     elif asset_data[aid]["config"].smart_indicator == "RSI":
                         ind_val = 50.0 # Neutral fallback for RSI
+
+                # Only show indicators if at least one smart feature is active for this asset
+                if not show_indicators:
+                    ind_val = None
+                    ma_s = None
+                    ma_l = None
 
                 asset_data[aid]["history"].append({
                     "date": date.strftime("%Y-%m-%d"),

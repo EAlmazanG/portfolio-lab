@@ -435,6 +435,13 @@ class SimulationEngine:
             ma_long_val = clean_val(row.get('ma_long_val'))
             indicator_val = clean_val(row.get('indicator_value'))
             
+            # Conditionally show indicators only if smart features are active
+            show_indicators = dynamic_timing_enabled or dynamic_sizing_enabled
+            if not show_indicators:
+                indicator_val = None
+                ma_short_val = None
+                ma_long_val = None
+            
             p_close = round(clean_val(row['close'], 0.0), 2)
             # Safeguard: if price is 0, use previous price or the first available price
             if p_close <= 0:

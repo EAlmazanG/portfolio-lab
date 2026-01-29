@@ -1180,6 +1180,7 @@ export default function PortfolioSimulationPage() {
                     {simulation.results.asset_results.map((ar, idx) => {
                       const assetConfig = simulation.config.asset_configs[ar.asset_id];
                       const indicatorType = assetConfig?.smart_indicator || 'RSI';
+                      const isSmartActive = assetConfig?.dynamic_timing_enabled || assetConfig?.dynamic_sizing_enabled;
                       const isCollapsed = collapsedAssets[ar.asset_id];
                       
                       return (
@@ -1193,11 +1194,13 @@ export default function PortfolioSimulationPage() {
                               <div className="flex flex-col">
                                 <h4 className="text-white text-xl font-black tracking-tight uppercase group-hover/header:text-primary transition-colors">{ar.ticker} Performance</h4>
                                 <div className="flex items-center gap-2 mt-0.5">
-                                  <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-background-dark/80 rounded border border-border-active/10">
-                                    <span className="text-[8px] text-text-secondary uppercase font-black tracking-widest">
-                                      {indicatorType} Strategy
-                                    </span>
-                                  </div>
+                                  {isSmartActive && (
+                                    <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-background-dark/80 rounded border border-border-active/10">
+                                      <span className="text-[8px] text-text-secondary uppercase font-black tracking-widest">
+                                        {indicatorType} Strategy
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1237,7 +1240,7 @@ export default function PortfolioSimulationPage() {
                                   <div className="flex justify-between items-center mb-3 px-1">
                                     <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
                                       <span>Market Price</span>
-                                      {indicatorType !== 'RSI' && <span>& {indicatorType} Signal</span>}
+                                      {isSmartActive && indicatorType !== 'RSI' && <span>& {indicatorType} Signal</span>}
                                       {renderInfoIcon(METRIC_INFO.priceIndicators)}
                                     </h5>
                                   </div>
@@ -1251,7 +1254,7 @@ export default function PortfolioSimulationPage() {
                                         
                                         <Line type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={2} dot={false} name="Market Price" animationDuration={1000} />
                                         
-                                        {indicatorType !== 'RSI' && (
+                                        {isSmartActive && indicatorType !== 'RSI' && (
                                           <>
                                             {indicatorType === 'MA' || indicatorType === 'EMA' ? (
                                               <>
@@ -1266,8 +1269,8 @@ export default function PortfolioSimulationPage() {
                                   </div>
                                 </div>
 
-                                {/* RSI Sub-chart (Only if RSI) */}
-                                {indicatorType === 'RSI' && (
+                                {/* RSI Sub-chart (Only if RSI and Smart Active) */}
+                                {isSmartActive && indicatorType === 'RSI' && (
                                   <div className="w-full bg-background-dark/20 p-4 rounded-xl border border-border-active/5">
                                     <div className="flex justify-between items-center mb-3 px-1">
                                       <h5 className="text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
