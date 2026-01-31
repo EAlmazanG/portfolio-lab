@@ -595,6 +595,9 @@ class TestMultiAssetPortfolioIsolation(unittest.TestCase):
         """
         Test that state (pending amounts, reserves) from one asset cannot affect another.
         This verifies complete isolation between assets.
+        
+        CRITICAL: When Asset 1 defers buying (timing), that pending amount must ONLY
+        go back to Asset 1, NOT be redistributed to Asset 2.
         """
         mock_db = MagicMock()
         mock_session.return_value = mock_db
@@ -638,12 +641,80 @@ class TestMultiAssetPortfolioIsolation(unittest.TestCase):
         
         result = engine.run_simulation(config)
         
+        asset1_result = next(a for a in result['asset_results'] if a['asset_id'] == 1)
         asset2_result = next(a for a in result['asset_results'] if a['asset_id'] == 2)
         
         # Total invested per year is 1000 * 12 = 12000
-        # Asset 2 should receive EXACTLY its 50% baseline allocation = 6000
+        # Asset 1 gets 50% = 6000, Asset 2 gets 50% = 6000
+        
+        # CRITICAL CHECK: Asset 2 should receive EXACTLY its 50% baseline allocation = 6000
         # Asset 1's pending amount should NOT spill over to Asset 2
-        self.assertAlmostEqual(asset2_result['total_invested'], 6000, delta=500)
+        self.assertAlmostEqual(asset2_result['total_invested'], 6000, delta=100)
+        
+        # Asset 1 should also have invested its full 6000 (deferred but eventually invested)
+        self.assertAlmostEqual(asset1_result['total_invested'], 6000, delta=100)
+        
+        # Total should be exactly 12000
+        self.assertAlmostEqual(result['total_invested'], 12000, delta=100)
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_pending_not_redistributed_to_other_assets(self, mock_session):
+        """
+        CRITICAL TEST: Verify that when Asset 1 defers buying due to timing,
+        the pending amount is NOT redistributed to Asset 2.
+        
+        Scenario:
+        - Asset 1 (50%): timing enabled, overbought on Jan 1st -> defers its $500
+        - Asset 2 (50%): no features -> should receive exactly $500 (not $500 + portion of Asset 1's pending)
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.5, 2: 0.5})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Asset 1: ALL overbought (to ensure timing always defers)
+        signals_asset1 = [1] * len(self.mock_df_asset1)  # Always overbought
+        
+        # Asset 2: ALL neutral (baseline behavior)
+        signals_asset2 = [0] * len(self.mock_df_asset2)  # Always neutral
+        
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset1, signals_asset1
+        )
+        
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset2, signals_asset2
+        )
+        
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        config = PortfolioSimulationCreate(
+            portfolio_id=1,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            base_amount=1000,
+            frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(dynamic_timing_enabled=True, expensive_buy_ratio=0.0),  # Always waits
+                2: AssetSimulationConfig(dynamic_timing_enabled=False, dynamic_sizing_enabled=False)  # Baseline
+            }
+        )
+        
+        result = engine.run_simulation(config)
+        
+        asset2_result = next(a for a in result['asset_results'] if a['asset_id'] == 2)
+        
+        # Asset 2 should receive EXACTLY its 50% baseline allocation = 6000
+        # NOT 6000 + any portion of Asset 1's deferred amounts
+        # This is the CRITICAL assertion - if Asset 1's pending was being redistributed,
+        # Asset 2 would have received MORE than 6000
+        self.assertAlmostEqual(asset2_result['total_invested'], 6000, delta=100)
 
     @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
     def test_mixed_smart_features_per_asset(self, mock_session):
