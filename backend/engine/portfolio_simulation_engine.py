@@ -58,6 +58,11 @@ class PortfolioSimulationEngine:
         """
         Runs a multi-asset simulation with support for periodic rebalancing.
         """
+        import sys
+        print(f"DEBUG_SIM: Starting simulation with {len(config.asset_configs)} asset configs", file=sys.stderr)
+        for aid, cfg in config.asset_configs.items():
+            print(f"DEBUG_SIM: Asset {aid} (type={type(aid).__name__}): timing={cfg.dynamic_timing_enabled}, sizing={cfg.dynamic_sizing_enabled}, multiplier={cfg.sizing_multiplier}", file=sys.stderr)
+        
         # 1. Load data and calculate indicators for all assets
         asset_data = {}
         all_dates_set = set()
@@ -386,6 +391,13 @@ class PortfolioSimulationEngine:
             # 6. Record history
             b_val = sum(b_state["units"][aid] * row_prices[aid] for aid in asset_data)
             s_val = sum(s_state["units"][aid] * row_prices[aid] for aid in asset_data)
+            
+            # DEBUG: Log differences when they diverge
+            if is_baseline_day and abs(b_val - s_val) > 1:
+                import sys
+                print(f"DEBUG_DIFF: date={date}, b_val={b_val:.2f}, s_val={s_val:.2f}, diff={s_val-b_val:.2f}", file=sys.stderr)
+                for aid in asset_data:
+                    print(f"DEBUG_DIFF:   Asset {aid}: b_units={b_state['units'][aid]:.4f}, s_units={s_state['units'][aid]:.4f}", file=sys.stderr)
             avg_p = sum(float(asset_data[aid]["weight"]) * row_prices[aid] for aid in asset_data)
             
             # CRITICAL: Ensure price is never 0 in history if we have assets
