@@ -1178,7 +1178,9 @@ export default function PortfolioSimulationPage() {
                     </div>
 
                     {simulation.results.asset_results.map((ar, idx) => {
-                      const assetConfig = simulation.config.asset_configs[ar.asset_id];
+                      const assetConfig =
+                        simulation.config.asset_configs[ar.asset_id] ??
+                        simulation.config.asset_configs[String(ar.asset_id)];
                       const indicatorType = assetConfig?.smart_indicator || 'RSI';
                       const isSmartActive = assetConfig?.dynamic_timing_enabled || assetConfig?.dynamic_sizing_enabled;
                       const isCollapsed = collapsedAssets[ar.asset_id];

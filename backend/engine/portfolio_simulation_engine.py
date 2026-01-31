@@ -58,18 +58,20 @@ class PortfolioSimulationEngine:
         """
         Runs a multi-asset simulation with support for periodic rebalancing.
         """
-        import sys
-        print(f"DEBUG_SIM: Starting simulation with {len(config.asset_configs)} asset configs", file=sys.stderr)
-        for aid, cfg in config.asset_configs.items():
-            print(f"DEBUG_SIM: Asset {aid} (type={type(aid).__name__}): timing={cfg.dynamic_timing_enabled}, sizing={cfg.dynamic_sizing_enabled}, multiplier={cfg.sizing_multiplier}", file=sys.stderr)
-        
         # 1. Load data and calculate indicators for all assets
         asset_data = {}
         all_dates_set = set()
         
         for pa in self.portfolio.assets:
             engine = self.asset_engines[pa.asset_id]
-            a_cfg = config.asset_configs.get(pa.asset_id, AssetSimulationConfig())
+            # Try to get config with int key first, then with string key
+            a_cfg = config.asset_configs.get(pa.asset_id)
+            if a_cfg is None:
+                # Try with string key (in case normalization didn't work)
+                a_cfg = config.asset_configs.get(str(pa.asset_id))
+            if a_cfg is None:
+                # Use default if not found
+                a_cfg = AssetSimulationConfig()
             
             df = engine._calculate_indicators(
                 indicator_type=a_cfg.smart_indicator,
@@ -318,6 +320,10 @@ class PortfolioSimulationEngine:
                 for aid in asset_data:
                     a_cfg = asset_data[aid]["config"]
                     indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
+                    if indicator_row is None:
+                        prev_rows = asset_data[aid]["df"][asset_data[aid]["df"].index <= date]
+                        if not prev_rows.empty:
+                            indicator_row = prev_rows.iloc[-1]
                     signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
                     
                     # Base amount for this asset this period = its weight * periodic_amount
@@ -346,6 +352,10 @@ class PortfolioSimulationEngine:
                     actual_buy = amount
                     if a_cfg.dynamic_sizing_enabled:
                         indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
+                        if indicator_row is None:
+                            prev_rows = asset_data[aid]["df"][asset_data[aid]["df"].index <= date]
+                            if not prev_rows.empty:
+                                indicator_row = prev_rows.iloc[-1]
                         signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
                         if signal == -1: actual_buy *= float(a_cfg.sizing_multiplier)
                         elif signal == 1: actual_buy *= float(a_cfg.expensive_buy_ratio)
@@ -362,6 +372,7 @@ class PortfolioSimulationEngine:
                             s_state["fees"] += fee
                             s_state["annual_budget_per_asset"][current_year][aid] -= actual_buy
                             s_contributions_today[aid] = actual_buy
+                
                 s_state["next_idx"] += 1
 
             # 5. End of year cleanup - invest any remaining annual budget

@@ -26,6 +26,7 @@ class PortfolioSimulationService:
         """
         Runs a portfolio simulation and optionally saves it.
         """
+        
         engine = PortfolioSimulationEngine(
             portfolio_id=data.portfolio_id,
             start_date=data.start_date,

@@ -8,6 +8,15 @@ router = APIRouter(prefix="/portfolio-simulations", tags=["portfolio-simulations
 @router.post("/run", response_model=PortfolioSimulationResponse)
 async def run_portfolio_simulation(data: PortfolioSimulationCreate):
     try:
+        # Normalize asset_configs keys to int (in case they come as strings from JSON)
+        if data.asset_configs:
+            normalized = {}
+            for k, v in list(data.asset_configs.items()):
+                int_key = int(k) if isinstance(k, str) else k
+                normalized[int_key] = v
+            data.asset_configs.clear()
+            data.asset_configs.update(normalized)
+        
         return PortfolioSimulationService.run_simulation(data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
