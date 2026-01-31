@@ -903,15 +903,13 @@ export default function PortfolioSimulationPage() {
                                 x={p.date} 
                                 stroke="#13ec5b" 
                                 strokeDasharray="3 3" 
-                                opacity={1} 
-                                strokeWidth={3} 
-                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 12, fontWeight: '900', offset: 25 }} 
+                                opacity={0.8} 
+                                strokeWidth={1.5} 
+                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 10, fontWeight: '800', offset: 18 }} 
                                 isFront={true}
                               />
                             ) : null
                           ))}
-
-                          <ReferenceLine x="2022-01-01" stroke="#ff0000" strokeWidth={5} label="FIXED DATE" isFront={true} />
 
                           {!hiddenKeys.smart_value && (
                             <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
@@ -924,14 +922,14 @@ export default function PortfolioSimulationPage() {
                           )}
                           {simulation.results.portfolio_history.map((p, i) => (
                             p.is_rebalanced ? (
-                              <ReferenceArea 
+                              <ReferenceLine 
                                 key={`reb-area-${i}`} 
-                                x1={p.date} 
-                                x2={p.date} 
+                                x={p.date} 
                                 stroke="#13ec5b" 
-                                strokeWidth={3} 
+                                strokeWidth={1.5} 
                                 strokeDasharray="3 3"
-                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 10, fontWeight: '900' }} 
+                                opacity={0.6}
+                                label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 9, fontWeight: '800' }} 
                                 isFront={true}
                               />
                             ) : null
@@ -1097,13 +1095,13 @@ export default function PortfolioSimulationPage() {
                             {/* Rebalancing Lines */}
                             {simulation.results.portfolio_history.map((p, i) => (
                               p.is_rebalanced ? (
-                                <ReferenceArea 
+                                <ReferenceLine 
                                   key={`reb-dist-area-${i}`} 
-                                  x1={p.date} 
-                                  x2={p.date} 
+                                  x={p.date} 
                                   stroke="#13ec5b" 
-                                  strokeWidth={3} 
+                                  strokeWidth={1.5} 
                                   strokeDasharray="3 3"
+                                  opacity={0.6}
                                   isFront={true}
                                 />
                               ) : null
