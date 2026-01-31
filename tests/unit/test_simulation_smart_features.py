@@ -786,6 +786,355 @@ class TestMultiAssetPortfolioIsolation(unittest.TestCase):
         self.assertGreaterEqual(asset2_result['total_invested'], asset1_result['total_invested'])
 
 
+class TestInvestmentLimits(unittest.TestCase):
+    """
+    Tests to verify that investment amounts never exceed the allowed limits.
+    
+    CRITICAL: These tests ensure that:
+    1. Total invested never exceeds expected annual amount
+    2. Each asset never exceeds its proportional allocation
+    3. Sizing multipliers don't cause over-investment
+    """
+
+    def setUp(self):
+        """Set up mock portfolio with 2 assets."""
+        self.start_date = datetime(2023, 1, 1)
+        self.end_date = datetime(2023, 12, 31)
+        
+        dates = pd.date_range(start=self.start_date, end=self.end_date)
+        num_days = len(dates)
+        
+        self.mock_df_asset1 = pd.DataFrame({
+            'open': [100.0] * num_days,
+            'high': [105.0] * num_days,
+            'low': [95.0] * num_days,
+            'close': [100.0] * num_days,
+            'adj_close': [100.0] * num_days,
+        }, index=dates)
+        
+        self.mock_df_asset2 = pd.DataFrame({
+            'open': [200.0] * num_days,
+            'high': [210.0] * num_days,
+            'low': [190.0] * num_days,
+            'close': [200.0] * num_days,
+            'adj_close': [200.0] * num_days,
+        }, index=dates)
+
+    def _get_mock_indicators_for_asset(self, df: pd.DataFrame, signals: list = None) -> pd.DataFrame:
+        """Helper to create indicator DataFrame with specific signals."""
+        df = df.copy()
+        df['indicator_value'] = 50.0
+        if signals is None:
+            signals = [0] * len(df)
+        if len(signals) < len(df):
+            signals = signals + [0] * (len(df) - len(signals))
+        df['signal'] = signals[:len(df)]
+        return df
+
+    def _create_mock_portfolio(self, weights: dict):
+        """Create a mock portfolio with specified weights."""
+        mock_portfolio = MagicMock()
+        mock_portfolio.id = 1
+        mock_portfolio.initial_capital = 0.0
+        mock_portfolio.assets = []
+        
+        for asset_id, weight in weights.items():
+            mock_asset = MagicMock()
+            mock_asset.asset_id = asset_id
+            mock_asset.weight = weight
+            mock_asset.current_amount = 0.0
+            mock_asset.asset = MagicMock()
+            mock_asset.asset.ticker = f"ASSET{asset_id}"
+            mock_portfolio.assets.append(mock_asset)
+        
+        return mock_portfolio
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_total_invested_never_exceeds_annual_budget(self, mock_session):
+        """
+        Test that total invested across all assets never exceeds the annual budget.
+        
+        With base_amount=1000 and monthly frequency, annual budget = 1000 * 12 = 12000
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.6, 2: 0.4})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # All neutral signals
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators_for_asset(self.mock_df_asset1)
+        
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators_for_asset(self.mock_df_asset2)
+        
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        config = PortfolioSimulationCreate(
+            portfolio_id=1,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            base_amount=1000,
+            frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(),
+                2: AssetSimulationConfig()
+            }
+        )
+        
+        result = engine.run_simulation(config)
+        
+        # Expected annual investment: 1000 * 12 = 12000
+        expected_annual = 12000
+        
+        # Total invested should not exceed expected
+        self.assertLessEqual(result['total_invested'], expected_annual + 1)  # +1 for float precision
+        # But should be close to expected (all invested)
+        self.assertAlmostEqual(result['total_invested'], expected_annual, delta=100)
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_each_asset_respects_its_weight_allocation(self, mock_session):
+        """
+        Test that each asset never exceeds its proportional allocation.
+        
+        Asset 1 (60%): max = 12000 * 0.6 = 7200
+        Asset 2 (40%): max = 12000 * 0.4 = 4800
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.6, 2: 0.4})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # All neutral signals
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators_for_asset(self.mock_df_asset1)
+        
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators_for_asset(self.mock_df_asset2)
+        
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        config = PortfolioSimulationCreate(
+            portfolio_id=1,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            base_amount=1000,
+            frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(),
+                2: AssetSimulationConfig()
+            }
+        )
+        
+        result = engine.run_simulation(config)
+        
+        asset1_result = next(a for a in result['asset_results'] if a['asset_id'] == 1)
+        asset2_result = next(a for a in result['asset_results'] if a['asset_id'] == 2)
+        
+        # Asset 1 (60%): should not exceed 7200
+        self.assertLessEqual(asset1_result['total_invested'], 7200 + 1)
+        self.assertAlmostEqual(asset1_result['total_invested'], 7200, delta=100)
+        
+        # Asset 2 (40%): should not exceed 4800
+        self.assertLessEqual(asset2_result['total_invested'], 4800 + 1)
+        self.assertAlmostEqual(asset2_result['total_invested'], 4800, delta=100)
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_sizing_multiplier_respects_annual_budget(self, mock_session):
+        """
+        CRITICAL: Test that even with high sizing multiplier (e.g., 5x),
+        total invested never exceeds the annual budget.
+        
+        Scenario: Asset with 5x multiplier and ALL oversold signals
+        Should NOT invest more than its allocated budget.
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.5, 2: 0.5})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Asset 1: ALL oversold (would want to buy 5x every month)
+        signals_asset1 = [-1] * len(self.mock_df_asset1)
+        
+        # Asset 2: neutral
+        signals_asset2 = [0] * len(self.mock_df_asset2)
+        
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset1, signals_asset1
+        )
+        
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset2, signals_asset2
+        )
+        
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        config = PortfolioSimulationCreate(
+            portfolio_id=1,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            base_amount=1000,
+            frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(
+                    dynamic_sizing_enabled=True,
+                    sizing_multiplier=5.0  # Very aggressive multiplier
+                ),
+                2: AssetSimulationConfig()  # Baseline
+            }
+        )
+        
+        result = engine.run_simulation(config)
+        
+        asset1_result = next(a for a in result['asset_results'] if a['asset_id'] == 1)
+        asset2_result = next(a for a in result['asset_results'] if a['asset_id'] == 2)
+        
+        # Asset 1 (50%): max allowed = 6000, even with 5x multiplier
+        self.assertLessEqual(asset1_result['total_invested'], 6000 + 1)
+        
+        # Asset 2 (50%): should be exactly 6000 (baseline, no sizing)
+        self.assertAlmostEqual(asset2_result['total_invested'], 6000, delta=100)
+        
+        # Total should be 12000
+        self.assertLessEqual(result['total_invested'], 12000 + 1)
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_timing_deferred_amount_doesnt_exceed_budget(self, mock_session):
+        """
+        Test that when timing defers buying, the eventual purchase
+        still respects the annual budget.
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.5, 2: 0.5})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Asset 1: overbought first 6 months, then oversold
+        signals_asset1 = [0] * len(self.mock_df_asset1)
+        # First 6 months (~180 days): overbought
+        for i in range(180):
+            signals_asset1[i] = 1
+        # Rest: oversold
+        for i in range(180, len(signals_asset1)):
+            signals_asset1[i] = -1
+        
+        # Asset 2: neutral
+        signals_asset2 = [0] * len(self.mock_df_asset2)
+        
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset1, signals_asset1
+        )
+        
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset2, signals_asset2
+        )
+        
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        config = PortfolioSimulationCreate(
+            portfolio_id=1,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            base_amount=1000,
+            frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(
+                    dynamic_timing_enabled=True,
+                    expensive_buy_ratio=0.0  # Wait completely when overbought
+                ),
+                2: AssetSimulationConfig()  # Baseline
+            }
+        )
+        
+        result = engine.run_simulation(config)
+        
+        asset1_result = next(a for a in result['asset_results'] if a['asset_id'] == 1)
+        asset2_result = next(a for a in result['asset_results'] if a['asset_id'] == 2)
+        
+        # Asset 1: even with deferred amounts, should not exceed 6000
+        self.assertLessEqual(asset1_result['total_invested'], 6000 + 1)
+        
+        # Asset 2: should be exactly 6000
+        self.assertAlmostEqual(asset2_result['total_invested'], 6000, delta=100)
+        
+        # Total should be 12000
+        self.assertLessEqual(result['total_invested'], 12000 + 1)
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_combined_timing_and_sizing_respects_budget(self, mock_session):
+        """
+        CRITICAL: Test that combining timing (deferred) + sizing (multiplied)
+        never causes over-investment.
+        
+        Worst case: defer for 6 months, then 5x multiplier on oversold
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 1.0})  # Single asset, 100%
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Overbought first 6 months, then oversold
+        signals = [0] * len(self.mock_df_asset1)
+        for i in range(180):
+            signals[i] = 1  # Overbought
+        for i in range(180, len(signals)):
+            signals[i] = -1  # Oversold
+        
+        mock_engine = MagicMock()
+        mock_engine._calculate_indicators.return_value = self._get_mock_indicators_for_asset(
+            self.mock_df_asset1, signals
+        )
+        
+        engine.asset_engines = {1: mock_engine}
+        
+        config = PortfolioSimulationCreate(
+            portfolio_id=1,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            base_amount=1000,
+            frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(
+                    dynamic_timing_enabled=True,
+                    dynamic_sizing_enabled=True,
+                    expensive_buy_ratio=0.0,  # Wait completely
+                    sizing_multiplier=5.0  # Very aggressive
+                )
+            }
+        )
+        
+        result = engine.run_simulation(config)
+        
+        # Total invested should NEVER exceed 12000 regardless of timing/sizing
+        self.assertLessEqual(result['total_invested'], 12000 + 1)
+        # But it should invest the full amount eventually
+        self.assertAlmostEqual(result['total_invested'], 12000, delta=100)
+
+
 class TestIndicatorIsolation(unittest.TestCase):
     """Tests that indicator calculations are isolated per asset."""
 
