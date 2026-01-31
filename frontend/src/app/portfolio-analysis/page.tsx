@@ -57,6 +57,29 @@ const METRIC_INFO = {
   contributions: "Amount of capital contributed to each asset on every investment period."
 };
 
+const downsampleSeries = <T,>(data: T[], maxPoints = 400) => {
+  if (!data || data.length <= maxPoints) return data;
+  const step = Math.ceil(data.length / maxPoints);
+  return data.filter((_, idx) => idx % step === 0 || idx === data.length - 1);
+};
+
+const downsampleWithPriority = <T,>(
+  data: T[],
+  maxPoints: number,
+  keep: (item: T) => boolean
+) => {
+  if (!data || data.length <= maxPoints) return data;
+  const priorityIdx: number[] = [];
+  const restIdx: number[] = [];
+  data.forEach((item, idx) => (keep(item) ? priorityIdx : restIdx).push(idx));
+  const remaining = Math.max(maxPoints - priorityIdx.length, 0);
+  if (remaining === 0) return priorityIdx.map((i) => data[i]);
+  const step = Math.ceil(restIdx.length / remaining);
+  const sampledIdx = restIdx.filter((_, idx) => idx % step === 0 || idx === restIdx.length - 1);
+  const keepSet = new Set([...priorityIdx, ...sampledIdx]);
+  return data.filter((_, idx) => keepSet.has(idx));
+};
+
 export default function PortfolioSimulationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,6 +116,11 @@ export default function PortfolioSimulationPage() {
     baseline: true,
     invested: true
   });
+
+  const chartHistory = useMemo(
+    () => downsampleSeries(simulation?.results.portfolio_history || [], 450),
+    [simulation?.results.portfolio_history]
+  );
 
   const [config, setConfig] = useState<PortfolioSimulationConfig>({
     portfolio_id: 0,
@@ -882,7 +910,7 @@ export default function PortfolioSimulationPage() {
                     </div>
                     <div className="w-full h-[450px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history} syncId="portfolioSync">
+                        <AreaChart data={chartHistory} syncId="portfolioSync">
                           <defs>
                             <linearGradient id="gradientSmartPort" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#13ec5b" stopOpacity={0.15}/><stop offset="100%" stopColor="#13ec5b" stopOpacity={0}/></linearGradient>
                             <linearGradient id="gradientBaseline" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#94a3b8" stopOpacity={0.1}/><stop offset="100%" stopColor="#94a3b8" stopOpacity={0}/></linearGradient>
@@ -896,7 +924,7 @@ export default function PortfolioSimulationPage() {
                             return [`$${Math.round(value).toLocaleString()}`, name];
                           }} />
                           
-                          {simulation.results.portfolio_history.map((p, i) => (
+                          {chartHistory.map((p, i) => (
                             (p.is_rebalanced === true || p.is_rebalanced === 1) ? (
                               <ReferenceLine 
                                 key={`reb-main-line-${i}`} 
@@ -1011,7 +1039,7 @@ export default function PortfolioSimulationPage() {
                       </div>
                       <div className="w-full h-[300px] mt-auto">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={simulation.results.portfolio_history} syncId="portfolioSync">
+                          <AreaChart data={chartHistory} syncId="portfolioSync">
                             <defs>
                               <linearGradient id="colorFees" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="5%" stopColor="#f87171" stopOpacity={0.1}/>
@@ -1022,7 +1050,7 @@ export default function PortfolioSimulationPage() {
                             <XAxis dataKey="date" hide />
                             <YAxis orientation="right" stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
                             <Tooltip contentStyle={{ backgroundColor: '#1c271f', border: '1px solid #3b5443', borderRadius: '12px' }} itemStyle={{ color: '#f87171', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '8px', fontWeight: 'bold' }} formatter={(val: any) => [`$${val.toLocaleString()}`, "Cumulative Fees"]} />
-                            {simulation.config.rebalancing_enabled && simulation.results.portfolio_history.map((p, i) => 
+                            {simulation.config.rebalancing_enabled && chartHistory.map((p, i) => 
                               (p.is_rebalanced) ? (
                                 <ReferenceLine key={`reb-fees-line-${i}`} x={p.date} stroke="#ef4444" strokeDasharray="2 2" opacity={0.3} strokeWidth={1} isFront={true} />
                               ) : null
@@ -1044,7 +1072,7 @@ export default function PortfolioSimulationPage() {
                       </div>
                       <div className="w-full h-[300px] mt-auto">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={simulation.results.portfolio_history} syncId="portfolioSync" stackOffset="expand">
+                          <AreaChart data={chartHistory} syncId="portfolioSync" stackOffset="expand">
                             <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.3} />
                             <XAxis dataKey="date" hide />
                             <YAxis stroke="#9db9a6" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val * 100).toFixed(0)}%`} />
@@ -1093,7 +1121,7 @@ export default function PortfolioSimulationPage() {
                               />
                             ))}
                             {/* Rebalancing Lines */}
-                            {simulation.results.portfolio_history.map((p, i) => (
+                            {chartHistory.map((p, i) => (
                               p.is_rebalanced ? (
                                 <ReferenceLine 
                                   key={`reb-dist-area-${i}`} 
@@ -1181,6 +1209,14 @@ export default function PortfolioSimulationPage() {
                         simulation.config.asset_configs[String(ar.asset_id)];
                       const indicatorType = assetConfig?.smart_indicator || 'RSI';
                       const isSmartActive = assetConfig?.dynamic_timing_enabled || assetConfig?.dynamic_sizing_enabled;
+                      const assetHistory = downsampleWithPriority(
+                        ar.portfolio_history,
+                        320,
+                        (item: any) =>
+                          (item.s_contribution || 0) > 0 ||
+                          (item.b_contribution || 0) > 0 ||
+                          item.indicator_value != null
+                      );
                       const isCollapsed = collapsedAssets[ar.asset_id];
                       
                       return (
@@ -1246,7 +1282,7 @@ export default function PortfolioSimulationPage() {
                                   </div>
                                   <div className="h-[200px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                      <ComposedChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
+                                      <ComposedChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                         <XAxis dataKey="date" hide />
                                         <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
@@ -1279,7 +1315,7 @@ export default function PortfolioSimulationPage() {
                                     </div>
                                     <div className="h-[100px] w-full">
                                       <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
+                                        <ComposedChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
                                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                           <XAxis dataKey="date" hide />
                                           <YAxis orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={[0, 100]} ticks={[0, 30, 70, 100]} />
@@ -1307,7 +1343,7 @@ export default function PortfolioSimulationPage() {
                                 </div>
                                 <div className="h-[140px] w-full">
                                   <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={ar.portfolio_history} syncId={`syncAsset_${ar.asset_id}`}>
+                                    <BarChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
                                       <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                       <XAxis dataKey="date" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
                                       <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
