@@ -1135,6 +1135,287 @@ class TestInvestmentLimits(unittest.TestCase):
         self.assertAlmostEqual(result['total_invested'], 12000, delta=100)
 
 
+class TestTotalInvestedConsistency(unittest.TestCase):
+    """
+    CRITICAL: Tests that total invested is ALWAYS the same regardless of smart features.
+    
+    The smart features should only affect WHEN and HOW MUCH per period,
+    but the TOTAL annual investment must always match the expected amount.
+    """
+
+    def setUp(self):
+        self.start_date = datetime(2023, 1, 1)
+        self.end_date = datetime(2023, 12, 31)
+        
+        dates = pd.date_range(start=self.start_date, end=self.end_date)
+        num_days = len(dates)
+        
+        self.mock_df = pd.DataFrame({
+            'open': [100.0] * num_days,
+            'high': [105.0] * num_days,
+            'low': [95.0] * num_days,
+            'close': [100.0] * num_days,
+            'adj_close': [100.0] * num_days,
+        }, index=dates)
+
+    def _get_mock_indicators(self, signals: list = None) -> pd.DataFrame:
+        df = self.mock_df.copy()
+        df['indicator_value'] = 50.0
+        if signals is None:
+            signals = [0] * len(df)
+        if len(signals) < len(df):
+            signals = signals + [0] * (len(df) - len(signals))
+        df['signal'] = signals[:len(df)]
+        return df
+
+    def _create_mock_portfolio(self, weights: dict):
+        mock_portfolio = MagicMock()
+        mock_portfolio.id = 1
+        mock_portfolio.initial_capital = 0.0
+        mock_portfolio.assets = []
+        
+        for asset_id, weight in weights.items():
+            mock_asset = MagicMock()
+            mock_asset.asset_id = asset_id
+            mock_asset.weight = weight
+            mock_asset.current_amount = 0.0
+            mock_asset.asset = MagicMock()
+            mock_asset.asset.ticker = f"ASSET{asset_id}"
+            mock_portfolio.assets.append(mock_asset)
+        
+        return mock_portfolio
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_total_invested_same_regardless_of_smart_features(self, mock_session):
+        """
+        CRITICAL: Total invested must be identical whether smart features are on or off.
+        
+        Test with various signal patterns to ensure consistency.
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 1.0})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Test with all overbought signals (worst case for timing)
+        signals_overbought = [1] * len(self.mock_df)
+        mock_engine = MagicMock()
+        mock_engine._calculate_indicators.return_value = self._get_mock_indicators(signals_overbought)
+        engine.asset_engines = {1: mock_engine}
+        
+        configs = [
+            ("Baseline", AssetSimulationConfig()),
+            ("Timing only", AssetSimulationConfig(dynamic_timing_enabled=True, expensive_buy_ratio=0.0)),
+            ("Sizing only", AssetSimulationConfig(dynamic_sizing_enabled=True, sizing_multiplier=5.0, expensive_buy_ratio=0.1)),
+            ("Both features", AssetSimulationConfig(dynamic_timing_enabled=True, dynamic_sizing_enabled=True, sizing_multiplier=5.0, expensive_buy_ratio=0.0)),
+        ]
+        
+        expected_total = 12000  # 1000 * 12 months
+        
+        for name, asset_cfg in configs:
+            config = PortfolioSimulationCreate(
+                portfolio_id=1,
+                start_date=self.start_date,
+                end_date=self.end_date,
+                base_amount=1000,
+                frequency='monthly',
+                asset_configs={1: asset_cfg}
+            )
+            result = engine.run_simulation(config)
+            
+            self.assertAlmostEqual(
+                result['total_invested'], 
+                expected_total, 
+                delta=10,
+                msg=f"{name}: Expected {expected_total}, got {result['total_invested']}"
+            )
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_total_invested_same_with_mixed_signals(self, mock_session):
+        """
+        Test that total invested is consistent with mixed signals throughout the year.
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 1.0})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Mixed signals: overbought first half, oversold second half
+        signals = [0] * len(self.mock_df)
+        for i in range(len(signals) // 2):
+            signals[i] = 1  # Overbought
+        for i in range(len(signals) // 2, len(signals)):
+            signals[i] = -1  # Oversold
+        
+        mock_engine = MagicMock()
+        mock_engine._calculate_indicators.return_value = self._get_mock_indicators(signals)
+        engine.asset_engines = {1: mock_engine}
+        
+        # Baseline
+        config_baseline = PortfolioSimulationCreate(
+            portfolio_id=1, start_date=self.start_date, end_date=self.end_date,
+            base_amount=1000, frequency='monthly',
+            asset_configs={1: AssetSimulationConfig()}
+        )
+        result_baseline = engine.run_simulation(config_baseline)
+        
+        # With all features
+        config_smart = PortfolioSimulationCreate(
+            portfolio_id=1, start_date=self.start_date, end_date=self.end_date,
+            base_amount=1000, frequency='monthly',
+            asset_configs={1: AssetSimulationConfig(
+                dynamic_timing_enabled=True,
+                dynamic_sizing_enabled=True,
+                sizing_multiplier=3.0,
+                expensive_buy_ratio=0.2
+            )}
+        )
+        result_smart = engine.run_simulation(config_smart)
+        
+        # Both should have invested the same total
+        self.assertAlmostEqual(
+            result_baseline['total_invested'],
+            result_smart['total_invested'],
+            delta=10,
+            msg=f"Baseline: {result_baseline['total_invested']}, Smart: {result_smart['total_invested']}"
+        )
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_multi_asset_total_invested_same(self, mock_session):
+        """
+        Test that total invested is consistent in multi-asset portfolios.
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.6, 2: 0.4})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Asset 1: all overbought
+        signals1 = [1] * len(self.mock_df)
+        # Asset 2: all oversold
+        signals2 = [-1] * len(self.mock_df)
+        
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators(signals1)
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators(signals2)
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        # Baseline
+        config_baseline = PortfolioSimulationCreate(
+            portfolio_id=1, start_date=self.start_date, end_date=self.end_date,
+            base_amount=1000, frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(),
+                2: AssetSimulationConfig()
+            }
+        )
+        result_baseline = engine.run_simulation(config_baseline)
+        
+        # With features enabled for both
+        config_smart = PortfolioSimulationCreate(
+            portfolio_id=1, start_date=self.start_date, end_date=self.end_date,
+            base_amount=1000, frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(dynamic_timing_enabled=True, expensive_buy_ratio=0.0),
+                2: AssetSimulationConfig(dynamic_sizing_enabled=True, sizing_multiplier=3.0)
+            }
+        )
+        result_smart = engine.run_simulation(config_smart)
+        
+        # Both should have invested 12000 total
+        self.assertAlmostEqual(result_baseline['total_invested'], 12000, delta=10)
+        self.assertAlmostEqual(result_smart['total_invested'], 12000, delta=10)
+
+    @patch('backend.engine.portfolio_simulation_engine.SessionLocal')
+    def test_both_features_on_one_asset_matches_baseline(self, mock_session):
+        """
+        CRITICAL: When both smart features are enabled on ONE asset,
+        its total invested must still match baseline.
+        
+        Tests the specific case where:
+        - Asset 1 (60%): both timing AND sizing enabled
+        - Asset 2 (40%): no features (baseline)
+        
+        Expected: Asset1=7200, Asset2=4800, Total=12000 regardless of features.
+        """
+        mock_db = MagicMock()
+        mock_session.return_value = mock_db
+        
+        mock_portfolio = self._create_mock_portfolio({1: 0.6, 2: 0.4})
+        mock_db.query.return_value.options.return_value.filter.return_value.first.return_value = mock_portfolio
+        
+        with patch.object(PortfolioSimulationEngine, '_init_asset_engines', return_value={}):
+            engine = PortfolioSimulationEngine(1, self.start_date, self.end_date)
+        
+        # Different signals per asset
+        signals1 = [1] * len(self.mock_df)  # Asset 1: always overbought
+        signals2 = [-1] * len(self.mock_df)  # Asset 2: always oversold
+        
+        mock_engine1 = MagicMock()
+        mock_engine1._calculate_indicators.return_value = self._get_mock_indicators(signals1)
+        mock_engine2 = MagicMock()
+        mock_engine2._calculate_indicators.return_value = self._get_mock_indicators(signals2)
+        engine.asset_engines = {1: mock_engine1, 2: mock_engine2}
+        
+        # Baseline
+        config_baseline = PortfolioSimulationCreate(
+            portfolio_id=1, start_date=self.start_date, end_date=self.end_date,
+            base_amount=1000, frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(),
+                2: AssetSimulationConfig()
+            }
+        )
+        result_baseline = engine.run_simulation(config_baseline)
+        
+        # Asset 1 with BOTH features enabled
+        config_smart = PortfolioSimulationCreate(
+            portfolio_id=1, start_date=self.start_date, end_date=self.end_date,
+            base_amount=1000, frequency='monthly',
+            asset_configs={
+                1: AssetSimulationConfig(
+                    dynamic_timing_enabled=True,
+                    dynamic_sizing_enabled=True,
+                    sizing_multiplier=2.0,
+                    expensive_buy_ratio=0.0
+                ),
+                2: AssetSimulationConfig()  # Baseline
+            }
+        )
+        result_smart = engine.run_simulation(config_smart)
+        
+        # Get per-asset results
+        a1_baseline = next(a for a in result_baseline['asset_results'] if a['asset_id'] == 1)
+        a2_baseline = next(a for a in result_baseline['asset_results'] if a['asset_id'] == 2)
+        a1_smart = next(a for a in result_smart['asset_results'] if a['asset_id'] == 1)
+        a2_smart = next(a for a in result_smart['asset_results'] if a['asset_id'] == 2)
+        
+        # Asset 1 (60%): should be 7200 in both cases
+        self.assertAlmostEqual(a1_baseline['total_invested'], 7200, delta=10)
+        self.assertAlmostEqual(a1_smart['total_invested'], 7200, delta=10)
+        
+        # Asset 2 (40%): should be 4800 in both cases
+        self.assertAlmostEqual(a2_baseline['total_invested'], 4800, delta=10)
+        self.assertAlmostEqual(a2_smart['total_invested'], 4800, delta=10)
+        
+        # Totals must match
+        self.assertAlmostEqual(result_baseline['total_invested'], 12000, delta=10)
+        self.assertAlmostEqual(result_smart['total_invested'], 12000, delta=10)
+
+
 class TestIndicatorIsolation(unittest.TestCase):
     """Tests that indicator calculations are isolated per asset."""
 

@@ -315,19 +315,26 @@ class PortfolioSimulationEngine:
                     indicator_row = asset_data[aid]["df"].loc[date] if date in asset_data[aid]["df"].index else None
                     signal = int(indicator_row["signal"]) if indicator_row is not None and "signal" in indicator_row else 0
                     
-                    # Base amount for this asset = its weight * periodic_amount + its own pending
+                    # Base amount for this asset this period = its weight * periodic_amount
                     a_base_amount = periodic_amount * smart_weights[aid]
-                    a_amount = a_base_amount + s_state["pending_per_asset"][aid]
-                    s_state["pending_per_asset"][aid] = 0.0  # Reset this asset's pending
+                    
+                    # Get any pending from previous deferrals (timing)
+                    a_pending = s_state["pending_per_asset"][aid]
+                    s_state["pending_per_asset"][aid] = 0.0  # Reset pending
                     
                     if a_cfg.dynamic_timing_enabled and signal == 1:
-                        # Overbought: defer part of this asset's contribution (only affects this asset)
-                        buy_floor = a_amount * float(a_cfg.expensive_buy_ratio)
-                        s_state["pending_per_asset"][aid] = a_amount - buy_floor  # Store in this asset's pending
+                        # Overbought: defer this period's base contribution
+                        buy_floor = a_base_amount * float(a_cfg.expensive_buy_ratio)
+                        deferred = a_base_amount - buy_floor
+                        
+                        # Store deferred amount for later (when conditions improve)
+                        s_state["pending_per_asset"][aid] = deferred + a_pending
+                        
+                        # Buy only the floor now (pending will be bought when oversold/neutral)
                         assets_to_buy.append((aid, buy_floor))
                     else:
-                        # Neutral/Oversold or timing disabled: buy full amount
-                        assets_to_buy.append((aid, a_amount))
+                        # Neutral/Oversold or timing disabled: buy base amount + any accumulated pending
+                        assets_to_buy.append((aid, a_base_amount + a_pending))
                 
                 for aid, amount in assets_to_buy:
                     a_cfg = asset_data[aid]["config"]
@@ -352,14 +359,16 @@ class PortfolioSimulationEngine:
                             s_contributions_today[aid] = actual_buy
                 s_state["next_idx"] += 1
 
-            # 5. End of year cleanup - invest any remaining budget + pending per asset (isolated)
+            # 5. End of year cleanup - invest any remaining annual budget
+            # NOTE: The annual budget represents the TOTAL that should be invested this year.
+            # Pending is a subset of the budget that timing deferred - it's NOT additional money.
+            # At year end, we invest whatever budget remains (which includes any pending amounts).
             is_end_of_year = (idx == len(all_dates) - 1 or all_dates[idx+1].year > current_year)
             if is_end_of_year:
                 for aid in asset_data:
-                    # Each asset invests ONLY its own remaining budget + its own pending
-                    a_rem_budget = s_state["annual_budget_per_asset"][current_year][aid]
-                    a_rem_pending = s_state["pending_per_asset"][aid]
-                    a_rem = a_rem_budget + a_rem_pending
+                    # Remaining budget = total that should have been invested but wasn't yet
+                    # This already accounts for pending (pending is just "waiting" budget)
+                    a_rem = s_state["annual_budget_per_asset"][current_year][aid]
                     
                     if a_rem > 1.0 and row_prices[aid] > 0:
                         fee = max(a_rem * (float(config.commission_fee_percent) / 100.0), float(config.minimum_fee_per_trade))
