@@ -338,9 +338,7 @@ class SimulationEngine:
                 b_contribution = periodic_amount
 
             # --- SMART BUY LOGIC ---
-            signal = 0
-            if i > 0:
-                signal = indicator_df.iloc[i-1]['signal']
+            signal = int(row['signal'])
             
             should_buy_today = False
             base_buy_amount = 0.0
@@ -348,38 +346,53 @@ class SimulationEngine:
             is_baseline_day = s_next_idx < len(baseline_dates) and date >= baseline_dates[s_next_idx]
             is_last_baseline_day_of_year = False
             if is_baseline_day:
-                # Check if this is the last baseline day of the year
-                if s_next_idx == len(baseline_dates) - 1 or baseline_dates[s_next_idx + 1].year > current_year:
+                # Check if this is the last baseline day of the year:
+                # 1. It's the very last baseline day overall, OR
+                # 2. The NEXT baseline day is in a DIFFERENT year
+                if s_next_idx == len(baseline_dates) - 1 or baseline_dates[s_next_idx + 1].year != current_year:
                     is_last_baseline_day_of_year = True
 
-            if dynamic_timing_enabled:
-                days_to_next = 999
-                if s_next_idx < len(baseline_dates):
-                    next_date = baseline_dates[s_next_idx]
-                    days_to_next = (next_date - date).days
-                
-                if is_baseline_day:
-                    if signal == 1 and not is_last_baseline_day_of_year: # Overbought and not last day: wait (but respect floor)
-                        buy_floor = periodic_amount * expensive_buy_ratio
-                        base_buy_amount = buy_floor
-                        s_pending_amount += (periodic_amount - buy_floor)
-                        s_next_idx += 1
-                        should_buy_today = buy_floor > 0
-                    else: # Neutral, Oversold or Last Day: buy now
+            if is_baseline_day:
+                # print(f"DEBUG_SMART: date={date}, signal={signal}, timing={dynamic_timing_enabled}, sizing={dynamic_sizing_enabled}")
+                pass
+            
+            # --- ACTUAL SMART LOGIC ---
+            if dynamic_timing_enabled or dynamic_sizing_enabled:
+                if dynamic_timing_enabled:
+                    days_to_next = 999
+                    if s_next_idx < len(baseline_dates):
+                        next_date = baseline_dates[s_next_idx]
+                        days_to_next = (next_date - date).days
+                    
+                    if is_baseline_day:
+                        if signal == 1 and not is_last_baseline_day_of_year: # Overbought and not last day: wait (but respect floor)
+                            buy_floor = periodic_amount * expensive_buy_ratio
+                            base_buy_amount = buy_floor
+                            s_pending_amount += (periodic_amount - buy_floor)
+                            s_next_idx += 1
+                            should_buy_today = buy_floor > 0
+                        else: # Neutral, Oversold or Last Day: buy now
+                            base_buy_amount = periodic_amount + s_pending_amount
+                            s_pending_amount = 0
+                            s_next_idx += 1
+                            should_buy_today = True
+                    elif days_to_next <= 2 and signal == -1: # Oversold and close to buy day: buy early
                         base_buy_amount = periodic_amount + s_pending_amount
                         s_pending_amount = 0
                         s_next_idx += 1
                         should_buy_today = True
-                elif days_to_next <= 2 and signal == -1: # Oversold and close to buy day: buy early
-                    base_buy_amount = periodic_amount + s_pending_amount
-                    s_pending_amount = 0
-                    s_next_idx += 1
-                    should_buy_today = True
-                elif s_pending_amount > 0 and signal == -1: # We were waiting, and now it's oversold
-                    base_buy_amount = s_pending_amount
-                    s_pending_amount = 0
-                    should_buy_today = True
+                    elif s_pending_amount > 0 and signal == -1: # We were waiting, and now it's oversold
+                        base_buy_amount = s_pending_amount
+                        s_pending_amount = 0
+                        should_buy_today = True
+                else:
+                    # Sizing only
+                    if is_baseline_day:
+                        base_buy_amount = periodic_amount
+                        s_next_idx += 1
+                        should_buy_today = True
             else:
+                # Baseline only
                 if is_baseline_day:
                     base_buy_amount = periodic_amount
                     s_next_idx += 1
