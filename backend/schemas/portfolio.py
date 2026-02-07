@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 from typing import List, Optional
 from datetime import datetime
 
@@ -14,8 +15,7 @@ class PortfolioAsset(PortfolioAssetBase):
     id: int
     asset: Optional["AssetSimpleResponse"] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 from backend.schemas.simulation import AssetSimpleResponse
 PortfolioAsset.model_rebuild()
@@ -42,8 +42,7 @@ class Portfolio(PortfolioBase):
     updated_at: datetime
     assets: List[PortfolioAsset]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PortfolioListItem(BaseModel):
     id: int
@@ -54,5 +53,4 @@ class PortfolioListItem(BaseModel):
     asset_count: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
