@@ -86,10 +86,20 @@ class SimulationEngine:
         
         if indicator_type == "RSI":
             delta = df['close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-            rs = gain / loss
-            df['indicator_value'] = 100 - (100 / (1 + rs))
+            # Wilder's smoothing method
+            gain = (delta.where(delta > 0, 0))
+            loss = (-delta.where(delta < 0, 0))
+            
+            # Using EWM for standard RSI calculation
+            avg_gain = gain.ewm(com=13, adjust=False).mean()
+            avg_loss = loss.ewm(com=13, adjust=False).mean()
+            
+            # Use a safe division to avoid inf/nan issues
+            rs = avg_gain / avg_loss.replace(0, np.nan)
+            df['indicator_value'] = 100 - (100 / (1 + rs.fillna(np.inf)))
+            # Final fallback for any remaining NaNs
+            df['indicator_value'] = df['indicator_value'].fillna(50.0)
+            
             # Signal: -1 (oversold/buy more), 0 (neutral), 1 (overbought/buy less)
             df['signal'] = 0
             df.loc[df['indicator_value'] < rsi_low, 'signal'] = -1
@@ -232,25 +242,51 @@ class SimulationEngine:
         
         # Add Initial Investment Point at start_date if it's before the first market data point
         # This prevents the chart from starting at 0 and showing a "spike"
-        first_market_date = indicator_df.index[0]
-        if self.start_date < first_market_date:
-            portfolio_history.append({
-                "date": self.start_date.strftime("%Y-%m-%d"),
-                "open": round(float(indicator_df.iloc[0]['open']), 2),
-                "high": round(float(indicator_df.iloc[0]['high']), 2),
-                "low": round(float(indicator_df.iloc[0]['low']), 2),
-                "close": round(float(indicator_df.iloc[0]['close']), 2),
-                "price": round(float(indicator_df.iloc[0]['close']), 2),
-                "indicator_value": None,
-                "ma_short": None,
-                "ma_long": None,
-                "invested": round(float(s_invested), 2),
-                "baseline_value": round(float(s_invested), 2), # At the very start, value equals investment
-                "smart_value": round(float(s_invested), 2),
-                "cumulative_fees": round(float(s_fees), 2),
-                "b_contribution": 0.0,
-                "s_contribution": 0.0
-            })
+        if not indicator_df.empty:
+            first_market_date = indicator_df.index[0]
+            # Use the actual first market price for the initial state
+            valid_prices = indicator_df[indicator_df['close'] > 0]['close']
+            initial_price_real = float(valid_prices.iloc[0]) if not valid_prices.empty else float(indicator_df.iloc[0]['close'])
+            
+            # CRITICAL: If start_date is before first_market_date, we need to show the value
+            # at that start_date. The price should be the first available price.
+            if self.start_date < first_market_date:
+                initial_val = float(s_assets * initial_price_real)
+                
+                # Check if we already have an entry for this date to avoid duplicates
+                date_str = self.start_date.strftime("%Y-%m-%d")
+                if not portfolio_history or portfolio_history[0]["date"] != date_str:
+                    portfolio_history.append({
+                        "date": date_str,
+                        "open": round(initial_price_real, 2),
+                        "high": round(initial_price_real, 2),
+                        "low": round(initial_price_real, 2),
+                        "close": round(initial_price_real, 2),
+                        "price": round(initial_price_real, 2),
+                        "indicator_value": None,
+                        "ma_short": None,
+                        "ma_long": None,
+                        "invested": round(float(s_invested), 2),
+                        "baseline_value": round(initial_val, 2),
+                        "smart_value": round(initial_val, 2),
+                        "cumulative_fees": round(float(s_fees), 2),
+                        "b_contribution": 0.0,
+                        "s_contribution": 0.0
+                    })
+                else:
+                    # If we already have the first day, ensure it doesn't have 0 values
+                    if portfolio_history[0]["price"] <= 0:
+                        portfolio_history[0]["open"] = round(initial_price_real, 2)
+                        portfolio_history[0]["high"] = round(initial_price_real, 2)
+                        portfolio_history[0]["low"] = round(initial_price_real, 2)
+                        portfolio_history[0]["price"] = round(initial_price_real, 2)
+                        portfolio_history[0]["close"] = round(initial_price_real, 2)
+                        portfolio_history[0]["baseline_value"] = round(initial_val, 2)
+                        portfolio_history[0]["smart_value"] = round(initial_val, 2)
+            
+            # Ensure the VERY FIRST day of market data doesn't have a 0 price in history
+            # if it's being added in the loop later.
+            # We will handle this inside the loop by ensuring p_close is never 0.
 
         current_year = indicator_df.index[0].year
         
@@ -302,9 +338,7 @@ class SimulationEngine:
                 b_contribution = periodic_amount
 
             # --- SMART BUY LOGIC ---
-            signal = 0
-            if i > 0:
-                signal = indicator_df.iloc[i-1]['signal']
+            signal = int(row['signal'])
             
             should_buy_today = False
             base_buy_amount = 0.0
@@ -312,38 +346,53 @@ class SimulationEngine:
             is_baseline_day = s_next_idx < len(baseline_dates) and date >= baseline_dates[s_next_idx]
             is_last_baseline_day_of_year = False
             if is_baseline_day:
-                # Check if this is the last baseline day of the year
-                if s_next_idx == len(baseline_dates) - 1 or baseline_dates[s_next_idx + 1].year > current_year:
+                # Check if this is the last baseline day of the year:
+                # 1. It's the very last baseline day overall, OR
+                # 2. The NEXT baseline day is in a DIFFERENT year
+                if s_next_idx == len(baseline_dates) - 1 or baseline_dates[s_next_idx + 1].year != current_year:
                     is_last_baseline_day_of_year = True
 
-            if dynamic_timing_enabled:
-                days_to_next = 999
-                if s_next_idx < len(baseline_dates):
-                    next_date = baseline_dates[s_next_idx]
-                    days_to_next = (next_date - date).days
-                
-                if is_baseline_day:
-                    if signal == 1 and not is_last_baseline_day_of_year: # Overbought and not last day: wait (but respect floor)
-                        buy_floor = periodic_amount * expensive_buy_ratio
-                        base_buy_amount = buy_floor
-                        s_pending_amount += (periodic_amount - buy_floor)
-                        s_next_idx += 1
-                        should_buy_today = buy_floor > 0
-                    else: # Neutral, Oversold or Last Day: buy now
+            if is_baseline_day:
+                # print(f"DEBUG_SMART: date={date}, signal={signal}, timing={dynamic_timing_enabled}, sizing={dynamic_sizing_enabled}")
+                pass
+            
+            # --- ACTUAL SMART LOGIC ---
+            if dynamic_timing_enabled or dynamic_sizing_enabled:
+                if dynamic_timing_enabled:
+                    days_to_next = 999
+                    if s_next_idx < len(baseline_dates):
+                        next_date = baseline_dates[s_next_idx]
+                        days_to_next = (next_date - date).days
+                    
+                    if is_baseline_day:
+                        if signal == 1 and not is_last_baseline_day_of_year: # Overbought and not last day: wait (but respect floor)
+                            buy_floor = periodic_amount * expensive_buy_ratio
+                            base_buy_amount = buy_floor
+                            s_pending_amount += (periodic_amount - buy_floor)
+                            s_next_idx += 1
+                            should_buy_today = buy_floor > 0
+                        else: # Neutral, Oversold or Last Day: buy now
+                            base_buy_amount = periodic_amount + s_pending_amount
+                            s_pending_amount = 0
+                            s_next_idx += 1
+                            should_buy_today = True
+                    elif days_to_next <= 2 and signal == -1: # Oversold and close to buy day: buy early
                         base_buy_amount = periodic_amount + s_pending_amount
                         s_pending_amount = 0
                         s_next_idx += 1
                         should_buy_today = True
-                elif days_to_next <= 2 and signal == -1: # Oversold and close to buy day: buy early
-                    base_buy_amount = periodic_amount + s_pending_amount
-                    s_pending_amount = 0
-                    s_next_idx += 1
-                    should_buy_today = True
-                elif s_pending_amount > 0 and signal == -1: # We were waiting, and now it's oversold
-                    base_buy_amount = s_pending_amount
-                    s_pending_amount = 0
-                    should_buy_today = True
+                    elif s_pending_amount > 0 and signal == -1: # We were waiting, and now it's oversold
+                        base_buy_amount = s_pending_amount
+                        s_pending_amount = 0
+                        should_buy_today = True
+                else:
+                    # Sizing only
+                    if is_baseline_day:
+                        base_buy_amount = periodic_amount
+                        s_next_idx += 1
+                        should_buy_today = True
             else:
+                # Baseline only
                 if is_baseline_day:
                     base_buy_amount = periodic_amount
                     s_next_idx += 1
@@ -398,6 +447,37 @@ class SimulationEngine:
             ma_short_val = clean_val(row.get('ma_short_val'))
             ma_long_val = clean_val(row.get('ma_long_val'))
             indicator_val = clean_val(row.get('indicator_value'))
+            
+            # Conditionally show indicators only if smart features are active
+            show_indicators = dynamic_timing_enabled or dynamic_sizing_enabled
+            if not show_indicators:
+                indicator_val = None
+                ma_short_val = None
+                ma_long_val = None
+            
+            p_close = round(clean_val(row['close'], 0.0), 2)
+            # Safeguard: if price is 0, use previous price or the first available price
+            if p_close <= 0:
+                if len(portfolio_history) > 0:
+                    p_close = portfolio_history[-1]["close"]
+                else:
+                    # If it's the very first row and it's 0, look ahead for the first non-zero price
+                    valid_prices = indicator_df[indicator_df['close'] > 0]['close']
+                    if not valid_prices.empty:
+                        p_close = round(float(valid_prices.iloc[0]), 2)
+                    else:
+                        p_close = 0.01 # Absolute fallback
+            
+            # Additional check: if it's the first actual market day, we might need to 
+            # fix the very first entry if it was added as a start_date dummy with 0s
+            if i == 0 and len(portfolio_history) > 0 and portfolio_history[0]["price"] <= 0:
+                portfolio_history[0]["price"] = p_close
+                portfolio_history[0]["close"] = p_close
+                portfolio_history[0]["open"] = p_close
+                portfolio_history[0]["high"] = p_close
+                portfolio_history[0]["low"] = p_close
+                portfolio_history[0]["baseline_value"] = round(float(b_assets * p_close), 2)
+                portfolio_history[0]["smart_value"] = round(float(s_assets * p_close), 2)
 
             # For MA/EMA, a value of 0.0 is typically an error or "no data" 
             # at the beginning of a simulation for assets with non-zero price.
@@ -411,14 +491,14 @@ class SimulationEngine:
                 "open": round(clean_val(row['open'], 0.0), 2),
                 "high": round(clean_val(row['high'], 0.0), 2),
                 "low": round(clean_val(row['low'], 0.0), 2),
-                "close": round(clean_val(row['close'], 0.0), 2),
-                "price": round(clean_val(row['close'], 0.0), 2),
+                "close": p_close,
+                "price": p_close,
                 "indicator_value": round(indicator_val, 4) if indicator_val is not None else None,
                 "ma_short": round(ma_short_val, 2) if ma_short_val is not None else None,
                 "ma_long": round(ma_long_val, 2) if ma_long_val is not None else None,
                 "invested": round(float(s_invested), 2),
-                "baseline_value": round(float(b_assets * row['close']), 2),
-                "smart_value": round(float(s_assets * row['close']), 2),
+                "baseline_value": round(float(b_assets * p_close), 2),
+                "smart_value": round(float(s_assets * p_close), 2),
                 "cumulative_fees": round(float(s_fees), 2),
                 "b_contribution": round(float(b_contribution), 2),
                 "s_contribution": round(float(s_contribution), 2)

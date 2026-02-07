@@ -43,15 +43,19 @@ class PortfolioPoint(BaseModel):
     low: float = 0.0
     close: float = 0.0
     price: float
-    indicator_value: float = 0.0
-    ma_short: float = 0.0
-    ma_long: float = 0.0
+    indicator_value: Optional[float] = None
+    ma_short: Optional[float] = None
+    ma_long: Optional[float] = None
     invested: float
     baseline_value: float
     smart_value: float
     cumulative_fees: float
     b_contribution: float = 0.0
     s_contribution: float = 0.0
+    is_rebalanced: Optional[bool] = False
+
+    class Config:
+        extra = "allow"
 
 
 class SimulationResultSchema(BaseModel):

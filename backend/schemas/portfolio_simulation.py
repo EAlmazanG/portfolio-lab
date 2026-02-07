@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from backend.schemas.simulation import PortfolioPoint, SimulationResultSchema
 
 class AssetSimulationConfig(BaseModel):
@@ -18,6 +18,8 @@ class AssetSimulationConfig(BaseModel):
 
 class PortfolioSimulationCreate(BaseModel):
     """Request schema for running a portfolio simulation."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+    
     portfolio_id: int
     name: Optional[str] = None
     start_date: datetime
@@ -31,12 +33,14 @@ class PortfolioSimulationCreate(BaseModel):
     minimum_fee_per_trade: float = Field(default=0.0, ge=0)
     maintenance_fee_annual_percent: float = Field(default=0.0, ge=0)
     
-    rebalancing_mode: str = Field(default="none", pattern="^(none|periodic|contribution)$")
-    rebalancing_interval_months: int = Field(default=6, ge=1)
+    # Rebalancing
+    rebalancing_enabled: bool = Field(default=False)
+    periodic_rebalancing_interval: int = Field(default=12, ge=1) # 1, 2, 3, 6, 12, 18, 24
     
-    # Per-asset configuration overrides
-    asset_configs: Dict[int, AssetSimulationConfig] = {}
+    # Per-asset configuration overrides - Accept both string and int keys
+    asset_configs: Dict[Any, AssetSimulationConfig] = Field(default_factory=dict)
     is_favorite: bool = Field(default=False)
+    
 
 class AssetSimulationResult(BaseModel):
     """Result details for a single asset within the portfolio simulation."""

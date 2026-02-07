@@ -200,7 +200,7 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 6. Current Progress (v0.5 Completed)
+## 6. Current Progress (v0.7 Completed)
 
 ### 6.1. Infrastructure & DevOps
 - **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
@@ -214,11 +214,13 @@ To validate the hypothesis, every simulation must be compared against:
 - **Interactive CLI Tool:** A comprehensive data manager (`make backend-cli`).
 - **Visual Index:** Frontend logic to construct and normalize weighted price indices for portfolios.
 
-### 6.3. Advanced Simulation Engine (v0.5)
+### 6.3. Advanced Simulation Engine (v0.7)
 - **Portfolio Core Logic:** 
     - The `PortfolioSimulationEngine` orchestrates multiple `SimulationEngine` instances.
-    - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates, ensuring discrete events (contributions) and cumulative values (invested capital, portfolio value) are mathematically sound across the entire timeline.
-    - **Initial State:** Charts explicitly start at the **Initial Capital** value on Day 1, eliminating artificial zero-spikes and reflecting the true deployment of capital.
+    - **Rebalancing Engine:** Supports periodic rebalancing:
+        1. **Periodic Rebalancing:** Automatically resets asset weights to original targets every N months (1-24), selling winners and buying laggards to maintain strategy integrity.
+    - **Smart DCA Compatibility:** Seamlessly integrates with per-asset Smart DCA features (Timing and Sizing), allowing for complex multi-layered strategies.
+    - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates.
 - **Advanced Financial Metrics:** 
     - **Volatility:** Calculated as the annualized standard deviation of periodic returns.
     - **Max Drawdown (MDD):** Tracks the peak-to-trough decline to quantify worst-case scenario risk.
@@ -226,8 +228,9 @@ To validate the hypothesis, every simulation must be compared against:
 - **Robust Data Pipeline:** 
     - **Indicator Safeguards:** Technical indicators (MA/EMA) return `null` instead of `0.0` during their initial calculation windows, preventing visualization distortions.
     - **Clean Scaling:** All values are rounded and cleaned for JSON serialization to handle edge cases like `NaN` or `Inf`.
+    - **Smart DCA reliability:** Smart timing/sizing now uses the latest available indicator row when an asset does not trade daily, ensuring signals are applied consistently across all assets.
 
-### 6.4. Frontend & UX Excellence (v0.5)
+### 6.4. Frontend & UX Excellence (v0.7)
 - **High-Fidelity Visualizations:**
     - **Synchronized Charts:** Leveraging Recharts `syncId` to correlate price action with buy/sell signals and accumulation curves across different chart components.
     - **Temporal Filtering:** Global `Brush` component allows users to inspect specific market cycles or volatility events in detail.
@@ -237,6 +240,13 @@ To validate the hypothesis, every simulation must be compared against:
     - **Unified Theme:** Harmonized background colors, typography, and pulsing animations across all views.
     - **Contextual Intelligence:** Informative tooltips for every metric, providing English explanations of financial concepts.
     - **Responsive Architecture:** Sidebars utilize fixed widths and `overflow-visible` containers to ensure smooth, flicker-free transitions.
+    - **Performance tuning:** Charts now use downsampled datasets, shared per-asset history, and disabled animations to reduce UI slowdowns while preserving key contribution and indicator points.
+    - **Rebalancing markers:** Distribution and growth charts render clearer rebalance markers with consistent styling.
+
+### 6.5. Testing & QA (v0.7)
+- **Frontend payload coverage:** Added integration-style tests that mirror frontend JSON payloads (string keys) and verify backend normalization.
+- **Smart feature regression:** Added tests to ensure smart timing/sizing changes returns when enabled (including last-asset edge cases).
+- **Persistence & history:** Added tests for save/load consistency and initial value handling.
 
 ---
 

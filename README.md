@@ -40,11 +40,17 @@
 
 ### Dashboard Features
 - **Smart DCA Engine:** Toggle Dynamic Timing and Dynamic Sizing based on RSI, MA, or EMA. Features zero look-ahead bias for realistic backtesting.
-- **Portfolio Simulation Suite:** Orchestrate multi-asset simulations with independent configurations per asset and dynamic weighted allocations.
+- **Portfolio Simulation Suite:** Orchestrate multi-asset simulations with independent configurations per asset and periodic rebalancing (1-24 months).
 - **Advanced Asset Analytics:** Deep-dive into each asset's performance within a portfolio using synchronized charts for Price, Indicators, Contributions, and Accumulation.
 - **Risk & Performance Hub:** Comprehensive tracking of **Portfolio Volatility**, **Max Drawdown (MDD)**, and **Strategy Alpha** (outperformance vs. baseline).
 - **Interactive Visualization:** Global time-brush filtering across all charts, interactive legends for visibility toggling, and clean "zero-jump" start logic for initial investments.
 - **Robust History Management:** Persistent history with **Favorites (Star)** system, including at-a-glance performance metrics (Net Profit, Alpha, MDD, Fees).
+
+### Latest Updates (v0.4)
+- **Smart DCA reliability:** Fixed smart timing/sizing for non-daily assets by using the latest available indicator data.
+- **Portfolio analysis UI:** Rebalance markers are clearer, distribution markers render correctly, and smart indicator visibility is consistent.
+- **Frontend performance:** Downsampled chart data, memoized heavy computations, and disabled chart animations to keep the UI responsive.
+- **Testing coverage:** Added integration and regression tests for frontend payload normalization and smart feature behavior.
 
 ### Command Palette (Makefile)
 The project includes a comprehensive `Makefile`:

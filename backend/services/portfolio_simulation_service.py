@@ -26,6 +26,7 @@ class PortfolioSimulationService:
         """
         Runs a portfolio simulation and optionally saves it.
         """
+        
         engine = PortfolioSimulationEngine(
             portfolio_id=data.portfolio_id,
             start_date=data.start_date,
@@ -76,8 +77,8 @@ class PortfolioSimulationService:
                     commission_fee_percent=data.commission_fee_percent,
                     minimum_fee_per_trade=data.minimum_fee_per_trade,
                     maintenance_fee_annual_percent=data.maintenance_fee_annual_percent,
-                    rebalancing_mode=data.rebalancing_mode,
-                    rebalancing_interval_months=data.rebalancing_interval_months,
+                    rebalancing_enabled=data.rebalancing_enabled,
+                    periodic_rebalancing_interval=data.periodic_rebalancing_interval,
                     asset_configs=json.dumps(asset_configs_json),
                     is_favorite=data.is_favorite
                 )
@@ -154,7 +155,11 @@ class PortfolioSimulationService:
                         "volatility": float(getattr(result, 'volatility', 0.0) or 0.0),
                         "max_drawdown": float(getattr(result, 'max_drawdown', 0.0) or 0.0),
                         "is_favorite": bool(sim.is_favorite),
-                        "created_at": sim.created_at
+                        "created_at": sim.created_at,
+                        "config": {
+                            "rebalancing_enabled": bool(sim.rebalancing_enabled),
+                            "periodic_rebalancing_interval": int(sim.periodic_rebalancing_interval or 12)
+                        }
                     })
             return history
         finally:
@@ -185,8 +190,8 @@ class PortfolioSimulationService:
                 base_amount=sim.base_amount,
                 frequency=sim.frequency,
                 investment_mode=sim.investment_mode,
-                rebalancing_mode=sim.rebalancing_mode,
-                rebalancing_interval_months=sim.rebalancing_interval_months,
+                rebalancing_enabled=sim.rebalancing_enabled or False,
+                periodic_rebalancing_interval=sim.periodic_rebalancing_interval or 12,
                 commission_fee_percent=sim.commission_fee_percent,
                 minimum_fee_per_trade=sim.minimum_fee_per_trade,
                 maintenance_fee_annual_percent=sim.maintenance_fee_annual_percent,
