@@ -1,4 +1,4 @@
-.PHONY: help venv-setup dev-up dev-down prod-up prod-down backend-cli backend-test dev-logs shell
+.PHONY: help venv-setup dev-up dev-down prod-up prod-down backend-cli backend-test dev-logs shell frontend-test backend-unit-test test-all
 
 # --- High Level Commands ---
 start: venv-setup prod-up
@@ -44,6 +44,9 @@ help:
 	@echo "Backend Tools:"
 	@echo "  make backend-cli  : Run the interactive Python CLI tool"
 	@echo "  make backend-test : Run backend integration tests"
+	@echo "  make backend-unit-test : Run backend unit tests"
+	@echo "  make frontend-test : Run frontend Jest tests"
+	@echo "  make test-all : Run backend unit + integration + frontend tests"
 	@echo ""
 	@echo "Manual Activation: source $(VENV)/bin/activate"
 
@@ -97,6 +100,18 @@ backend-test:
 	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
 	 export DATABASE_URL=$(DB_URL_DEV) && \
 	 $(PYTHON) tests/integration/test_infrastructure.py
+
+backend-unit-test:
+	@echo "Running Backend Unit Tests..."
+	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
+	 export DATABASE_URL=$(DB_URL_DEV) && \
+	 $(PYTHON) -m pytest tests/unit
+
+frontend-test:
+	@echo "Running Frontend Jest Tests..."
+	@docker-compose -f docker-compose.dev.yml run --rm frontend sh -c "npm ci && npm test"
+
+test-all: frontend-test backend-unit-test backend-test
 
 # --- Interactive Shell ---
 shell:
