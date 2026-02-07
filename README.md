@@ -46,6 +46,12 @@
 - **Interactive Visualization:** Global time-brush filtering across all charts, interactive legends for visibility toggling, and clean "zero-jump" start logic for initial investments.
 - **Robust History Management:** Persistent history with **Favorites (Star)** system, including at-a-glance performance metrics (Net Profit, Alpha, MDD, Fees).
 
+### Latest Updates (v0.4)
+- **Smart DCA reliability:** Fixed smart timing/sizing for non-daily assets by using the latest available indicator data.
+- **Portfolio analysis UI:** Rebalance markers are clearer, distribution markers render correctly, and smart indicator visibility is consistent.
+- **Frontend performance:** Downsampled chart data, memoized heavy computations, and disabled chart animations to keep the UI responsive.
+- **Testing coverage:** Added integration and regression tests for frontend payload normalization and smart feature behavior.
+
 ### Command Palette (Makefile)
 The project includes a comprehensive `Makefile`:
 - `make start portfolio-lab`: Full automated production startup.
