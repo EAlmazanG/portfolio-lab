@@ -352,10 +352,10 @@ export default function AssetsManagerPage() {
   };
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
+    <div className="relative flex min-h-screen w-full flex-col bg-background-dark text-white font-display">
       <Header />
-      <div className="relative flex-1 overflow-hidden">
-        <main className="flex-1 flex flex-col bg-[#0b0f0c] overflow-hidden relative">
+      <div className="relative flex-1 min-h-0">
+        <main className="flex-1 flex flex-col bg-[#0b0f0c] relative min-h-0">
           <div
             className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none"
             style={{
@@ -365,8 +365,8 @@ export default function AssetsManagerPage() {
             }}
           ></div>
 
-          <div className="flex-1 overflow-y-auto p-6 lg:p-8 z-10 custom-scrollbar flex flex-col">
-            <div className="max-w-[1760px] mx-auto w-full flex-1 flex flex-col space-y-6">
+          <div className="flex-1 min-h-0 overflow-y-auto p-6 lg:p-8 z-10 custom-scrollbar flex flex-col">
+            <div className="max-w-[1760px] mx-auto w-full flex-1 flex flex-col space-y-6 min-h-0">
               <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-surface-dark/40 p-6 lg:p-7 rounded-[32px] border border-border-active/20 backdrop-blur-sm shadow-2xl">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Asset Management</p>
