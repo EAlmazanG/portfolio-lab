@@ -97,15 +97,16 @@ backend-cli:
 
 backend-test:
 	@echo "Running Integration Tests..."
-	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
-	 export DATABASE_URL=$(DB_URL_DEV) && \
-	 $(PYTHON) tests/integration/test_infrastructure.py
+	@docker-compose -f docker-compose.dev.yml build backend
+	@docker-compose -f docker-compose.dev.yml run --rm \
+	 -e BACKEND_URL=http://backend:8000/api/v1/health \
+	 -e FRONTEND_URL=http://frontend:3000 \
+	 backend python tests/integration/test_infrastructure.py
 
 backend-unit-test:
 	@echo "Running Backend Unit Tests..."
-	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
-	 export DATABASE_URL=$(DB_URL_DEV) && \
-	 $(PYTHON) -m pytest tests/unit
+	@docker-compose -f docker-compose.dev.yml build backend
+	@docker-compose -f docker-compose.dev.yml run --rm backend pytest tests/unit
 
 frontend-test:
 	@echo "Running Frontend Jest Tests..."
