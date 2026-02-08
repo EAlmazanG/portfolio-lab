@@ -354,6 +354,8 @@ export default function AssetsManagerPage() {
     const minValue = Math.min(...lows);
     const maxValue = Math.max(...highs);
     const range = maxValue - minValue || 1;
+    const firstDate = assetOhlcData[0]?.date || "";
+    const lastDate = assetOhlcData[assetOhlcData.length - 1]?.date || "";
 
     const scaleY = (value: number) =>
       height - padding - ((value - minValue) / range) * (height - padding * 2);
@@ -361,6 +363,18 @@ export default function AssetsManagerPage() {
     return (
       <div className="w-full overflow-hidden">
         <svg width="100%" height={height} viewBox={`0 0 ${chartWidth} ${height}`} preserveAspectRatio="none">
+          <text x={4} y={12} fontSize="10" fill="#9db9a6">Max ${maxValue.toFixed(2)}</text>
+          <text x={4} y={height - 4} fontSize="10" fill="#9db9a6">Min ${minValue.toFixed(2)}</text>
+          {firstDate && (
+            <text x={padding} y={height - 4} fontSize="9" fill="#9db9a6">
+              {firstDate}
+            </text>
+          )}
+          {lastDate && (
+            <text x={chartWidth - padding - 80} y={height - 4} fontSize="9" fill="#9db9a6">
+              {lastDate}
+            </text>
+          )}
           {assetOhlcData.map((point: AssetOhlcPoint, index: number) => {
             const x = padding + index * (candleWidth + gap);
             const yHigh = scaleY(point.high);
@@ -374,6 +388,9 @@ export default function AssetsManagerPage() {
 
             return (
               <g key={`${point.date}-${index}`}>
+                <title>
+                  {`${point.date} · O ${point.open.toFixed(2)} H ${point.high.toFixed(2)} L ${point.low.toFixed(2)} C ${point.close.toFixed(2)}`}
+                </title>
                 <line x1={x + candleWidth / 2} x2={x + candleWidth / 2} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
                 <rect
                   x={x}
@@ -393,6 +410,10 @@ export default function AssetsManagerPage() {
 
   const handleCreateAsset = async () => {
     if (!selectedSearchResult) return;
+    if (isAssetManaged) {
+      setStatusMessage("Asset already in your library.");
+      return;
+    }
     setAssetCreateLoading(true);
     setStatusMessage(null);
     const payload: AssetCreateRequest = {
@@ -628,11 +649,6 @@ export default function AssetsManagerPage() {
                                   <p className="text-sm font-bold">{result.ticker}</p>
                                   <p className="text-xs text-text-secondary truncate">{result.name}</p>
                                   <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-text-secondary">
-                                    {result.exchange && (
-                                      <span className="px-2 py-0.5 rounded-full border border-border-dark">
-                                        {result.exchange}
-                                      </span>
-                                    )}
                                     {result.quote_type && (
                                       <span
                                         className={cn(
@@ -641,6 +657,11 @@ export default function AssetsManagerPage() {
                                         )}
                                       >
                                         {result.quote_type}
+                                      </span>
+                                    )}
+                                    {result.exchange && (
+                                      <span className="px-2 py-0.5 rounded-full border border-border-dark">
+                                        {result.exchange}
                                       </span>
                                     )}
                                     {result.sector && (
@@ -706,6 +727,11 @@ export default function AssetsManagerPage() {
                                       )}
                                     >
                                       {assetInfo?.quoteType || selectedSearchResult.quote_type}
+                                    </span>
+                                  )}
+                                  {selectedSearchResult.exchange && (
+                                    <span className="px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border border-border-dark text-text-secondary">
+                                      {selectedSearchResult.exchange}
                                     </span>
                                   )}
                                   {(assetInfo?.sector || selectedSearchResult.sector) && (
