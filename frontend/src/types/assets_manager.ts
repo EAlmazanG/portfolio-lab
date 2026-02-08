@@ -25,6 +25,14 @@ export interface AssetSearchResult {
   sector?: string | null;
 }
 
+export interface AssetOhlcPoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 export interface AssetCreateRequest {
   ticker: string;
   name?: string;

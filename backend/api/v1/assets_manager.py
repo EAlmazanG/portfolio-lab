@@ -50,6 +50,13 @@ async def get_asset_info(ticker: str):
     return info
 
 
+@router.get("/assets/{ticker}/ohlc")
+async def get_asset_ohlc_preview(ticker: str):
+    if not ticker:
+        raise HTTPException(status_code=400, detail="Ticker is required")
+    return AssetsManagerService.get_asset_ohlc_preview(ticker)
+
+
 @router.post("/assets", response_model=AssetCreateResponse)
 async def create_asset(payload: AssetCreateRequest):
     try:

@@ -1,7 +1,7 @@
 """Service for managing assets via the Assets Manager UI."""
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
+from typing import List, Optional, Dict, Any
 
 from sqlalchemy import func
 
@@ -114,6 +114,30 @@ class AssetsManagerService:
     def get_asset_info(ticker: str) -> Dict[str, Any]:
         client = YahooFinanceClient()
         return client.get_asset_info(ticker)
+
+    @staticmethod
+    def get_asset_ohlc_preview(ticker: str) -> List[Dict[str, Any]]:
+        client = YahooFinanceClient()
+        df = client.get_historical_data(ticker=ticker, period="1y", interval="1d")
+        if df.empty:
+            return []
+
+        df = df.reset_index()
+        history: List[Dict[str, Any]] = []
+        for _, row in df.iterrows():
+            date_val = row.get("date")
+            if isinstance(date_val, datetime):
+                date_str = date_val.strftime("%Y-%m-%d")
+            else:
+                date_str = str(date_val)[:10]
+            history.append({
+                "date": date_str,
+                "open": round(float(row.get("open", 0)), 2),
+                "high": round(float(row.get("high", 0)), 2),
+                "low": round(float(row.get("low", 0)), 2),
+                "close": round(float(row.get("close", 0)), 2),
+            })
+        return history
 
     @staticmethod
     def create_asset(payload: AssetCreateRequest) -> AssetCreateResponse:

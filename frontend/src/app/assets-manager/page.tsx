@@ -21,6 +21,7 @@ import {
   createManagedAsset,
   deleteManagedAsset,
   downloadManagedAssetHistory,
+  getAssetOhlcPreview,
   getAssetInfo,
   getAssetHistory,
   getAssetsManagerSettings,
@@ -38,6 +39,7 @@ import {
   AssetDownloadRequest,
   AssetManagerListItem,
   AssetManagerSettings,
+  AssetOhlcPoint,
   AssetSearchResult,
 } from "../../types/assets_manager";
 import { Portfolio } from "../../types/portfolio";
@@ -89,6 +91,9 @@ export default function AssetsManagerPage() {
   const [assetInfo, setAssetInfo] = useState<Record<string, any> | null>(null);
   const [assetInfoLoading, setAssetInfoLoading] = useState(false);
   const [assetCreateLoading, setAssetCreateLoading] = useState(false);
+  const [assetOhlcData, setAssetOhlcData] = useState<AssetOhlcPoint[]>([]);
+  const [assetOhlcLoading, setAssetOhlcLoading] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   const [downloadForm, setDownloadForm] = useState<AssetDownloadRequest>({
     years: 5,
@@ -273,15 +278,78 @@ export default function AssetsManagerPage() {
   const handleSelectSearchResult = async (result: AssetSearchResult) => {
     setSelectedSearchResult(result);
     setAssetInfoLoading(true);
+    setAssetOhlcLoading(true);
     try {
-      const info = await getAssetInfo(result.ticker);
+      const [info, ohlc] = await Promise.all([
+        getAssetInfo(result.ticker),
+        getAssetOhlcPreview(result.ticker),
+      ]);
       setAssetInfo(info);
+      setAssetOhlcData(ohlc || []);
+      setShowFullDescription(false);
     } catch (error) {
       console.error("Error fetching asset info:", error);
       setAssetInfo(null);
+      setAssetOhlcData([]);
     } finally {
       setAssetInfoLoading(false);
+      setAssetOhlcLoading(false);
     }
+  };
+
+  const renderCandlestickPreview = () => {
+    if (assetOhlcLoading) {
+      return <p className="text-xs text-text-secondary">Loading candles...</p>;
+    }
+    if (assetOhlcData.length === 0) {
+      return <p className="text-xs text-text-secondary">No candle data for the last year.</p>;
+    }
+
+    const height = 220;
+    const padding = 16;
+    const candleWidth = 6;
+    const gap = 3;
+    const lows = assetOhlcData.map((point: AssetOhlcPoint) => point.low);
+    const highs = assetOhlcData.map((point: AssetOhlcPoint) => point.high);
+    const minValue = Math.min(...lows);
+    const maxValue = Math.max(...highs);
+    const range = maxValue - minValue || 1;
+    const chartWidth = assetOhlcData.length * (candleWidth + gap) + padding * 2;
+
+    const scaleY = (value: number) =>
+      height - padding - ((value - minValue) / range) * (height - padding * 2);
+
+    return (
+      <div className="w-full overflow-x-auto">
+        <svg width={chartWidth} height={height} className="min-w-full">
+          {assetOhlcData.map((point: AssetOhlcPoint, index: number) => {
+            const x = padding + index * (candleWidth + gap);
+            const yHigh = scaleY(point.high);
+            const yLow = scaleY(point.low);
+            const yOpen = scaleY(point.open);
+            const yClose = scaleY(point.close);
+            const candleTop = Math.min(yOpen, yClose);
+            const candleHeight = Math.max(2, Math.abs(yOpen - yClose));
+            const isUp = point.close >= point.open;
+            const color = isUp ? "#13ec5b" : "#ef4444";
+
+            return (
+              <g key={`${point.date}-${index}`}>
+                <line x1={x + candleWidth / 2} x2={x + candleWidth / 2} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
+                <rect
+                  x={x}
+                  y={candleTop}
+                  width={candleWidth}
+                  height={candleHeight}
+                  fill={color}
+                  rx={1}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
   };
 
   const handleCreateAsset = async () => {
@@ -467,7 +535,7 @@ export default function AssetsManagerPage() {
                         </div>
                         <Plus size={18} className="text-primary" />
                       </div>
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
                         <div className="p-4 rounded-xl border border-border-dark bg-background-dark/40 space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
@@ -476,6 +544,9 @@ export default function AssetsManagerPage() {
                             </div>
                             <Search size={16} className="text-primary" />
                           </div>
+                          <p className="text-xs text-text-secondary leading-relaxed">
+                            Start typing to see suggested tickers and companies based on your query.
+                          </p>
                           <div className="flex gap-2">
                             <input
                               value={searchQuery}
@@ -508,18 +579,30 @@ export default function AssetsManagerPage() {
                                 key={result.ticker}
                                 onClick={() => handleSelectSearchResult(result)}
                                 className={cn(
-                                  "w-full text-left p-3 rounded-xl border flex items-center justify-between",
+                                  "w-full text-left p-3 rounded-xl border flex items-start justify-between gap-3",
                                   selectedSearchResult?.ticker === result.ticker
                                     ? "border-primary/60 bg-primary/10"
                                     : "border-border-dark bg-background-dark/40 hover:border-primary/40"
                                 )}
                               >
-                                <div>
+                                <div className="min-w-0">
                                   <p className="text-sm font-bold">{result.ticker}</p>
-                                  <p className="text-xs text-text-secondary">{result.name}</p>
+                                  <p className="text-xs text-text-secondary truncate">{result.name}</p>
+                                  <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-text-secondary">
+                                    {result.exchange && (
+                                      <span className="px-2 py-0.5 rounded-full border border-border-dark">
+                                        {result.exchange}
+                                      </span>
+                                    )}
+                                    {result.quote_type && (
+                                      <span className="px-2 py-0.5 rounded-full border border-border-dark">
+                                        {result.quote_type}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <span className="text-[10px] uppercase text-text-secondary">
-                                  {result.quote_type || "N/A"}
+                                  {result.currency || "N/A"}
                                 </span>
                               </button>
                             ))}
@@ -539,29 +622,104 @@ export default function AssetsManagerPage() {
                           )}
                           {selectedSearchResult && (
                             <div className="space-y-3">
-                              <div className="p-4 rounded-xl bg-background-dark/70 border border-border-dark">
-                                <p className="text-sm font-bold">{selectedSearchResult.ticker}</p>
-                                <p className="text-xs text-text-secondary">{selectedSearchResult.name}</p>
-                                <p className="text-[10px] uppercase text-text-secondary mt-2">
-                                  {selectedSearchResult.exchange || ""} {selectedSearchResult.currency || ""}
-                                </p>
+                              <div className="p-4 rounded-xl bg-background-dark/70 border border-border-dark space-y-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-bold">{selectedSearchResult.ticker}</p>
+                                    <p className="text-xs text-text-secondary">{selectedSearchResult.name}</p>
+                                  </div>
+                                  <div className="text-[10px] uppercase text-text-secondary">
+                                    {selectedSearchResult.exchange || ""} {selectedSearchResult.currency || ""}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {(assetInfo?.sector || selectedSearchResult.sector) && (
+                                    <span className="px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border border-primary/40 text-primary">
+                                      {assetInfo?.sector || selectedSearchResult.sector}
+                                    </span>
+                                  )}
+                                  {assetInfo?.industry && (
+                                    <span className="px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border border-border-dark text-text-secondary">
+                                      {assetInfo.industry}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-text-secondary space-y-1">
+                              <div className="text-xs text-text-secondary space-y-2">
                                 {assetInfoLoading && <p>Loading info...</p>}
                                 {!assetInfoLoading && assetInfo && (
-                                  <>
-                                    <p>Sector: {assetInfo.sector || "N/A"}</p>
-                                    <p>Type: {assetInfo.quoteType || "N/A"}</p>
-                                    <p>Market: {assetInfo.exchange || "N/A"}</p>
-                                    <p>Summary: {(assetInfo.longBusinessSummary || "").slice(0, 140)}...</p>
-                                  </>
+                                  <div className="space-y-2">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Sector</p>
+                                        <p className="text-xs text-white">{assetInfo.sector || "N/A"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Type</p>
+                                        <p className="text-xs text-white">{assetInfo.quoteType || "N/A"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Market</p>
+                                        <p className="text-xs text-white">{assetInfo.exchange || "N/A"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Currency</p>
+                                        <p className="text-xs text-white">{assetInfo.currency || "N/A"}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Market Cap</p>
+                                        <p className="text-xs text-white">
+                                          {assetInfo.marketCap ? `$${Number(assetInfo.marketCap).toLocaleString()}` : "N/A"}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {assetInfo.longBusinessSummary && (
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Description</p>
+                                        <div className="text-xs text-text-secondary leading-relaxed bg-background-dark/40 border border-border-dark rounded-lg p-3 space-y-2">
+                                          <p>
+                                            {showFullDescription
+                                              ? assetInfo.longBusinessSummary
+                                              : `${assetInfo.longBusinessSummary.slice(0, 220)}...`}
+                                          </p>
+                                          <button
+                                            type="button"
+                                            onClick={() => setShowFullDescription((prev: boolean) => !prev)}
+                                            className="text-[10px] uppercase tracking-[0.2em] text-primary"
+                                          >
+                                            {showFullDescription ? "Show less" : "Show more"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {assetInfo.website && (
+                                      <div>
+                                        <p className="text-[10px] uppercase tracking-[0.25em] text-text-secondary">Website</p>
+                                        <a
+                                          href={assetInfo.website}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs text-primary hover:text-white transition"
+                                        >
+                                          {assetInfo.website}
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                                 {!assetInfoLoading && !assetInfo && <p>No info found.</p>}
+                              </div>
+                              <div className="rounded-xl border border-border-dark bg-background-dark/40 p-4 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs uppercase tracking-[0.25em] text-text-secondary">Daily candles (1y)</p>
+                                  <span className="text-[10px] uppercase text-text-secondary">Preview</span>
+                                </div>
+                                {renderCandlestickPreview()}
                               </div>
                               <button
                                 onClick={handleCreateAsset}
                                 disabled={assetCreateLoading}
-                                className="w-full px-4 py-2 rounded-xl bg-primary text-background-dark font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2"
+                                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-primary text-background-dark font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2"
                               >
                                 <Plus size={14} />
                                 {assetCreateLoading ? "Adding..." : "Add Asset"}

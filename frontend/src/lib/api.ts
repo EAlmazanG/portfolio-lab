@@ -19,6 +19,7 @@ import {
   AssetManagerListItem,
   AssetManagerSettings,
   AssetSearchResult,
+  AssetOhlcPoint,
   AssetCreateRequest,
   AssetCreateResponse,
   AssetDownloadRequest,
@@ -255,7 +256,15 @@ export async function getManagedAssets(): Promise<AssetManagerListItem[]> {
 export async function getAssetsManagerSettings(): Promise<AssetManagerSettings> {
   const response = await fetch(`${API_URL}/assets-manager/settings`);
   if (!response.ok) {
-    throw new Error("Failed to fetch asset settings");
+    throw new Error("Failed to fetch settings");
+  }
+  return response.json();
+}
+
+export async function getAssetOhlcPreview(ticker: string): Promise<AssetOhlcPoint[]> {
+  const response = await fetch(`${API_URL}/assets-manager/assets/${ticker}/ohlc`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch OHLC preview");
   }
   return response.json();
 }
