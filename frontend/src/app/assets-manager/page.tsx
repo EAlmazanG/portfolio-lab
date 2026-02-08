@@ -125,6 +125,8 @@ export default function AssetsManagerPage() {
   const [assetOhlcData, setAssetOhlcData] = useState<AssetOhlcPoint[]>([]);
   const [assetOhlcLoading, setAssetOhlcLoading] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  const [deleteConfirmAssetId, setDeleteConfirmAssetId] = useState<number | null>(null);
+  const [hoveredCandle, setHoveredCandle] = useState<{ point: AssetOhlcPoint; x: number; y: number } | null>(null);
 
   const [downloadForm, setDownloadForm] = useState<AssetDownloadRequest>({
     years: 5,
@@ -344,66 +346,145 @@ export default function AssetsManagerPage() {
       return <p className="text-xs text-text-secondary">No candle data for the last year.</p>;
     }
 
-    const height = 220;
-    const padding = 16;
+    const totalHeight = 240;
+    const marginTop = 8;
+    const marginBottom = 28;
+    const marginLeft = 52;
+    const marginRight = 8;
+    const chartHeight = totalHeight - marginTop - marginBottom;
     const chartWidth = 520;
-    const candleWidth = Math.max(1.5, (chartWidth - padding * 2) / Math.max(assetOhlcData.length, 1));
-    const gap = 0;
-    const lows = assetOhlcData.map((point: AssetOhlcPoint) => point.low);
-    const highs = assetOhlcData.map((point: AssetOhlcPoint) => point.high);
-    const minValue = Math.min(...lows);
-    const maxValue = Math.max(...highs);
-    const range = maxValue - minValue || 1;
-    const firstDate = assetOhlcData[0]?.date || "";
-    const lastDate = assetOhlcData[assetOhlcData.length - 1]?.date || "";
+    const plotWidth = chartWidth - marginLeft - marginRight;
+    const candleWidth = Math.max(1.2, plotWidth / Math.max(assetOhlcData.length, 1));
 
-    const scaleY = (value: number) =>
-      height - padding - ((value - minValue) / range) * (height - padding * 2);
+    const lows = assetOhlcData.map((p: AssetOhlcPoint) => p.low);
+    const highs = assetOhlcData.map((p: AssetOhlcPoint) => p.high);
+    const minVal = Math.min(...lows);
+    const maxVal = Math.max(...highs);
+    const pricePad = (maxVal - minVal) * 0.05 || 1;
+    const yMin = minVal - pricePad;
+    const yMax = maxVal + pricePad;
+    const yRange = yMax - yMin;
+
+    const scaleY = (v: number) => marginTop + chartHeight - ((v - yMin) / yRange) * chartHeight;
+
+    const yTicks: number[] = [];
+    const tickCount = 5;
+    for (let i = 0; i <= tickCount; i++) {
+      yTicks.push(yMin + (yRange * i) / tickCount);
+    }
+
+    const dateLabels: { x: number; label: string }[] = [];
+    const labelInterval = Math.max(1, Math.floor(assetOhlcData.length / 5));
+    for (let i = 0; i < assetOhlcData.length; i += labelInterval) {
+      const d = new Date(assetOhlcData[i].date);
+      dateLabels.push({
+        x: marginLeft + i * candleWidth + candleWidth / 2,
+        label: d.toLocaleDateString("en", { month: "short", year: "2-digit" }),
+      });
+    }
+
+    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+      const svg = e.currentTarget;
+      const rect = svg.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * chartWidth;
+      const idx = Math.floor((mouseX - marginLeft) / candleWidth);
+      if (idx >= 0 && idx < assetOhlcData.length) {
+        const pt = assetOhlcData[idx];
+        const pxX = (e.clientX - rect.left);
+        const pxY = (e.clientY - rect.top);
+        setHoveredCandle({ point: pt, x: pxX, y: pxY });
+      } else {
+        setHoveredCandle(null);
+      }
+    };
 
     return (
-      <div className="w-full overflow-hidden">
-        <svg width="100%" height={height} viewBox={`0 0 ${chartWidth} ${height}`} preserveAspectRatio="none">
-          <text x={4} y={12} fontSize="10" fill="#9db9a6">Max ${maxValue.toFixed(2)}</text>
-          <text x={4} y={height - 4} fontSize="10" fill="#9db9a6">Min ${minValue.toFixed(2)}</text>
-          {firstDate && (
-            <text x={padding} y={height - 4} fontSize="9" fill="#9db9a6">
-              {firstDate}
+      <div className="w-full overflow-hidden relative" onMouseLeave={() => setHoveredCandle(null)}>
+        <svg
+          width="100%"
+          height={totalHeight}
+          viewBox={`0 0 ${chartWidth} ${totalHeight}`}
+          preserveAspectRatio="xMidYMid meet"
+          onMouseMove={handleMouseMove}
+          style={{ cursor: "crosshair" }}
+        >
+          {yTicks.map((tick: number, i: number) => {
+            const y = scaleY(tick);
+            return (
+              <g key={`ytick-${i}`}>
+                <line x1={marginLeft} x2={chartWidth - marginRight} y1={y} y2={y} stroke="#28392e" strokeWidth={0.5} />
+                <text x={marginLeft - 4} y={y + 3} fontSize="9" fill="#9db9a6" textAnchor="end">
+                  {tick >= 1000 ? `${(tick / 1000).toFixed(1)}k` : tick.toFixed(2)}
+                </text>
+              </g>
+            );
+          })}
+          {dateLabels.map((dl: { x: number; label: string }, i: number) => (
+            <text key={`xlabel-${i}`} x={dl.x} y={totalHeight - 6} fontSize="9" fill="#9db9a6" textAnchor="middle">
+              {dl.label}
             </text>
-          )}
-          {lastDate && (
-            <text x={chartWidth - padding - 80} y={height - 4} fontSize="9" fill="#9db9a6">
-              {lastDate}
-            </text>
-          )}
+          ))}
           {assetOhlcData.map((point: AssetOhlcPoint, index: number) => {
-            const x = padding + index * (candleWidth + gap);
+            const x = marginLeft + index * candleWidth;
             const yHigh = scaleY(point.high);
             const yLow = scaleY(point.low);
             const yOpen = scaleY(point.open);
             const yClose = scaleY(point.close);
             const candleTop = Math.min(yOpen, yClose);
-            const candleHeight = Math.max(1.5, Math.abs(yOpen - yClose));
+            const candleH = Math.max(1, Math.abs(yOpen - yClose));
             const isUp = point.close >= point.open;
             const color = isUp ? "#13ec5b" : "#ef4444";
+            const isHovered = hoveredCandle?.point.date === point.date;
 
             return (
-              <g key={`${point.date}-${index}`}>
-                <title>
-                  {`${point.date} · O ${point.open.toFixed(2)} H ${point.high.toFixed(2)} L ${point.low.toFixed(2)} C ${point.close.toFixed(2)}`}
-                </title>
-                <line x1={x + candleWidth / 2} x2={x + candleWidth / 2} y1={yHigh} y2={yLow} stroke={color} strokeWidth={1} />
+              <g key={`${point.date}-${index}`} opacity={hoveredCandle && !isHovered ? 0.5 : 1}>
+                <line x1={x + candleWidth / 2} x2={x + candleWidth / 2} y1={yHigh} y2={yLow} stroke={color} strokeWidth={0.8} />
                 <rect
-                  x={x}
+                  x={x + 0.1}
                   y={candleTop}
-                  width={Math.max(1.5, candleWidth - 0.5)}
-                  height={candleHeight}
+                  width={Math.max(1, candleWidth - 0.2)}
+                  height={candleH}
                   fill={color}
-                  rx={0.5}
+                  rx={0.3}
                 />
               </g>
             );
           })}
+          {hoveredCandle && (
+            <line
+              x1={marginLeft + assetOhlcData.findIndex((p: AssetOhlcPoint) => p.date === hoveredCandle.point.date) * candleWidth + candleWidth / 2}
+              x2={marginLeft + assetOhlcData.findIndex((p: AssetOhlcPoint) => p.date === hoveredCandle.point.date) * candleWidth + candleWidth / 2}
+              y1={marginTop}
+              y2={marginTop + chartHeight}
+              stroke="#9db9a6"
+              strokeWidth={0.5}
+              strokeDasharray="3 2"
+            />
+          )}
         </svg>
+        {hoveredCandle && (
+          <div
+            className="absolute z-10 pointer-events-none bg-surface-dark border border-border-dark rounded-lg px-3 py-2 shadow-xl text-[10px]"
+            style={{
+              left: Math.min(hoveredCandle.x + 12, 320),
+              top: Math.max(hoveredCandle.y - 60, 0),
+            }}
+          >
+            <p className="text-text-secondary mb-1 font-semibold">{hoveredCandle.point.date}</p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+              <span className="text-text-secondary">Open</span>
+              <span className="text-white font-mono">{hoveredCandle.point.open.toFixed(2)}</span>
+              <span className="text-text-secondary">High</span>
+              <span className="text-white font-mono">{hoveredCandle.point.high.toFixed(2)}</span>
+              <span className="text-text-secondary">Low</span>
+              <span className="text-white font-mono">{hoveredCandle.point.low.toFixed(2)}</span>
+              <span className="text-text-secondary">Close</span>
+              <span className={`font-mono ${hoveredCandle.point.close >= hoveredCandle.point.open ? "text-[#13ec5b]" : "text-red-400"}`}>
+                {hoveredCandle.point.close.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -438,15 +519,21 @@ export default function AssetsManagerPage() {
   };
 
   const handleDeleteAsset = async (assetId: number) => {
-    if (!confirm("Delete this asset and all its data?")) return;
+    setDeleteConfirmAssetId(assetId);
+  };
+
+  const confirmDeleteAsset = async () => {
+    if (deleteConfirmAssetId === null) return;
     try {
-      await deleteManagedAsset(assetId);
+      await deleteManagedAsset(deleteConfirmAssetId);
       await loadAssets();
-      if (selectedAssetId === assetId) {
+      if (selectedAssetId === deleteConfirmAssetId) {
         setSelectedAssetId(null);
       }
     } catch (error) {
       console.error("Error deleting asset:", error);
+    } finally {
+      setDeleteConfirmAssetId(null);
     }
   };
 
@@ -1333,6 +1420,35 @@ export default function AssetsManagerPage() {
           </div>
         </div>
         </main>
+
+      {/* Delete Asset Confirmation Modal */}
+      {deleteConfirmAssetId !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="size-16 rounded-full bg-red-400/10 flex items-center justify-center text-red-400 mx-auto mb-6">
+              <AlertTriangle size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-white text-center mb-2">Delete Asset?</h3>
+            <p className="text-text-secondary text-sm text-center mb-8">
+              This will permanently delete this asset and all its historical data. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirmAssetId(null)}
+                className="flex-1 px-6 py-3 rounded-xl border border-border-active bg-surface-dark text-white font-bold hover:bg-border-active transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAsset}
+                className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
