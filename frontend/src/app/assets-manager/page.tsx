@@ -242,13 +242,14 @@ export default function AssetsManagerPage() {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async (query?: string) => {
+    const cleanedQuery = (query ?? searchQuery).trim();
+    if (!cleanedQuery) return;
     setSearchLoading(true);
     setSelectedSearchResult(null);
     setAssetInfo(null);
     try {
-      const results = await searchAssetsManager(searchQuery.trim());
+      const results = await searchAssetsManager(cleanedQuery);
       setSearchResults(results);
     } catch (error) {
       console.error("Error searching assets:", error);
@@ -256,6 +257,18 @@ export default function AssetsManagerPage() {
       setSearchLoading(false);
     }
   };
+
+  useEffect(() => {
+    const cleanedQuery = searchQuery.trim();
+    if (!cleanedQuery) {
+      setSearchResults([]);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      handleSearch(cleanedQuery);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   const handleSelectSearchResult = async (result: AssetSearchResult) => {
     setSelectedSearchResult(result);
@@ -469,6 +482,12 @@ export default function AssetsManagerPage() {
                               onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
                                 setSearchQuery(event.target.value)
                               }
+                              onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  handleSearch(searchQuery);
+                                }
+                              }}
                               placeholder="Search Apple, BTC, S&P 500..."
                               className="flex-1 px-4 py-2 rounded-xl bg-background-dark border border-border-dark text-sm"
                             />
