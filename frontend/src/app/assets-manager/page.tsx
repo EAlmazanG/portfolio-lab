@@ -63,6 +63,37 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const getAssetTypeClasses = (value?: string | null) => {
+  const normalized = (value || "").toLowerCase();
+  if (normalized.includes("crypto") || normalized.includes("bitcoin")) {
+    return "border-amber-400/40 bg-amber-500/15 text-amber-300";
+  }
+  if (normalized.includes("etf")) {
+    return "border-sky-400/40 bg-sky-500/15 text-sky-300";
+  }
+  if (normalized.includes("forex") || normalized.includes("fx")) {
+    return "border-fuchsia-400/40 bg-fuchsia-500/15 text-fuchsia-300";
+  }
+  if (normalized.includes("index")) {
+    return "border-violet-400/40 bg-violet-500/15 text-violet-300";
+  }
+  return "border-emerald-400/40 bg-emerald-500/15 text-emerald-300";
+};
+
+const getCompanyTagClasses = (value?: string | null) => {
+  const normalized = (value || "").toLowerCase();
+  if (normalized.includes("tech")) {
+    return "border-cyan-400/40 bg-cyan-500/15 text-cyan-300";
+  }
+  if (normalized.includes("finance") || normalized.includes("bank")) {
+    return "border-indigo-400/40 bg-indigo-500/15 text-indigo-300";
+  }
+  if (normalized.includes("energy")) {
+    return "border-amber-400/40 bg-amber-500/15 text-amber-300";
+  }
+  return "border-border-dark bg-background-dark/40 text-text-secondary";
+};
+
 const INTERVAL_OPTIONS: AssetManagerSettings["ingestion_interval"][] = ["1d", "1wk", "1mo"];
 
 export default function AssetsManagerPage() {
@@ -107,6 +138,14 @@ export default function AssetsManagerPage() {
     () => assets.find((asset: AssetManagerListItem) => asset.id === selectedAssetId) || null,
     [assets, selectedAssetId]
   );
+
+  const isAssetManaged = useMemo(() => {
+    if (!selectedSearchResult) return false;
+    return assets.some(
+      (asset: AssetManagerListItem) =>
+        asset.ticker.toLowerCase() === selectedSearchResult.ticker.toLowerCase()
+    );
+  }, [assets, selectedSearchResult]);
 
   const filteredAssets = useMemo(() => {
     const query = managedFilter.trim().toLowerCase();
@@ -307,21 +346,21 @@ export default function AssetsManagerPage() {
 
     const height = 220;
     const padding = 16;
-    const candleWidth = 6;
-    const gap = 3;
+    const chartWidth = 520;
+    const candleWidth = Math.max(1.5, (chartWidth - padding * 2) / Math.max(assetOhlcData.length, 1));
+    const gap = 0;
     const lows = assetOhlcData.map((point: AssetOhlcPoint) => point.low);
     const highs = assetOhlcData.map((point: AssetOhlcPoint) => point.high);
     const minValue = Math.min(...lows);
     const maxValue = Math.max(...highs);
     const range = maxValue - minValue || 1;
-    const chartWidth = assetOhlcData.length * (candleWidth + gap) + padding * 2;
 
     const scaleY = (value: number) =>
       height - padding - ((value - minValue) / range) * (height - padding * 2);
 
     return (
-      <div className="w-full overflow-x-auto">
-        <svg width={chartWidth} height={height} className="min-w-full">
+      <div className="w-full overflow-hidden">
+        <svg width="100%" height={height} viewBox={`0 0 ${chartWidth} ${height}`} preserveAspectRatio="none">
           {assetOhlcData.map((point: AssetOhlcPoint, index: number) => {
             const x = padding + index * (candleWidth + gap);
             const yHigh = scaleY(point.high);
@@ -329,7 +368,7 @@ export default function AssetsManagerPage() {
             const yOpen = scaleY(point.open);
             const yClose = scaleY(point.close);
             const candleTop = Math.min(yOpen, yClose);
-            const candleHeight = Math.max(2, Math.abs(yOpen - yClose));
+            const candleHeight = Math.max(1.5, Math.abs(yOpen - yClose));
             const isUp = point.close >= point.open;
             const color = isUp ? "#13ec5b" : "#ef4444";
 
@@ -339,10 +378,10 @@ export default function AssetsManagerPage() {
                 <rect
                   x={x}
                   y={candleTop}
-                  width={candleWidth}
+                  width={Math.max(1.5, candleWidth - 0.5)}
                   height={candleHeight}
                   fill={color}
-                  rx={1}
+                  rx={0.5}
                 />
               </g>
             );
@@ -535,7 +574,7 @@ export default function AssetsManagerPage() {
                         </div>
                         <Plus size={18} className="text-primary" />
                       </div>
-                      <div className="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
+                      <div className="grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,2.8fr)] gap-4">
                         <div className="p-4 rounded-xl border border-border-dark bg-background-dark/40 space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
@@ -595,27 +634,53 @@ export default function AssetsManagerPage() {
                                       </span>
                                     )}
                                     {result.quote_type && (
-                                      <span className="px-2 py-0.5 rounded-full border border-border-dark">
+                                      <span
+                                        className={cn(
+                                          "px-2 py-0.5 rounded-full border",
+                                          getAssetTypeClasses(result.quote_type)
+                                        )}
+                                      >
                                         {result.quote_type}
+                                      </span>
+                                    )}
+                                    {result.sector && (
+                                      <span
+                                        className={cn(
+                                          "px-2 py-0.5 rounded-full border",
+                                          getCompanyTagClasses(result.sector)
+                                        )}
+                                      >
+                                        {result.sector}
                                       </span>
                                     )}
                                   </div>
                                 </div>
-                                <span className="text-[10px] uppercase text-text-secondary">
-                                  {result.currency || "N/A"}
-                                </span>
+                                {result.currency && (
+                                  <span className="text-[10px] uppercase text-text-secondary">
+                                    {result.currency}
+                                  </span>
+                                )}
                               </button>
                             ))}
                           </div>
                         </div>
 
                         <div className="p-4 rounded-xl border border-border-dark bg-background-dark/40 space-y-4">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-3">
                             <div>
                               <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Confirm</p>
                               <h3 className="text-sm font-bold">Review & Add</h3>
                             </div>
-                            <Info size={16} className="text-primary" />
+                            <div className="flex items-center gap-2">
+                              <Info size={16} className="text-primary" />
+                              <button
+                                onClick={handleCreateAsset}
+                                disabled={assetCreateLoading || isAssetManaged || !selectedSearchResult}
+                                className="px-3 py-2 rounded-xl bg-primary text-background-dark font-bold text-[10px] uppercase tracking-wide disabled:opacity-50"
+                              >
+                                {isAssetManaged ? "Already Added" : assetCreateLoading ? "Adding..." : "Add Asset"}
+                              </button>
+                            </div>
                           </div>
                           {!selectedSearchResult && (
                             <p className="text-xs text-text-secondary">Select a search result to inspect.</p>
@@ -633,13 +698,33 @@ export default function AssetsManagerPage() {
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
+                                  {(assetInfo?.quoteType || selectedSearchResult.quote_type) && (
+                                    <span
+                                      className={cn(
+                                        "px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border",
+                                        getAssetTypeClasses(assetInfo?.quoteType || selectedSearchResult.quote_type)
+                                      )}
+                                    >
+                                      {assetInfo?.quoteType || selectedSearchResult.quote_type}
+                                    </span>
+                                  )}
                                   {(assetInfo?.sector || selectedSearchResult.sector) && (
-                                    <span className="px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border border-primary/40 text-primary">
+                                    <span
+                                      className={cn(
+                                        "px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border",
+                                        getCompanyTagClasses(assetInfo?.sector || selectedSearchResult.sector)
+                                      )}
+                                    >
                                       {assetInfo?.sector || selectedSearchResult.sector}
                                     </span>
                                   )}
                                   {assetInfo?.industry && (
-                                    <span className="px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border border-border-dark text-text-secondary">
+                                    <span
+                                      className={cn(
+                                        "px-2 py-1 text-[10px] uppercase tracking-[0.2em] rounded-full border",
+                                        getCompanyTagClasses(assetInfo.industry)
+                                      )}
+                                    >
                                       {assetInfo.industry}
                                     </span>
                                   )}
@@ -716,14 +801,11 @@ export default function AssetsManagerPage() {
                                 </div>
                                 {renderCandlestickPreview()}
                               </div>
-                              <button
-                                onClick={handleCreateAsset}
-                                disabled={assetCreateLoading}
-                                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-primary text-background-dark font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2"
-                              >
-                                <Plus size={14} />
-                                {assetCreateLoading ? "Adding..." : "Add Asset"}
-                              </button>
+                              {isAssetManaged && (
+                                <div className="text-[10px] uppercase tracking-[0.2em] text-text-secondary">
+                                  Already in your library
+                                </div>
+                              )}
                               {statusMessage && (
                                 <p className="text-xs text-text-secondary">{statusMessage}</p>
                               )}
