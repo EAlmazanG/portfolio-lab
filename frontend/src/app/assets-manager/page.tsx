@@ -46,12 +46,15 @@ import { SimulationHistoryItem } from "../../types/simulation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
   Line,
   LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
+  YAxis,
 } from "recharts";
 
 function cn(...inputs: ClassValue[]) {
@@ -77,6 +80,7 @@ export default function AssetsManagerPage() {
   const [loadingSimulationHistory, setLoadingSimulationHistory] = useState(false);
   const [loadingPortfolioHistory, setLoadingPortfolioHistory] = useState(false);
   const [loadingPortfolioDetails, setLoadingPortfolioDetails] = useState(false);
+  const [expandedPortfolioIds, setExpandedPortfolioIds] = useState<Record<number, boolean>>({});
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([]);
@@ -663,7 +667,7 @@ export default function AssetsManagerPage() {
                           leftSidebarOpen ? "pl-[380px]" : "pl-0"
                         )}
                       >
-                        <div className="grid lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6">
+                        <div className="grid lg:grid-cols-[minmax(0,1.9fr)_minmax(0,0.6fr)] gap-6">
                           <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60 space-y-4">
                             <div className="flex items-center justify-between">
                               <div>
@@ -686,7 +690,7 @@ export default function AssetsManagerPage() {
                                     {selectedAsset.record_count} records · {selectedAsset.min_date || "-"} → {selectedAsset.max_date || "-"}
                                   </div>
                                 </div>
-                                <div className="h-[220px] rounded-xl border border-border-dark bg-background-dark/40 p-4">
+                                <div className="h-[400px] rounded-xl border border-border-dark bg-background-dark/40 p-4">
                                   {assetPreviewLoading && (
                                     <p className="text-xs text-text-secondary">Loading chart...</p>
                                   )}
@@ -695,29 +699,55 @@ export default function AssetsManagerPage() {
                                   )}
                                   {!assetPreviewLoading && assetPreviewData.length > 0 && (
                                     <ResponsiveContainer width="100%" height="100%">
-                                      <LineChart
+                                      <AreaChart
                                         data={assetPreviewData.filter(
                                           (_: { date: string; price: number }, index: number) =>
                                             index % 7 === 0 || index === assetPreviewData.length - 1
                                         )}
                                       >
+                                        <defs>
+                                          <linearGradient id="assetPreviewGradient" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.1} />
+                                            <stop offset="100%" stopColor="#13ec5b" stopOpacity={0} />
+                                          </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
-                                        <XAxis dataKey="date" hide />
+                                        <XAxis
+                                          dataKey="date"
+                                          stroke="#9db9a6"
+                                          fontSize={10}
+                                          tickLine={false}
+                                          axisLine={false}
+                                          tickFormatter={(value: string) => new Date(value).getFullYear().toString()}
+                                          interval={Math.floor(assetPreviewData.length / 6)}
+                                        />
+                                        <YAxis
+                                          stroke="#9db9a6"
+                                          fontSize={10}
+                                          tickLine={false}
+                                          axisLine={false}
+                                          tickFormatter={(value: number) => `$${Number(value).toLocaleString()}`}
+                                        />
                                         <Tooltip
                                           contentStyle={{
                                             backgroundColor: "#1c271f",
                                             border: "1px solid #3b5443",
-                                            borderRadius: "8px",
+                                            borderRadius: "12px",
+                                            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)",
                                           }}
-                                          itemStyle={{ fontSize: "11px", color: "#13ec5b" }}
-                                          labelStyle={{ color: "#9db9a6", marginBottom: "4px", fontSize: "10px" }}
-                                          formatter={(value: number) => [
-                                            `$${Number(value).toFixed(2)}`,
-                                            "Price",
-                                          ]}
+                                          itemStyle={{ fontSize: "14px", color: "#13ec5b", fontWeight: "bold" }}
+                                          labelStyle={{ color: "#9db9a6", marginBottom: "8px" }}
+                                          formatter={(value: number) => [`$${Number(value).toLocaleString()}`, "Price"]}
                                         />
-                                        <Line type="monotone" dataKey="price" stroke="#13ec5b" strokeWidth={2} dot={false} />
-                                      </LineChart>
+                                        <Area
+                                          type="monotone"
+                                          dataKey="price"
+                                          stroke="#13ec5b"
+                                          strokeWidth={3}
+                                          fillOpacity={1}
+                                          fill="url(#assetPreviewGradient)"
+                                        />
+                                      </AreaChart>
                                     </ResponsiveContainer>
                                   )}
                                 </div>
@@ -794,7 +824,7 @@ export default function AssetsManagerPage() {
                           <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60 space-y-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Simulations</p>
+                                <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Memories</p>
                                 <h3 className="text-lg font-black">Asset Simulations</h3>
                               </div>
                               <CheckCircle2 size={18} className="text-primary" />
@@ -803,7 +833,9 @@ export default function AssetsManagerPage() {
                               <p className="text-xs text-text-secondary">Loading simulations...</p>
                             )}
                             {!loadingSimulationHistory && assetSimulations.length === 0 && (
-                              <p className="text-xs text-text-secondary">No simulations for this asset yet.</p>
+                              <div className="min-h-[160px] flex items-center justify-center text-xs text-text-secondary text-center">
+                                No simulations for this asset yet.
+                              </div>
                             )}
                             {!loadingSimulationHistory && assetSimulations.length > 0 && (
                               <div className="space-y-2">
@@ -830,8 +862,8 @@ export default function AssetsManagerPage() {
                           <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60 space-y-4">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Portfolios</p>
-                                <h3 className="text-lg font-black">Where it lives</h3>
+                                <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Memories</p>
+                                <h3 className="text-lg font-black">Portfolio Simulations</h3>
                               </div>
                               <SettingsIcon size={18} className="text-primary" />
                             </div>
@@ -844,34 +876,54 @@ export default function AssetsManagerPage() {
                             {!loadingPortfolioDetails && portfoliosWithAsset.length > 0 && (
                               <div className="space-y-3">
                                 {portfolioSimulationGroups.map(
-                                  (group: { portfolio: Portfolio; simulations: PortfolioSimulationHistoryItem[] }) => (
-                                    <div
-                                      key={group.portfolio.id}
-                                      className="p-3 rounded-xl border border-border-dark bg-background-dark/40"
-                                    >
-                                      <div className="flex items-center justify-between text-xs">
-                                        <span className="font-semibold text-white">{group.portfolio.name}</span>
-                                        <span className="text-text-secondary">
-                                          {group.simulations.length} simulations
-                                        </span>
+                                  (group: { portfolio: Portfolio; simulations: PortfolioSimulationHistoryItem[] }) => {
+                                    const isExpanded = expandedPortfolioIds[group.portfolio.id];
+                                    return (
+                                      <div
+                                        key={group.portfolio.id}
+                                        className="p-3 rounded-xl border border-border-dark bg-background-dark/40"
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setExpandedPortfolioIds((prev: Record<number, boolean>) => ({
+                                              ...prev,
+                                              [group.portfolio.id]: !prev[group.portfolio.id],
+                                            }))
+                                          }
+                                          className="w-full flex items-center justify-between text-xs"
+                                        >
+                                          <span className="font-semibold text-white">{group.portfolio.name}</span>
+                                          <span className="flex items-center gap-2 text-text-secondary">
+                                            {group.simulations.length} simulations
+                                            <ChevronRight
+                                              size={12}
+                                              className={cn("transition-transform", isExpanded && "rotate-90")}
+                                            />
+                                          </span>
+                                        </button>
+                                        {isExpanded && (
+                                          <div className="mt-2">
+                                            {loadingPortfolioHistory && (
+                                              <p className="text-[10px] text-text-secondary">Loading simulations...</p>
+                                            )}
+                                            {!loadingPortfolioHistory && group.simulations.length === 0 && (
+                                              <p className="text-[10px] text-text-secondary">No simulations yet.</p>
+                                            )}
+                                            {!loadingPortfolioHistory && group.simulations.length > 0 && (
+                                              <ul className="space-y-1 text-[10px] text-text-secondary">
+                                                {group.simulations.slice(0, 3).map((sim: PortfolioSimulationHistoryItem) => (
+                                                  <li key={sim.id}>
+                                                    {new Date(sim.created_at).toLocaleDateString()} · {sim.total_return_percent.toFixed(1)}%
+                                                  </li>
+                                                ))}
+                                              </ul>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
-                                      {loadingPortfolioHistory && (
-                                        <p className="text-[10px] text-text-secondary mt-2">Loading simulations...</p>
-                                      )}
-                                      {!loadingPortfolioHistory && group.simulations.length === 0 && (
-                                        <p className="text-[10px] text-text-secondary mt-2">No simulations yet.</p>
-                                      )}
-                                      {!loadingPortfolioHistory && group.simulations.length > 0 && (
-                                        <ul className="mt-2 space-y-1 text-[10px] text-text-secondary">
-                                          {group.simulations.slice(0, 3).map((sim: PortfolioSimulationHistoryItem) => (
-                                            <li key={sim.id}>
-                                              {new Date(sim.created_at).toLocaleDateString()} · {sim.total_return_percent.toFixed(1)}%
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                    </div>
-                                  )
+                                    );
+                                  }
                                 )}
                               </div>
                             )}
