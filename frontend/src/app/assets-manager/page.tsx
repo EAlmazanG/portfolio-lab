@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -127,6 +127,8 @@ export default function AssetsManagerPage() {
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [deleteConfirmAssetId, setDeleteConfirmAssetId] = useState<number | null>(null);
   const [hoveredCandle, setHoveredCandle] = useState<{ point: AssetOhlcPoint; x: number; y: number } | null>(null);
+  const [chartContainerWidth, setChartContainerWidth] = useState(900);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const [downloadForm, setDownloadForm] = useState<AssetDownloadRequest>({
     years: 5,
@@ -185,6 +187,23 @@ export default function AssetsManagerPage() {
       ),
     }));
   }, [portfolioSimulationHistory, portfoliosWithAsset]);
+
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      const width = container.offsetWidth;
+      if (width > 0) {
+        setChartContainerWidth(width);
+      }
+    });
+
+    resizeObserver.observe(container);
+    setChartContainerWidth(container.offsetWidth || 900);
+
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const loadAssets = async () => {
     setLoadingAssets(true);
@@ -352,7 +371,7 @@ export default function AssetsManagerPage() {
     const marginLeft = 52;
     const marginRight = 8;
     const chartHeight = totalHeight - marginTop - marginBottom;
-    const chartWidth = 520;
+    const chartWidth = Math.max(300, chartContainerWidth - 16);
     const plotWidth = chartWidth - marginLeft - marginRight;
     const candleWidth = Math.max(1.2, plotWidth / Math.max(assetOhlcData.length, 1));
 
@@ -466,7 +485,7 @@ export default function AssetsManagerPage() {
           <div
             className="absolute z-10 pointer-events-none bg-surface-dark border border-border-dark rounded-lg px-3 py-2 shadow-xl text-[10px]"
             style={{
-              left: Math.min(hoveredCandle.x + 12, 320),
+              left: Math.min(hoveredCandle.x + 12, (typeof window !== "undefined" ? window.innerWidth * 0.5 : 600)),
               top: Math.max(hoveredCandle.y - 60, 0),
             }}
           >
@@ -907,7 +926,7 @@ export default function AssetsManagerPage() {
                                 )}
                                 {!assetInfoLoading && !assetInfo && <p>No info found.</p>}
                               </div>
-                              <div className="rounded-xl border border-border-dark bg-background-dark/40 p-4 space-y-2">
+                              <div ref={chartContainerRef} className="rounded-xl border border-border-dark bg-background-dark/40 p-4 space-y-2">
                                 <div className="flex items-center justify-between">
                                   <p className="text-xs uppercase tracking-[0.25em] text-text-secondary">Daily candles (1y)</p>
                                   <span className="text-[10px] uppercase text-text-secondary">Preview</span>
