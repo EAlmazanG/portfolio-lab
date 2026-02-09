@@ -119,6 +119,8 @@ export default function AssetsManagerPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [visibleSearchCount, setVisibleSearchCount] = useState(8);
+  const searchListRef = useRef<HTMLDivElement>(null);
   const [selectedSearchResult, setSelectedSearchResult] = useState<AssetSearchResult | null>(null);
   const [assetInfo, setAssetInfo] = useState<Record<string, any> | null>(null);
   const [assetInfoLoading, setAssetInfoLoading] = useState(false);
@@ -383,6 +385,7 @@ export default function AssetsManagerPage() {
     setSearchLoading(true);
     setSelectedSearchResult(null);
     setAssetInfo(null);
+    setVisibleSearchCount(8);
     try {
       const results = await searchAssetsManager(cleanedQuery);
       setSearchResults(results);
@@ -792,11 +795,20 @@ export default function AssetsManagerPage() {
                               {searchLoading ? "Searching" : "Search"}
                             </button>
                           </div>
-                          <div className="space-y-3">
+                          <div
+                            ref={searchListRef}
+                            className="space-y-3 max-h-[560px] overflow-y-auto custom-scrollbar pr-1"
+                            onScroll={(e) => {
+                              const el = e.currentTarget;
+                              if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) {
+                                setVisibleSearchCount((prev) => Math.min(prev + 10, searchResults.length));
+                              }
+                            }}
+                          >
                             {searchResults.length === 0 && !searchLoading && (
                               <p className="text-xs text-text-secondary">No results yet. Try a search above.</p>
                             )}
-                            {searchResults.map((result: AssetSearchResult) => (
+                            {searchResults.slice(0, visibleSearchCount).map((result: AssetSearchResult) => (
                               <button
                                 key={result.ticker}
                                 onClick={() => handleSelectSearchResult(result)}
@@ -845,6 +857,11 @@ export default function AssetsManagerPage() {
                                 )}
                               </button>
                             ))}
+                            {visibleSearchCount < searchResults.length && (
+                              <p className="text-[10px] text-text-secondary text-center py-2 uppercase tracking-widest opacity-50">
+                                Scroll for more results ({searchResults.length - visibleSearchCount} remaining)
+                              </p>
+                            )}
                           </div>
                         </div>
 
