@@ -246,11 +246,3 @@ make help          # Show all available commands
 ## Documentation
 
 For the complete architecture, PRD, API endpoint reference, and implementation details, see **[CONTEXT.md](./CONTEXT.md)**.
-
----
-
-<div align="center">
-
-*Built with curiosity. Powered by data.*
-
-</div>
