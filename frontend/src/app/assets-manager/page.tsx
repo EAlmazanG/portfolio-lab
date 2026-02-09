@@ -132,6 +132,7 @@ export default function AssetsManagerPage() {
   const [chartContainerWidth, setChartContainerWidth] = useState(900);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
+  const [showAssetActions, setShowAssetActions] = useState(false);
   const [downloadForm, setDownloadForm] = useState<AssetDownloadRequest>({
     years: 5,
     interval: "1d",
@@ -693,7 +694,7 @@ export default function AssetsManagerPage() {
           ></div>
 
           <div className="flex-1 min-h-0 overflow-y-auto p-6 lg:p-8 z-10 custom-scrollbar flex flex-col">
-            <div className="max-w-[1760px] mx-auto w-full flex-1 flex flex-col space-y-6 min-h-0">
+            <div className="w-full flex-1 flex flex-col space-y-6">
               <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-surface-dark/40 p-6 lg:p-7 rounded-[32px] border border-border-active/20 backdrop-blur-sm shadow-2xl">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Asset Management</p>
@@ -755,7 +756,7 @@ export default function AssetsManagerPage() {
                 ))}
               </section>
 
-              <div className="w-full rounded-[32px] border border-border-active/10 bg-surface-dark/40 p-6 flex flex-col flex-1 min-h-0">
+              <div className="w-full rounded-[32px] border border-border-active/10 bg-surface-dark/40 p-6 flex flex-col">
                 {activeSection === "overview" && (
                   <section className="space-y-6 flex-1">
                     <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60">
@@ -1134,14 +1135,25 @@ export default function AssetsManagerPage() {
                           leftSidebarOpen ? "pl-[380px]" : "pl-0"
                         )}
                       >
-                        <div className="grid lg:grid-cols-[minmax(0,1.9fr)_minmax(0,0.6fr)] gap-6">
+                        <div className="space-y-6">
                           <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60 space-y-4">
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Overview</p>
                                 <h2 className="text-lg font-black">Asset Snapshot</h2>
                               </div>
-                              <Layers size={18} className="text-primary" />
+                              <div className="flex items-center gap-2">
+                                {selectedAsset && (
+                                  <button
+                                    onClick={() => setShowAssetActions(true)}
+                                    className="size-9 flex items-center justify-center rounded-xl border border-border-dark bg-background-dark/40 text-text-secondary hover:text-white hover:border-primary/50 transition-all"
+                                    title="Asset actions"
+                                  >
+                                    <SettingsIcon size={16} />
+                                  </button>
+                                )}
+                                <Layers size={18} className="text-primary" />
+                              </div>
                             </div>
                             {!selectedAsset && (
                               <p className="text-xs text-text-secondary">Choose an asset from the sidebar to inspect.</p>
@@ -1249,69 +1261,6 @@ export default function AssetsManagerPage() {
                             )}
                           </div>
 
-                          <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60 space-y-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Actions</p>
-                                <h2 className="text-lg font-black">Update & Delete</h2>
-                              </div>
-                              <Download size={18} className="text-primary" />
-                            </div>
-                            {!selectedAsset && (
-                              <p className="text-xs text-text-secondary">Select an asset to unlock actions.</p>
-                            )}
-                            {selectedAsset && (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <input
-                                    type="number"
-                                    value={downloadForm.years || ""}
-                                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                                      setDownloadForm((prev: AssetDownloadRequest) => ({
-                                        ...prev,
-                                        years: Number(event.target.value),
-                                        period: undefined,
-                                      }))
-                                    }
-                                    placeholder="Years"
-                                    className="px-3 py-2 rounded-xl bg-background-dark border border-border-dark text-sm"
-                                  />
-                                  <select
-                                    value={downloadForm.interval || "1d"}
-                                    onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
-                                      setDownloadForm((prev: AssetDownloadRequest) => ({
-                                        ...prev,
-                                        interval: event.target.value as AssetManagerSettings["ingestion_interval"],
-                                      }))
-                                    }
-                                    className="px-3 py-2 rounded-xl bg-background-dark border border-border-dark text-sm"
-                                  >
-                                    {INTERVAL_OPTIONS.map((option) => (
-                                      <option key={option} value={option}>
-                                        {option}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-                                <button
-                                  onClick={handleDownloadHistory}
-                                  disabled={downloadLoading}
-                                  className="w-full px-4 py-2 rounded-xl bg-primary text-background-dark font-bold text-xs uppercase tracking-wide"
-                                >
-                                  {downloadLoading ? "Downloading..." : "Download History"}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteAsset(selectedAsset.id)}
-                                  className="w-full px-4 py-2 rounded-xl border border-border-dark text-xs uppercase tracking-wide text-red-400 hover:text-red-300 flex items-center justify-center gap-2"
-                                >
-                                  <Trash2 size={14} /> Delete Asset
-                                </button>
-                                {statusMessage && (
-                                  <p className="text-xs text-text-secondary">{statusMessage}</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
                         </div>
 
                         <div className="grid lg:grid-cols-2 gap-6">
@@ -1542,6 +1491,84 @@ export default function AssetsManagerPage() {
           </div>
         </div>
         </main>
+
+      {/* Asset Actions Modal */}
+      {showAssetActions && selectedAsset && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowAssetActions(false)}>
+          <div className="bg-surface-dark border border-border-active/50 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-text-secondary">Actions</p>
+                <h3 className="text-xl font-bold text-white">{selectedAsset.ticker}</h3>
+              </div>
+              <button onClick={() => setShowAssetActions(false)} className="size-8 flex items-center justify-center rounded-lg border border-border-dark text-text-secondary hover:text-white transition-colors">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl border border-border-dark bg-background-dark/40 space-y-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-text-secondary font-bold">Update History</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    value={downloadForm.years || ""}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                      setDownloadForm((prev: AssetDownloadRequest) => ({
+                        ...prev,
+                        years: Number(event.target.value),
+                        period: undefined,
+                      }))
+                    }
+                    placeholder="Years"
+                    className="px-3 py-2 rounded-xl bg-background-dark border border-border-dark text-sm"
+                  />
+                  <select
+                    value={downloadForm.interval || "1d"}
+                    onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                      setDownloadForm((prev: AssetDownloadRequest) => ({
+                        ...prev,
+                        interval: event.target.value as AssetManagerSettings["ingestion_interval"],
+                      }))
+                    }
+                    className="px-3 py-2 rounded-xl bg-background-dark border border-border-dark text-sm"
+                  >
+                    {INTERVAL_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleDownloadHistory}
+                  disabled={downloadLoading}
+                  className="w-full px-4 py-2.5 rounded-xl bg-primary text-background-dark font-bold text-xs uppercase tracking-wide"
+                >
+                  {downloadLoading ? "Downloading..." : "Download History"}
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 space-y-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-red-400 font-bold">Danger Zone</p>
+                <button
+                  onClick={() => {
+                    setShowAssetActions(false);
+                    handleDeleteAsset(selectedAsset.id);
+                  }}
+                  className="w-full px-4 py-2.5 rounded-xl border border-red-500/30 text-xs uppercase tracking-wide text-red-400 hover:text-red-300 hover:border-red-500/50 flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Trash2 size={14} /> Delete Asset
+                </button>
+              </div>
+
+              {statusMessage && (
+                <p className="text-xs text-text-secondary text-center">{statusMessage}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Asset Confirmation Modal */}
       {deleteConfirmAssetId !== null && (
