@@ -32,10 +32,9 @@ jest.mock('../lib/api', () => ({
 }));
 
 describe('AssetsManagerPage', () => {
-  it('renders the asset management header and actions', () => {
+  it('renders the action buttons', () => {
     render(<AssetsManagerPage />);
 
-    expect(screen.getByText('Ingestion Control Center')).toBeInTheDocument();
     expect(screen.getByText('Add Asset')).toBeInTheDocument();
     expect(screen.getByText('Manage Assets')).toBeInTheDocument();
     expect(screen.getByText('General Settings')).toBeInTheDocument();

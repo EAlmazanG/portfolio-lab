@@ -694,26 +694,6 @@ export default function AssetsManagerPage() {
 
           <div className="flex-1 min-h-0 overflow-y-auto p-6 lg:p-8 z-10 custom-scrollbar flex flex-col">
             <div className="w-full flex-1 flex flex-col space-y-6">
-              <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-surface-dark/40 p-6 lg:p-7 rounded-[32px] border border-border-active/20 backdrop-blur-sm shadow-2xl">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Asset Management</p>
-                  <h1 className="text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
-                    Ingestion Control Center
-                  </h1>
-                  <p className="text-xs text-text-secondary mt-3">
-                    Add, sync, and maintain the asset library without leaving this view.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-                  <button
-                    onClick={loadAssets}
-                    className="px-6 py-3 rounded-2xl border border-border-dark text-xs uppercase tracking-wide text-text-secondary hover:text-white"
-                  >
-                    Refresh List
-                  </button>
-                </div>
-              </header>
-
               <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
                   {
