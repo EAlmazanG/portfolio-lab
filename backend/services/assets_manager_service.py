@@ -118,7 +118,7 @@ class AssetsManagerService:
     @staticmethod
     def get_asset_ohlc_preview(ticker: str) -> List[Dict[str, Any]]:
         client = YahooFinanceClient()
-        df = client.get_historical_data(ticker=ticker, period="1y", interval="1d")
+        df = client.get_historical_data(ticker=ticker, period="5y", interval="1wk")
         if df.empty:
             return []
 

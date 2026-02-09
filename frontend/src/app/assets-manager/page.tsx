@@ -277,7 +277,7 @@ export default function AssetsManagerPage() {
     setChartContainerWidth(container.offsetWidth || 900);
 
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [activeSection, selectedSearchResult]);
 
   const loadAssets = async () => {
     setLoadingAssets(true);
@@ -432,16 +432,16 @@ export default function AssetsManagerPage() {
       return <p className="text-xs text-text-secondary">Loading candles...</p>;
     }
     if (assetOhlcData.length === 0) {
-      return <p className="text-xs text-text-secondary">No candle data for the last year.</p>;
+      return <p className="text-xs text-text-secondary">No candle data available.</p>;
     }
 
-    const totalHeight = 240;
+    const chartWidth = Math.max(300, chartContainerWidth - 32);
+    const totalHeight = Math.max(240, Math.round(chartWidth * 0.28));
     const marginTop = 8;
     const marginBottom = 28;
     const marginLeft = 52;
     const marginRight = 8;
     const chartHeight = totalHeight - marginTop - marginBottom;
-    const chartWidth = Math.max(300, chartContainerWidth - 16);
     const plotWidth = chartWidth - marginLeft - marginRight;
     const candleWidth = Math.max(1.2, plotWidth / Math.max(assetOhlcData.length, 1));
 
@@ -501,7 +501,6 @@ export default function AssetsManagerPage() {
             const y = scaleY(tick);
             return (
               <g key={`ytick-${i}`}>
-                <line x1={marginLeft} x2={chartWidth - marginRight} y1={y} y2={y} stroke="#28392e" strokeWidth={0.5} />
                 <text x={marginLeft - 4} y={y + 3} fontSize="9" fill="#9db9a6" textAnchor="end">
                   {tick >= 1000 ? `${(tick / 1000).toFixed(1)}k` : tick.toFixed(2)}
                 </text>
@@ -1005,7 +1004,7 @@ export default function AssetsManagerPage() {
                               </div>
                               <div ref={chartContainerRef} className="rounded-xl border border-border-dark bg-background-dark/40 p-4 space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <p className="text-xs uppercase tracking-[0.25em] text-text-secondary">Daily candles (1y)</p>
+                                  <p className="text-xs uppercase tracking-[0.25em] text-text-secondary">Weekly candles (5y)</p>
                                   <span className="text-[10px] uppercase text-text-secondary">Preview</span>
                                 </div>
                                 {renderCandlestickPreview()}
