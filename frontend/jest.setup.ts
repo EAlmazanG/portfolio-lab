@@ -7,7 +7,6 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-// @ts-expect-error - mock for tests
 global.ResizeObserver = ResizeObserverMock;
 
 jest.mock('lucide-react', () => {

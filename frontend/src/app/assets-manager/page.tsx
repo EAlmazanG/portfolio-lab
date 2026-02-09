@@ -762,7 +762,7 @@ export default function AssetsManagerPage() {
                               className="flex-1 px-4 py-2 rounded-xl bg-background-dark border border-border-dark text-sm"
                             />
                             <button
-                              onClick={handleSearch}
+                              onClick={() => handleSearch()}
                               disabled={searchLoading}
                               className="px-4 py-2 rounded-xl bg-primary text-background-dark font-bold text-xs uppercase tracking-wide"
                             >

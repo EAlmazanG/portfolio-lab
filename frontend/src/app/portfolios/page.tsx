@@ -886,7 +886,7 @@ export default function PortfolioBuilderPage() {
                               dataKey="value"
                               stroke="none"
                               label={({ name, percent }: {name: string, percent: number}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                              labelLine={{ stroke: '#333', strokeWidth: 1.5, length: 15 }}
+                              labelLine={{ stroke: '#333', strokeWidth: 1.5 }}
                               animationDuration={1800}
                             >
                               {selectedPortfolioChartData.map((entry, index) => (

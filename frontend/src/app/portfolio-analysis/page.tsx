@@ -21,7 +21,7 @@ import {
   PortfolioSimulationConfig, PortfolioSimulationResponse, PortfolioSimulationHistoryItem,
   AssetSimulationConfig
 } from "../../types/portfolio_simulation";
-import { Asset } from "../../types/simulation";
+import { Asset, PortfolioPoint } from "../../types/simulation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -842,7 +842,7 @@ export default function PortfolioSimulationPage() {
                             <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-widest mb-1">Total Executions</span>
                             <div className="flex items-baseline gap-1.5">
                               <span className="text-white text-2xl font-black tabular-nums">
-                                {simulation.results.portfolio_history.filter(p => p.is_rebalanced === true || p.is_rebalanced === 1).length}
+                                {simulation.results.portfolio_history.filter((p: PortfolioPoint) => !!p.is_rebalanced).length}
                               </span>
                               <span className="text-[10px] text-text-secondary font-bold uppercase">Points</span>
                             </div>
@@ -925,7 +925,7 @@ export default function PortfolioSimulationPage() {
                           }} />
                           
                           {chartHistory.map((p, i) => (
-                            (p.is_rebalanced === true || p.is_rebalanced === 1) ? (
+                            (!!p.is_rebalanced) ? (
                               <ReferenceLine 
                                 key={`reb-main-line-${i}`} 
                                 x={p.date} 
@@ -1206,7 +1206,7 @@ export default function PortfolioSimulationPage() {
                     {simulation.results.asset_results.map((ar, idx) => {
                       const assetConfig =
                         simulation.config.asset_configs[ar.asset_id] ??
-                        simulation.config.asset_configs[String(ar.asset_id)];
+                        simulation.config.asset_configs[String(ar.asset_id) as unknown as number];
                       const indicatorType = assetConfig?.smart_indicator || 'RSI';
                       const isSmartActive = assetConfig?.dynamic_timing_enabled || assetConfig?.dynamic_sizing_enabled;
                       const assetHistory = downsampleWithPriority(
