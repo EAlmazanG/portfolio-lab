@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -126,6 +127,7 @@ export default function AssetsManagerPage() {
   const [assetOhlcLoading, setAssetOhlcLoading] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [deleteConfirmAssetId, setDeleteConfirmAssetId] = useState<number | null>(null);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState(0);
   const [hoveredCandle, setHoveredCandle] = useState<{ point: AssetOhlcPoint; x: number; y: number } | null>(null);
   const [chartContainerWidth, setChartContainerWidth] = useState(900);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -172,12 +174,36 @@ export default function AssetsManagerPage() {
     );
   }, [selectedAsset, simulationHistory]);
 
+  const assetToDelete = useMemo(
+    () => assets.find((asset: AssetManagerListItem) => asset.id === deleteConfirmAssetId) || null,
+    [assets, deleteConfirmAssetId]
+  );
+
+  const assetHasSimulations = useMemo(() => {
+    if (!assetToDelete) return false;
+    return simulationHistory.some(
+      (item: SimulationHistoryItem) => item.asset_ticker === assetToDelete.ticker
+    );
+  }, [assetToDelete, simulationHistory]);
+
   const portfoliosWithAsset = useMemo(() => {
     if (!selectedAsset) return [];
     return portfolioDetails.filter((portfolio: Portfolio) =>
       portfolio.assets.some((asset) => asset.asset_id === selectedAsset.id)
     );
   }, [portfolioDetails, selectedAsset]);
+
+  const portfoliosWithAssetForDelete = useMemo(() => {
+    if (!assetToDelete) return [];
+    return portfolioDetails.filter((portfolio: Portfolio) =>
+      portfolio.assets.some((asset) => asset.asset_id === assetToDelete.id)
+    );
+  }, [assetToDelete, portfolioDetails]);
+
+  const assetInPortfolios = useMemo(
+    () => portfoliosWithAssetForDelete.length > 0,
+    [portfoliosWithAssetForDelete.length]
+  );
 
   const portfolioSimulationGroups = useMemo(() => {
     return portfoliosWithAsset.map((portfolio: Portfolio) => ({
@@ -539,10 +565,16 @@ export default function AssetsManagerPage() {
 
   const handleDeleteAsset = async (assetId: number) => {
     setDeleteConfirmAssetId(assetId);
+    setDeleteConfirmStep(0);
   };
 
   const confirmDeleteAsset = async () => {
     if (deleteConfirmAssetId === null) return;
+    if (assetInPortfolios) return;
+    if (assetHasSimulations && deleteConfirmStep === 0) {
+      setDeleteConfirmStep(1);
+      return;
+    }
     try {
       await deleteManagedAsset(deleteConfirmAssetId);
       await loadAssets();
@@ -553,6 +585,7 @@ export default function AssetsManagerPage() {
       console.error("Error deleting asset:", error);
     } finally {
       setDeleteConfirmAssetId(null);
+      setDeleteConfirmStep(0);
     }
   };
 
@@ -1447,22 +1480,61 @@ export default function AssetsManagerPage() {
             <div className="size-16 rounded-full bg-red-400/10 flex items-center justify-center text-red-400 mx-auto mb-6">
               <AlertTriangle size={32} />
             </div>
-            <h3 className="text-xl font-bold text-white text-center mb-2">Delete Asset?</h3>
+            <h3 className="text-xl font-bold text-white text-center mb-2">
+              {assetInPortfolios ? "Asset linked to portfolios" : "Delete Asset?"}
+            </h3>
             <p className="text-text-secondary text-sm text-center mb-8">
-              This will permanently delete this asset and all its historical data. This action cannot be undone.
+              {assetInPortfolios
+                ? "This asset is currently used in one or more portfolios. Remove it from those portfolios before deleting it here."
+                : assetHasSimulations && deleteConfirmStep > 0
+                ? "Are you sure? This will permanently delete this asset and its simulation history."
+                : assetHasSimulations
+                ? "This asset has simulations. Please confirm twice to delete all its data and simulation history."
+                : "This will permanently delete this asset and all its historical data. This action cannot be undone."}
             </p>
+            {assetInPortfolios && (
+              <div className="mb-6 space-y-3">
+                <div className="flex flex-wrap justify-center gap-2">
+                  {portfoliosWithAsset.map((portfolio: Portfolio) => (
+                    <span
+                      key={portfolio.id}
+                      className="px-3 py-1 rounded-full border border-border-dark bg-background-dark/40 text-[10px] uppercase tracking-[0.2em] text-text-secondary"
+                    >
+                      {portfolio.name}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex justify-center">
+                  <Link
+                    href="/portfolios"
+                    className="px-5 py-2 rounded-xl border border-border-active bg-surface-dark text-white text-xs uppercase tracking-wide hover:bg-border-active transition-colors"
+                  >
+                    Go to Portfolio Management
+                  </Link>
+                </div>
+              </div>
+            )}
             <div className="flex gap-3">
               <button
-                onClick={() => setDeleteConfirmAssetId(null)}
+                onClick={() => {
+                  setDeleteConfirmAssetId(null);
+                  setDeleteConfirmStep(0);
+                }}
                 className="flex-1 px-6 py-3 rounded-xl border border-border-active bg-surface-dark text-white font-bold hover:bg-border-active transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDeleteAsset}
-                className="flex-1 px-6 py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+                disabled={assetInPortfolios}
+                className={cn(
+                  "flex-1 px-6 py-3 rounded-xl text-white font-bold transition-colors shadow-[0_0_20px_rgba(239,68,68,0.3)]",
+                  assetInPortfolios
+                    ? "bg-red-500/40 cursor-not-allowed"
+                    : "bg-red-500 hover:bg-red-600"
+                )}
               >
-                Delete
+                {assetHasSimulations && deleteConfirmStep === 0 ? "Confirm Delete" : "Delete"}
               </button>
             </div>
           </div>
