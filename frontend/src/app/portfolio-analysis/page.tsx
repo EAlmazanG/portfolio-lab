@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   TrendingUp, TrendingDown, Calendar, Download, Sliders, Play, BarChart2, BrainCircuit,
   ChevronDown, ChevronRight, ChevronLeft, LineChart as LineChartIcon, Settings as SettingsIcon,
@@ -80,7 +80,7 @@ const downsampleWithPriority = <T,>(
   return data.filter((_, idx) => keepSet.has(idx));
 };
 
-export default function PortfolioSimulationPage() {
+function PortfolioSimulationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
@@ -1637,5 +1637,13 @@ export default function PortfolioSimulationPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function PortfolioSimulationPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background-dark text-white"><div className="animate-pulse text-text-secondary">Loading...</div></div>}>
+      <PortfolioSimulationPage />
+    </Suspense>
   );
 }
