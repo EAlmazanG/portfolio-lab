@@ -1318,14 +1318,15 @@ export default function PortfolioSimulationPage() {
                                         <ComposedChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
                                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                           <XAxis dataKey="date" hide />
-                                          <YAxis orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={[0, 100]} ticks={[0, 30, 70, 100]} />
+                                          <YAxis yAxisId="left-spacer" orientation="left" stroke="transparent" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val: number) => `$${val}`} tick={{ fill: 'transparent' }} />
+                                          <YAxis yAxisId="rsi" orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={[0, 100]} ticks={[0, 30, 70, 100]} />
                                           <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ display: 'none' }} />
                                           
-                                          <ReferenceArea y1={30} y2={70} fill="#13ec5b" fillOpacity={0.05} />
-                                          <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '70', fill: '#ef4444', fontSize: 7 }} />
-                                          <ReferenceLine y={30} stroke="#13ec5b" strokeDasharray="3 3" label={{ position: 'right', value: '30', fill: '#13ec5b', fontSize: 7 }} />
+                                          <ReferenceArea yAxisId="rsi" y1={30} y2={70} fill="#13ec5b" fillOpacity={0.05} />
+                                          <ReferenceLine yAxisId="rsi" y={70} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '70', fill: '#ef4444', fontSize: 7 }} />
+                                          <ReferenceLine yAxisId="rsi" y={30} stroke="#13ec5b" strokeDasharray="3 3" label={{ position: 'right', value: '30', fill: '#13ec5b', fontSize: 7 }} />
 
-                                          <Line type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1.5} dot={false} name="RSI Value" />
+                                          <Line yAxisId="rsi" type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1.5} dot={false} name="RSI Value" />
                                         </ComposedChart>
                                       </ResponsiveContainer>
                                     </div>
