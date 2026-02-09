@@ -200,53 +200,149 @@ To validate the hypothesis, every simulation must be compared against:
 
 ---
 
-## 6. Current Progress (v0.7 Completed)
+## 6. Current Progress (v0.8 Completed)
 
 ### 6.1. Infrastructure & DevOps
 - **Dockerization:** Fully containerized environment with separate `dev` (hot-reloading, volume mounts) and `prod` configurations.
 - **Database:** PostgreSQL set up with SQLAlchemy ORM and Alembic for migrations (added Risk Metrics support).
 - **Backend:** FastAPI foundation with health checks and CORS configuration.
-- **Frontend:** Next.js (App Router) structure with TypeScript and Tailwind CSS.
-- **Automation:** Refactored `Makefile` with clear commands (`make dev-start`, `make prod-start`, `make start portfolio-lab`).
+- **Frontend:** Next.js 14 (App Router) with TypeScript, Tailwind CSS, Recharts, and Lucide icons.
+- **Automation:** Refactored `Makefile` with clear commands (`make dev-up`, `make prod-up`, `make start portfolio-lab`, `make test-all`).
+- **Favicon:** Custom SVG favicon (`public/icon.svg`) with the Portfolio-Lab brand (green chart line on dark background).
 
 ### 6.2. Data Ingestion & Management
-- **Yahoo Finance Client:** Robust integration for fetching OHLCV data and asset metadata.
+- **Yahoo Finance Client:** Robust integration for fetching OHLCV data, asset metadata, and search (up to 20 results per query).
 - **Interactive CLI Tool:** A comprehensive data manager (`make backend-cli`).
 - **Visual Index:** Frontend logic to construct and normalize weighted price indices for portfolios.
 
-### 6.3. Advanced Simulation Engine (v0.7)
+### 6.3. Advanced Simulation Engine (v0.8)
 - **Portfolio Core Logic:** 
     - The `PortfolioSimulationEngine` orchestrates multiple `SimulationEngine` instances.
-    - **Rebalancing Engine:** Supports periodic rebalancing:
-        1. **Periodic Rebalancing:** Automatically resets asset weights to original targets every N months (1-24), selling winners and buying laggards to maintain strategy integrity.
-    - **Smart DCA Compatibility:** Seamlessly integrates with per-asset Smart DCA features (Timing and Sizing), allowing for complex multi-layered strategies.
+    - **Rebalancing Engine:** Supports periodic rebalancing (1-24 months), selling winners and buying laggards to maintain strategy integrity.
+    - **Smart DCA Compatibility:** Seamlessly integrates with per-asset Smart DCA features (Timing and Sizing).
     - **Aggregation Engine:** Uses Pandas `reindex` and `ffill` logic to align assets with different historical start dates.
-- **Advanced Financial Metrics:** 
-    - **Volatility:** Calculated as the annualized standard deviation of periodic returns.
-    - **Max Drawdown (MDD):** Tracks the peak-to-trough decline to quantify worst-case scenario risk.
-    - **Strategy Alpha:** Measuring the net outperformance of "Smart" logic vs. a standard fixed-interval DCA baseline.
+- **Advanced Financial Metrics:** Volatility, Max Drawdown (MDD), and Strategy Alpha.
 - **Robust Data Pipeline:** 
-    - **Indicator Safeguards:** Technical indicators (MA/EMA) return `null` instead of `0.0` during their initial calculation windows, preventing visualization distortions.
-    - **Clean Scaling:** All values are rounded and cleaned for JSON serialization to handle edge cases like `NaN` or `Inf`.
-    - **Smart DCA reliability:** Smart timing/sizing now uses the latest available indicator row when an asset does not trade daily, ensuring signals are applied consistently across all assets.
+    - **Indicator Safeguards:** Technical indicators (MA/EMA) return `null` instead of `0.0` during their initial calculation windows.
+    - **Clean Scaling:** All values are rounded and cleaned for JSON serialization to handle `NaN` or `Inf`.
+    - **Smart DCA reliability:** Uses the latest available indicator row when an asset does not trade daily.
+- **Backend Schema Validation:**
+    - `PortfolioSimulationCreate` includes a `@model_validator(mode='before')` to normalize `asset_configs` keys from string to int, ensuring the engine always finds configs by int key.
 
-### 6.4. Frontend & UX Excellence (v0.7)
-- **High-Fidelity Visualizations:**
-    - **Synchronized Charts:** Leveraging Recharts `syncId` to correlate price action with buy/sell signals and accumulation curves across different chart components.
-    - **Temporal Filtering:** Global `Brush` component allows users to inspect specific market cycles or volatility events in detail.
-    - **RSI Sub-charts:** Professional RSI representation with decoupled axes, reference lines at 30/70, and shaded areas for clarity.
-- **Visual Index Construction:** Frontend logic to normalize and weight multiple assets into a single "Portfolio Index" (Base 100), providing a clean comparative benchmark.
-- **Professional UI/UX:**
-    - **Unified Theme:** Harmonized background colors, typography, and pulsing animations across all views.
-    - **Contextual Intelligence:** Informative tooltips for every metric, providing English explanations of financial concepts.
-    - **Responsive Architecture:** Sidebars utilize fixed widths and `overflow-visible` containers to ensure smooth, flicker-free transitions.
-    - **Performance tuning:** Charts now use downsampled datasets, shared per-asset history, and disabled animations to reduce UI slowdowns while preserving key contribution and indicator points.
-    - **Rebalancing markers:** Distribution and growth charts render clearer rebalance markers with consistent styling.
+### 6.4. Frontend Pages & Features (v0.8)
 
-### 6.5. Testing & QA (v0.7)
-- **Frontend payload coverage:** Added integration-style tests that mirror frontend JSON payloads (string keys) and verify backend normalization.
-- **Smart feature regression:** Added tests to ensure smart timing/sizing changes returns when enabled (including last-asset edge cases).
-- **Persistence & history:** Added tests for save/load consistency and initial value handling.
+#### Page 1: Asset Simulation (`/`)
+- Single-asset DCA simulation with Smart DCA toggles (Timing, Sizing).
+- Indicator selection: RSI, MA, EMA with configurable thresholds.
+- Commission engine with percentage fees, minimum per trade, and annual maintenance.
+- Charts: Portfolio Growth, Price & Indicators (synced), RSI sub-chart, Contributions with Brush, Fees Impact, Accumulation.
+- Simulation history with favorites, load/delete, and delete-all.
+- **Performance:** All 6 charts use memoized `chartHistory` (downsampled to 500 points max).
+
+#### Page 2: Portfolio Management (`/portfolios`)
+- Create, edit, and delete portfolios with multi-asset composition.
+- Per-asset weight allocation (percentage-based) with real-time validation.
+- Current position tracking (amount, avg price).
+- HHI diversification index with visual classification.
+- Navigate directly to Portfolio Simulation with selected portfolio.
+
+#### Page 3: Portfolio Simulation (`/portfolio-analysis`)
+- Multi-asset portfolio simulation with per-asset Smart DCA configuration.
+- Rebalancing engine (1-24 month intervals) with visual markers.
+- Charts: Portfolio Growth Evolution, Final Allocation (Pie), Strategy Metrics, Individual Asset Deep-Dive.
+- Per-asset deep-dive: Market Price chart, RSI/MA/EMA indicator sub-chart, Contributions bar chart.
+- **Performance optimizations (v0.8):**
+    - `useMemo` for `chartHistory` (450 points), `assetHistories` per asset (200 points), and `rebalancingCount`.
+    - All chart animations disabled (`isAnimationActive={false}`).
+    - `Brush` removed from per-asset contribution charts.
+    - `syncId` removed from per-asset charts to prevent cross-chart re-render cascades.
+    - Asset detail sections collapsed by default (`expandedAssets` state) — charts only render when user expands.
+    - ReferenceLine loops use downsampled `chartHistory` instead of full `portfolio_history`.
+
+#### Page 4: Asset Management (`/assets-manager`)
+- **Add Asset workflow:**
+    - Yahoo Finance search with auto-complete (debounced 350ms).
+    - Search returns up to 20 results with infinite scroll (8 visible, loads 10 more on scroll).
+    - Asset info panel: name, type, sector, market cap, currency, description (expandable), website link.
+    - **Weekly Candles (5y) preview:** Custom SVG candlestick chart with dynamic height (aspect ratio 0.28), responsive to container width via `ResizeObserver`. No grid lines.
+    - One-click asset creation with automatic history download.
+    - Duplicate detection ("Already in your library" indicator).
+- **Manage Assets workflow:**
+    - Searchable asset library with filter.
+    - Asset snapshot: ticker, type, sector, date range, record count, price chart preview.
+    - Gear menu modal: Download history (configurable years/interval), Delete asset with confirmation.
+- **General Settings:**
+    - Configure default ingestion years and interval (1d, 1wk, 1mo).
+    - Bulk "Update All Assets" action.
+- **Sidebar:** Collapsible left sidebar showing simulation history and portfolio simulation history with expandable details.
+
+### 6.5. Shared Components
+- **Header:** Sticky navigation bar with links to all 4 pages, active state highlighting, and Portfolio-Lab branding with animated chart icon.
+- **Custom Scrollbar:** `custom-scrollbar` CSS class for consistent dark-themed scrollbars.
+- **Background Grid:** Subtle grid pattern overlay on main content areas.
+
+### 6.6. API Endpoints
+
+#### Assets Manager (`/api/v1/assets-manager`)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/assets` | List all managed assets with stats |
+| GET | `/settings` | Get ingestion settings |
+| PUT | `/settings` | Update ingestion settings |
+| GET | `/search?q=` | Search Yahoo Finance (up to 20 results) |
+| GET | `/assets/{ticker}/info` | Get asset metadata from Yahoo |
+| GET | `/assets/{ticker}/ohlc` | Get 5-year weekly OHLC preview |
+| POST | `/assets` | Create asset and optionally download history |
+| POST | `/assets/{id}/download` | Download/update asset history |
+| POST | `/assets/update-all` | Bulk update all assets |
+| DELETE | `/assets/{id}` | Delete asset and all market data |
+
+#### Simulations (`/api/v1/simulations`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/run` | Run single-asset simulation |
+| GET | `/history` | List simulation history |
+| GET | `/{id}` | Get simulation details |
+| DELETE | `/{id}` | Delete simulation |
+| PATCH | `/{id}/favorite` | Toggle favorite |
+| DELETE | `/history/all` | Delete all simulations |
+
+#### Portfolios (`/api/v1/portfolios`)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/` | List portfolios |
+| POST | `/` | Create portfolio |
+| GET | `/{id}` | Get portfolio details |
+| PUT | `/{id}` | Update portfolio |
+| DELETE | `/{id}` | Delete portfolio |
+
+#### Portfolio Simulations (`/api/v1/portfolio-simulations`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/run` | Run portfolio simulation |
+| GET | `/history` | List portfolio simulation history |
+| GET | `/{id}` | Get simulation details |
+| DELETE | `/{id}` | Delete simulation |
+| PATCH | `/{id}/favorite` | Toggle favorite |
+| DELETE | `/history/all` | Delete all portfolio simulations |
+
+### 6.7. Testing (v0.8)
+- **Frontend tests (5 suites, 9 tests):**
+    - `Header.test.tsx` — Navigation links and branding render correctly.
+    - `AssetManagerPage.test.tsx` — Action buttons (Add, Manage, Settings) render.
+    - `AssetSimulationPage.test.tsx` — Page renders with simulation controls.
+    - `PortfolioAnalysisPage.test.tsx` — Page renders with simulation controls.
+    - `PortfoliosPage.test.tsx` — Portfolio management UI renders.
+- **Backend tests:**
+    - Integration tests for infrastructure health checks.
+    - Unit tests for simulation engine, smart features, and payload normalization.
+- **All tests pass:** `npx jest` (frontend), `pytest tests/unit` (backend).
+
+### 6.8. Known Limitations
+- Yahoo Finance search API may return fewer than 20 results for some queries (API limitation, not a bug).
+- `act(...)` warnings in frontend tests are cosmetic (React async state updates) — do not affect test results.
+- No backend tests for API routes (only engine and integration tests exist).
+- Optimizer tab is not yet implemented (future scope).
 
 ---
 
