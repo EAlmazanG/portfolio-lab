@@ -214,6 +214,53 @@ export default function AssetsManagerPage() {
     }));
   }, [portfolioSimulationHistory, portfoliosWithAsset]);
 
+  const assetReturns = useMemo(() => {
+    if (assetPreviewData.length < 2) return [];
+    const now = new Date();
+    const latestPrice = assetPreviewData[assetPreviewData.length - 1]?.price;
+    if (!latestPrice) return [];
+
+    const periods: { label: string; years: number; isYTD?: boolean }[] = [
+      { label: "YTD", years: 0, isYTD: true },
+      { label: "1Y", years: 1 },
+      { label: "3Y", years: 3 },
+      { label: "5Y", years: 5 },
+      { label: "10Y", years: 10 },
+      { label: "15Y", years: 15 },
+    ];
+
+    return periods.map(({ label, years, isYTD }) => {
+      let targetDate: Date;
+      if (isYTD) {
+        targetDate = new Date(now.getFullYear(), 0, 1);
+      } else {
+        targetDate = new Date(now);
+        targetDate.setFullYear(now.getFullYear() - years);
+      }
+      const targetStr = targetDate.toISOString().split("T")[0];
+      const firstDataDate = assetPreviewData[0]?.date;
+      if (firstDataDate > targetStr) return { label, total: null, annualized: null };
+
+      let closest = assetPreviewData[0];
+      for (const point of assetPreviewData) {
+        if (point.date <= targetStr) closest = point;
+        else break;
+      }
+      const startPrice = closest.price;
+      if (!startPrice) return { label, total: null, annualized: null };
+
+      const totalReturn = ((latestPrice - startPrice) / startPrice) * 100;
+      const actualYears = isYTD
+        ? (now.getTime() - targetDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+        : years;
+      const annualized = actualYears > 0
+        ? (Math.pow(latestPrice / startPrice, 1 / actualYears) - 1) * 100
+        : totalReturn;
+
+      return { label, total: totalReturn, annualized };
+    });
+  }, [assetPreviewData]);
+
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -316,14 +363,10 @@ export default function AssetsManagerPage() {
   const loadAssetPreview = async (assetId: number) => {
     setAssetPreviewLoading(true);
     try {
-      const end = new Date();
-      const start = new Date();
-      start.setFullYear(end.getFullYear() - 1);
-      const history = await getAssetHistory(
-        assetId,
-        start.toISOString().split("T")[0],
-        end.toISOString().split("T")[0]
-      );
+      const asset = assets.find((a: AssetManagerListItem) => a.id === assetId);
+      const end = new Date().toISOString().split("T")[0];
+      const start = asset?.min_date || "2000-01-01";
+      const history = await getAssetHistory(assetId, start, end);
       setAssetPreviewData(history);
     } catch (error) {
       console.error("Error loading asset preview:", error);
@@ -636,10 +679,10 @@ export default function AssetsManagerPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-background-dark text-white font-display">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-background-dark text-white font-display">
       <Header />
-      <div className="relative flex-1 min-h-0">
-        <main className="flex-1 flex flex-col bg-[#0b0f0c] relative min-h-0">
+      <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col bg-[#0b0f0c] relative min-h-0 overflow-hidden">
           <div
             className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none"
             style={{
@@ -712,10 +755,10 @@ export default function AssetsManagerPage() {
                 ))}
               </section>
 
-              <div className="w-full rounded-[32px] border border-border-active/10 bg-surface-dark/40 p-6 flex flex-col flex-1 min-h-[calc(100vh-240px)]">
+              <div className="w-full rounded-[32px] border border-border-active/10 bg-surface-dark/40 p-6 flex flex-col flex-1 min-h-0">
                 {activeSection === "overview" && (
                   <section className="space-y-6 flex-1">
-                    <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60 min-h-[220px]">
+                    <div className="p-6 rounded-2xl border border-border-dark bg-surface-dark/60">
                       <p className="text-xs uppercase tracking-[0.3em] text-text-secondary">Overview</p>
                       <h2 className="mt-2 text-lg font-black">Pick a workflow</h2>
                       <p className="mt-2 text-sm leading-relaxed text-text-secondary">
@@ -983,8 +1026,8 @@ export default function AssetsManagerPage() {
                 )}
 
                 {activeSection === "manage" && (
-                  <section className="space-y-6 relative">
-                    <div className="relative min-h-[520px]">
+                  <section className="space-y-6 relative flex-1 flex flex-col min-h-0">
+                    <div className="relative flex-1 min-h-0">
                       <aside
                         className={cn(
                           "absolute left-0 top-0 h-full flex flex-col border-r border-border-dark bg-background-dark transition-all duration-300 ease-in-out z-20 overflow-visible",
@@ -1114,7 +1157,7 @@ export default function AssetsManagerPage() {
                                     {selectedAsset.record_count} records · {selectedAsset.min_date || "-"} → {selectedAsset.max_date || "-"}
                                   </div>
                                 </div>
-                                <div className="h-[400px] rounded-xl border border-border-dark bg-background-dark/40 p-4">
+                                <div className="aspect-[2.5/1] rounded-xl border border-border-dark bg-background-dark/40 p-4">
                                   {assetPreviewLoading && (
                                     <p className="text-xs text-text-secondary">Loading chart...</p>
                                   )}
@@ -1143,7 +1186,7 @@ export default function AssetsManagerPage() {
                                           tickLine={false}
                                           axisLine={false}
                                           tickFormatter={(value: string) => new Date(value).getFullYear().toString()}
-                                          interval={Math.floor(assetPreviewData.length / 6)}
+                                          minTickGap={60}
                                         />
                                         <YAxis
                                           stroke="#9db9a6"
@@ -1161,6 +1204,7 @@ export default function AssetsManagerPage() {
                                           }}
                                           itemStyle={{ fontSize: "14px", color: "#13ec5b", fontWeight: "bold" }}
                                           labelStyle={{ color: "#9db9a6", marginBottom: "8px" }}
+                                          labelFormatter={(label: string) => new Date(label).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                                           formatter={(value: number) => [`$${Number(value).toLocaleString()}`, "Price"]}
                                         />
                                         <Area
@@ -1175,6 +1219,32 @@ export default function AssetsManagerPage() {
                                     </ResponsiveContainer>
                                   )}
                                 </div>
+                                {!assetPreviewLoading && assetReturns.length > 0 && (
+                                  <div className="rounded-xl border border-border-dark bg-background-dark/40 overflow-hidden">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="border-b border-border-dark">
+                                          <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.2em] text-text-secondary font-bold">Period</th>
+                                          <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.2em] text-text-secondary font-bold">Total</th>
+                                          <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.2em] text-text-secondary font-bold">Annualized</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {assetReturns.map((r) => (
+                                          <tr key={r.label} className="border-b border-border-dark/30 last:border-b-0">
+                                            <td className="px-3 py-2 font-bold text-white">{r.label}</td>
+                                            <td className={cn("px-3 py-2 text-right font-bold tabular-nums", r.total === null ? "text-text-secondary" : r.total >= 0 ? "text-primary" : "text-red-400")}>
+                                              {r.total === null ? "—" : `${r.total >= 0 ? "+" : ""}${r.total.toFixed(2)}%`}
+                                            </td>
+                                            <td className={cn("px-3 py-2 text-right font-bold tabular-nums", r.annualized === null ? "text-text-secondary" : r.annualized >= 0 ? "text-primary" : "text-red-400")}>
+                                              {r.annualized === null ? "—" : `${r.annualized >= 0 ? "+" : ""}${r.annualized.toFixed(2)}%`}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1257,7 +1327,7 @@ export default function AssetsManagerPage() {
                               <p className="text-xs text-text-secondary">Loading simulations...</p>
                             )}
                             {!loadingSimulationHistory && assetSimulations.length === 0 && (
-                              <div className="min-h-[160px] flex items-center justify-center text-xs text-text-secondary text-center">
+                              <div className="flex items-center justify-center text-xs text-text-secondary text-center py-8">
                                 No simulations for this asset yet.
                               </div>
                             )}
