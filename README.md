@@ -50,7 +50,7 @@ make dev-up
 make start portfolio-lab
 
 # Stop everything
-make close
+make stop
 ```
 
 ### Access Points
@@ -71,8 +71,12 @@ Portfolio-Lab is organized into **4 main sections**, each accessible from the na
 
 > Single-asset DCA backtesting with Smart DCA engine.
 
-<!-- 📸 Screenshot: Place your Asset Simulation screenshot here -->
-<!-- ![Asset Simulation](docs/screenshots/asset-simulation.png) -->
+<div align="center">
+
+![Asset Simulation - New Simulation](images/asset_simulation__new_simulation.png)
+![Asset Simulation - Results](images/asset_simulation__simulation_results.png)
+
+</div>
 
 Configure and run backtests for individual assets with full control over:
 
@@ -88,8 +92,12 @@ Configure and run backtests for individual assets with full control over:
 
 > Build and manage multi-asset portfolios.
 
-<!-- 📸 Screenshot: Place your Portfolio Management screenshot here -->
-<!-- ![Portfolio Management](docs/screenshots/portfolio-management.png) -->
+<div align="center">
+
+![Portfolio Management - Main](images/portfolio_management__main.png)
+![Portfolio Management - Details](images/portfolio_management__details.png)
+
+</div>
 
 - **Portfolio Builder** — Create portfolios with any combination of assets from your library.
 - **Weight Allocation** — Assign percentage weights per asset with real-time validation.
@@ -103,8 +111,12 @@ Configure and run backtests for individual assets with full control over:
 
 > Multi-asset backtesting with rebalancing and per-asset Smart DCA.
 
-<!-- 📸 Screenshot: Place your Portfolio Simulation screenshot here -->
-<!-- ![Portfolio Simulation](docs/screenshots/portfolio-simulation.png) -->
+<div align="center">
+
+![Portfolio Simulation - Overview](images/portfolio_simulation__overview.png)
+![Portfolio Simulation - Results](images/portfolio_simulation__results.png)
+
+</div>
 
 The most powerful section of the platform:
 
@@ -121,8 +133,12 @@ The most powerful section of the platform:
 
 > Full asset lifecycle: search, preview, ingest, and maintain.
 
-<!-- 📸 Screenshot: Place your Asset Management screenshot here -->
-<!-- ![Asset Management](docs/screenshots/asset-management.png) -->
+<div align="center">
+
+![Asset Management - Add Asset](images/asset_management__add_asset.png)
+![Asset Management - Manage Assets](images/asset_management__manage_assets.png)
+
+</div>
 
 - **Yahoo Finance Search** — Search any ticker or company name. Returns up to 20 results with infinite scroll.
 - **5-Year Candlestick Preview** — Custom SVG weekly candlestick chart with responsive sizing, rendered before you even add the asset.
@@ -160,7 +176,7 @@ make help          # Show all available commands
 | Command | Description |
 |:--------|:------------|
 | `make start portfolio-lab` | Full production startup + open browser |
-| `make close` | Stop all containers (dev + prod) |
+| `make stop` | Stop all containers (dev + prod) |
 | `make dev-up` / `make dev-down` | Start / stop development environment |
 | `make dev-logs` | Follow development container logs |
 | `make prod-up` / `make prod-down` | Start / stop production environment |
