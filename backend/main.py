@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.db.base import Base
+from backend.db.session import engine
+from backend.models import Asset, MarketData, Portfolio, PortfolioAsset, Simulation, SimulationResult
+
 from backend.api.v1 import (
     simulation_router, 
     portfolio_router,
@@ -9,6 +13,11 @@ from backend.api.v1 import (
 )
 
 app = FastAPI(title="Portfolio-Lab API", version="0.1.0")
+
+
+@app.on_event("startup")
+def ensure_database_tables() -> None:
+    Base.metadata.create_all(bind=engine)
 
 # Configure CORS
 app.add_middleware(

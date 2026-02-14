@@ -3,7 +3,15 @@
 # --- High Level Commands ---
 start: venv-setup prod-up
 	@echo "Opening Portfolio Lab in your browser..."
-	@sleep 5 && (open http://localhost:3000 || xdg-open http://localhost:3000 || echo "Please open http://localhost:3000 manually.")
+	@sleep 5 && ( \
+		if curl -s http://localhost:3001 >/dev/null 2>&1; then \
+			open http://localhost:3001 || xdg-open http://localhost:3001; \
+		elif curl -s http://localhost:3000 >/dev/null 2>&1; then \
+			open http://localhost:3000 || xdg-open http://localhost:3000; \
+		else \
+			echo "Please open http://localhost:3001 or http://localhost:3000 manually."; \
+		fi \
+	)
 
 portfolio-lab:
 	@:
