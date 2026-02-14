@@ -16,7 +16,7 @@ start: venv-setup prod-up
 portfolio-lab:
 	@:
 
-close: dev-down prod-down
+stop: dev-down prod-down
 	@echo "All environments have been shut down."
 
 # --- Variables ---
@@ -34,7 +34,7 @@ help:
 	@echo "-------------------------------------------"
 	@echo "Quick Start:"
 	@echo "  make start        : The 'magic' command. Sets up everything and opens the browser"
-	@echo "  make close        : Stop everything (dev and prod)"
+	@echo "  make stop        : Stop everything (dev and prod)"
 	@echo ""
 	@echo "Environment:"
 	@echo "  make venv-setup   : Create/update virtual environment and install dependencies"
