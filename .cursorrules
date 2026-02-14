@@ -44,3 +44,7 @@
 - Never remove existing code unless explicitly asked or if it's a refactor.
 - When creating files, ensure the directory exists first.
 
+# Testing Expectations
+- **Unit Tests:** When generating or modifying code, add or update well-organized unit tests under `tests/` to ensure new logic works and existing behavior remains stable.
+- **Test Updates:** If a function has existing tests, run them after changes and update the tests only when the intended behavior has changed. Distinguish failures caused by bugs from failures caused by updated requirements and adjust accordingly.
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -103,6 +103,13 @@ export default function AssetSimulationPage() {
     fees: true,
     net: true
   });
+
+  const chartHistory = useMemo(() => {
+    const data = simulation?.results.portfolio_history || [];
+    if (data.length <= 500) return data;
+    const step = Math.ceil(data.length / 500);
+    return data.filter((_: any, idx: number) => idx % step === 0 || idx === data.length - 1);
+  }, [simulation?.results.portfolio_history]);
 
   // Form state
   const [config, setConfig] = useState<SimulationConfig>({
@@ -1048,7 +1055,7 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[400px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history}>
+                        <AreaChart data={chartHistory}>
                           <defs>
                             <linearGradient id="gradientSmart" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="0%" stopColor="#13ec5b" stopOpacity={0.2}/>
@@ -1066,7 +1073,7 @@ export default function AssetSimulationPage() {
                               const date = new Date(str);
                               return date.getFullYear().toString();
                             }}
-                            interval={Math.floor(simulation.results.portfolio_history.length / 5)}
+                            interval={Math.floor(chartHistory.length / 5)}
                           />
                           <YAxis 
                             stroke="#9db9a6" 
@@ -1135,7 +1142,7 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <AreaChart data={chartHistory} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <defs>
                             <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.1}/>
@@ -1184,7 +1191,7 @@ export default function AssetSimulationPage() {
                       </div>
                       <div className="w-full h-[120px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <ComposedChart data={chartHistory} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
                             <XAxis dataKey="date" hide />
                             <YAxis 
@@ -1257,7 +1264,7 @@ export default function AssetSimulationPage() {
                     </div>
                     <div className="w-full h-[250px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={simulation.results.portfolio_history} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                        <ComposedChart data={chartHistory} syncId="syncTerminal" margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
                           <XAxis 
                             dataKey="date" 
@@ -1322,7 +1329,7 @@ export default function AssetSimulationPage() {
                       </div>
                       <div className="w-full h-[200px]">
                         <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={simulation.results.portfolio_history}>
+                          <AreaChart data={chartHistory}>
                             <defs>
                               <linearGradient id="gradientFees" x1="0" y1="0" x2="0" y2="1">
                                 <stop offset="0%" stopColor="#f87171" stopOpacity={0.2}/>
@@ -1502,7 +1509,7 @@ export default function AssetSimulationPage() {
                     
                     <div className="w-full h-[120px] mt-4">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={simulation.results.portfolio_history.filter((_, i) => i % 30 === 0 || i === simulation.results.portfolio_history.length - 1)}>
+                        <BarChart data={chartHistory}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} />
                           <XAxis dataKey="date" hide />
                           <Tooltip 
@@ -1512,8 +1519,8 @@ export default function AssetSimulationPage() {
                             formatter={(value: any) => [`${Number(value).toFixed(4)} units`, "Accumulated"]}
                           />
                           <Bar dataKey="smart_value" radius={[2, 2, 0, 0]}>
-                            {simulation.results.portfolio_history.filter((_, i) => i % 30 === 0 || i === simulation.results.portfolio_history.length - 1).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill="#13ec5b" fillOpacity={0.3 + (index / 25)} />
+                            {chartHistory.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill="#13ec5b" fillOpacity={0.3 + (index / chartHistory.length)} />
                             ))}
                           </Bar>
                         </BarChart>

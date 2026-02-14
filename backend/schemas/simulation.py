@@ -1,6 +1,7 @@
 """Schemas for asset simulations."""
 
 from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 
@@ -54,8 +55,7 @@ class PortfolioPoint(BaseModel):
     s_contribution: float = 0.0
     is_rebalanced: Optional[bool] = False
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class SimulationResultSchema(BaseModel):
@@ -110,5 +110,4 @@ class SimulationHistoryItem(BaseModel):
     is_favorite: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

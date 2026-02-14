@@ -40,6 +40,16 @@ class PortfolioSimulationCreate(BaseModel):
     # Per-asset configuration overrides - Accept both string and int keys
     asset_configs: Dict[Any, AssetSimulationConfig] = Field(default_factory=dict)
     is_favorite: bool = Field(default=False)
+
+    @model_validator(mode='before')
+    @classmethod
+    def normalize_asset_config_keys(cls, data: Any) -> Any:
+        """Normalize asset_configs keys from string to int."""
+        if isinstance(data, dict) and 'asset_configs' in data:
+            raw = data['asset_configs']
+            if isinstance(raw, dict):
+                data['asset_configs'] = {int(k): v for k, v in raw.items()}
+        return data
     
 
 class AssetSimulationResult(BaseModel):

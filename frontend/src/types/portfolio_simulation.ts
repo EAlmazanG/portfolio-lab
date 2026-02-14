@@ -1,4 +1,4 @@
-import { SimulationConfig, SimulationResultSchema, PortfolioPoint } from "./simulation";
+import { SimulationConfig, SimulationResults, PortfolioPoint } from "./simulation";
 
 export interface AssetSimulationConfig {
   dynamic_timing_enabled: boolean;
@@ -43,8 +43,11 @@ export interface AssetSimulationResult {
   portfolio_history: any[];
 }
 
-export interface PortfolioSimulationResultSchema extends SimulationResultSchema {
+export interface PortfolioSimulationResultSchema extends SimulationResults {
   asset_results: AssetSimulationResult[];
+  volatility: number;
+  max_drawdown: number;
+  baseline_final_value: number;
 }
 
 export interface PortfolioSimulationResponse {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import {
   TrendingUp, TrendingDown, Calendar, Download, Sliders, Play, BarChart2, BrainCircuit,
   ChevronDown, ChevronRight, ChevronLeft, LineChart as LineChartIcon, Settings as SettingsIcon,
@@ -21,7 +21,7 @@ import {
   PortfolioSimulationConfig, PortfolioSimulationResponse, PortfolioSimulationHistoryItem,
   AssetSimulationConfig
 } from "../../types/portfolio_simulation";
-import { Asset } from "../../types/simulation";
+import { Asset, PortfolioPoint } from "../../types/simulation";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import {
@@ -80,7 +80,7 @@ const downsampleWithPriority = <T,>(
   return data.filter((_, idx) => keepSet.has(idx));
 };
 
-export default function PortfolioSimulationPage() {
+function PortfolioSimulationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [portfolios, setPortfolios] = useState<PortfolioListItem[]>([]);
@@ -100,7 +100,7 @@ export default function PortfolioSimulationPage() {
     section4: true,
     section5: true
   });
-  const [collapsedAssets, setCollapsedAssets] = useState<Record<number, boolean>>({});
+  const [expandedAssets, setExpandedAssets] = useState<Record<number, boolean>>({});
   const [collapsedHistory, setCollapsedHistory] = useState<Record<number, boolean>>({});
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
@@ -121,6 +121,27 @@ export default function PortfolioSimulationPage() {
     () => downsampleSeries(simulation?.results.portfolio_history || [], 450),
     [simulation?.results.portfolio_history]
   );
+
+  const assetHistories = useMemo(() => {
+    if (!simulation) return {};
+    const result: Record<number, any[]> = {};
+    for (const ar of simulation.results.asset_results) {
+      result[ar.asset_id] = downsampleWithPriority(
+        ar.portfolio_history,
+        200,
+        (item: any) =>
+          (item.s_contribution || 0) > 0 ||
+          (item.b_contribution || 0) > 0 ||
+          item.indicator_value != null
+      );
+    }
+    return result;
+  }, [simulation]);
+
+  const rebalancingCount = useMemo(() => {
+    if (!simulation) return 0;
+    return simulation.results.portfolio_history.filter((p: PortfolioPoint) => !!p.is_rebalanced).length;
+  }, [simulation]);
 
   const [config, setConfig] = useState<PortfolioSimulationConfig>({
     portfolio_id: 0,
@@ -842,7 +863,7 @@ export default function PortfolioSimulationPage() {
                             <span className="text-[9px] font-black uppercase text-text-secondary opacity-40 tracking-widest mb-1">Total Executions</span>
                             <div className="flex items-baseline gap-1.5">
                               <span className="text-white text-2xl font-black tabular-nums">
-                                {simulation.results.portfolio_history.filter(p => p.is_rebalanced === true || p.is_rebalanced === 1).length}
+                                {rebalancingCount}
                               </span>
                               <span className="text-[10px] text-text-secondary font-bold uppercase">Points</span>
                             </div>
@@ -925,7 +946,7 @@ export default function PortfolioSimulationPage() {
                           }} />
                           
                           {chartHistory.map((p, i) => (
-                            (p.is_rebalanced === true || p.is_rebalanced === 1) ? (
+                            (!!p.is_rebalanced) ? (
                               <ReferenceLine 
                                 key={`reb-main-line-${i}`} 
                                 x={p.date} 
@@ -940,16 +961,15 @@ export default function PortfolioSimulationPage() {
                           ))}
 
                           {!hiddenKeys.smart_value && (
-                            <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" animationDuration={1500} />
+                            <Area type="monotone" dataKey="smart_value" stroke="#13ec5b" strokeWidth={3} fillOpacity={1} fill="url(#gradientSmartPort)" name="Smart DCA" isAnimationActive={false} />
                           )}
                           {!hiddenKeys.baseline_value && (
-                            <Area type="monotone" dataKey="baseline_value" stroke="#94a3b8" strokeWidth={2} fillOpacity={1} fill="url(#gradientBaseline)" name="Standard DCA" strokeDasharray="4 4" />
+                            <Area type="monotone" dataKey="baseline_value" stroke="#94a3b8" strokeWidth={2} fillOpacity={1} fill="url(#gradientBaseline)" name="Standard DCA" strokeDasharray="4 4" isAnimationActive={false} />
                           )}
                           {!hiddenKeys.invested && (
-                            <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Principal" />
+                            <Area type="monotone" dataKey="invested" stroke="#64748b" strokeWidth={1.5} strokeDasharray="8 8" fill="transparent" name="Principal" isAnimationActive={false} />
                           )}
-                          {simulation.results.portfolio_history.map((p, i) => (
-                            p.is_rebalanced ? (
+                          {chartHistory.filter(p => !!p.is_rebalanced).map((p, i) => (
                               <ReferenceLine 
                                 key={`reb-area-${i}`} 
                                 x={p.date} 
@@ -960,7 +980,6 @@ export default function PortfolioSimulationPage() {
                                 label={{ value: 'REB', position: 'top', fill: '#13ec5b', fontSize: 9, fontWeight: '800' }} 
                                 isFront={true}
                               />
-                            ) : null
                           ))}
                         </AreaChart>
                       </ResponsiveContainer>
@@ -1206,24 +1225,17 @@ export default function PortfolioSimulationPage() {
                     {simulation.results.asset_results.map((ar, idx) => {
                       const assetConfig =
                         simulation.config.asset_configs[ar.asset_id] ??
-                        simulation.config.asset_configs[String(ar.asset_id)];
+                        simulation.config.asset_configs[String(ar.asset_id) as unknown as number];
                       const indicatorType = assetConfig?.smart_indicator || 'RSI';
                       const isSmartActive = assetConfig?.dynamic_timing_enabled || assetConfig?.dynamic_sizing_enabled;
-                      const assetHistory = downsampleWithPriority(
-                        ar.portfolio_history,
-                        320,
-                        (item: any) =>
-                          (item.s_contribution || 0) > 0 ||
-                          (item.b_contribution || 0) > 0 ||
-                          item.indicator_value != null
-                      );
-                      const isCollapsed = collapsedAssets[ar.asset_id];
+                      const assetHistory = assetHistories[ar.asset_id] || [];
+                      const isExpanded = !!expandedAssets[ar.asset_id];
                       
                       return (
                         <div key={ar.asset_id} className="bg-surface-dark/40 border border-border-active/20 rounded-3xl p-5 lg:p-6 shadow-2xl relative overflow-visible group hover:border-primary/20 transition-all duration-500">
                           {/* Asset Header */}
                           <div 
-                            onClick={() => setCollapsedAssets(prev => ({ ...prev, [ar.asset_id]: !prev[ar.asset_id] }))}
+                            onClick={() => setExpandedAssets(prev => ({ ...prev, [ar.asset_id]: !prev[ar.asset_id] }))}
                             className="flex flex-wrap justify-between items-center gap-4 cursor-pointer group/header"
                           >
                             <div className="flex items-center gap-4">
@@ -1262,12 +1274,12 @@ export default function PortfolioSimulationPage() {
                                   </span>
                                 </div>
                               </div>
-                              <ChevronDown size={16} className={cn("text-text-secondary transition-transform duration-300", !isCollapsed && "rotate-180")} />
+                              <ChevronDown size={16} className={cn("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
                             </div>
                           </div>
 
                           {/* Collapsible Content */}
-                          {!isCollapsed && (
+                          {isExpanded && (
                             <div className="space-y-6 relative z-0 mt-6 pt-6 border-t border-border-dark/30 animate-in fade-in slide-in-from-top-2 duration-300">
                               {/* 1. Price & Indicator Chart */}
                               <div className="space-y-4">
@@ -1282,20 +1294,20 @@ export default function PortfolioSimulationPage() {
                                   </div>
                                   <div className="h-[200px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                      <ComposedChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
+                                      <ComposedChart data={assetHistory}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                         <XAxis dataKey="date" hide />
                                         <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val) => `$${val}`} />
                                         <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ color: '#9db9a6', marginBottom: '4px', fontSize: '9px', fontWeight: 'black', textTransform: 'uppercase' }} />
                                         
-                                        <Line type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={2} dot={false} name="Market Price" animationDuration={1000} />
+                                        <Line type="monotone" dataKey="price" stroke="#60a5fa" strokeWidth={2} dot={false} name="Market Price" isAnimationActive={false} />
                                         
                                         {isSmartActive && indicatorType !== 'RSI' && (
                                           <>
                                             {indicatorType === 'MA' || indicatorType === 'EMA' ? (
                                               <>
-                                                <Line type="monotone" dataKey="ma_short" stroke="#facc15" strokeWidth={1} dot={false} name="Short MA" opacity={0.7} />
-                                                <Line type="monotone" dataKey="ma_long" stroke="#fb923c" strokeWidth={1} dot={false} name="Long MA" opacity={0.7} />
+                                                <Line type="monotone" dataKey="ma_short" stroke="#facc15" strokeWidth={1} dot={false} name="Short MA" opacity={0.7} isAnimationActive={false} />
+                                                <Line type="monotone" dataKey="ma_long" stroke="#fb923c" strokeWidth={1} dot={false} name="Long MA" opacity={0.7} isAnimationActive={false} />
                                               </>
                                             ) : null}
                                           </>
@@ -1315,17 +1327,18 @@ export default function PortfolioSimulationPage() {
                                     </div>
                                     <div className="h-[100px] w-full">
                                       <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
+                                        <ComposedChart data={assetHistory}>
                                           <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                           <XAxis dataKey="date" hide />
-                                          <YAxis orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={[0, 100]} ticks={[0, 30, 70, 100]} />
+                                          <YAxis yAxisId="left-spacer" orientation="left" stroke="transparent" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={['auto', 'auto']} tickFormatter={(val: number) => `$${val}`} tick={{ fill: 'transparent' }} />
+                                          <YAxis yAxisId="rsi" orientation="right" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} domain={[0, 100]} ticks={[0, 30, 70, 100]} />
                                           <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} labelStyle={{ display: 'none' }} />
                                           
-                                          <ReferenceArea y1={30} y2={70} fill="#13ec5b" fillOpacity={0.05} />
-                                          <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '70', fill: '#ef4444', fontSize: 7 }} />
-                                          <ReferenceLine y={30} stroke="#13ec5b" strokeDasharray="3 3" label={{ position: 'right', value: '30', fill: '#13ec5b', fontSize: 7 }} />
+                                          <ReferenceArea yAxisId="rsi" y1={30} y2={70} fill="#13ec5b" fillOpacity={0.05} />
+                                          <ReferenceLine yAxisId="rsi" y={70} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: '70', fill: '#ef4444', fontSize: 7 }} />
+                                          <ReferenceLine yAxisId="rsi" y={30} stroke="#13ec5b" strokeDasharray="3 3" label={{ position: 'right', value: '30', fill: '#13ec5b', fontSize: 7 }} />
 
-                                          <Line type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1.5} dot={false} name="RSI Value" />
+                                          <Line yAxisId="rsi" type="monotone" dataKey="indicator_value" stroke="#facc15" strokeWidth={1.5} dot={false} name="RSI Value" isAnimationActive={false} />
                                         </ComposedChart>
                                       </ResponsiveContainer>
                                     </div>
@@ -1343,14 +1356,13 @@ export default function PortfolioSimulationPage() {
                                 </div>
                                 <div className="h-[140px] w-full">
                                   <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={assetHistory} syncId={`syncAsset_${ar.asset_id}`}>
+                                    <BarChart data={assetHistory}>
                                       <CartesianGrid strokeDasharray="3 3" stroke="#28392e" vertical={false} opacity={0.2} />
                                       <XAxis dataKey="date" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(str) => { const date = new Date(str); return `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear().toString().slice(-2)}`; }} minTickGap={60} />
                                       <YAxis orientation="left" stroke="#9db9a6" fontSize={8} fontWeight="bold" tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
                                       <Tooltip contentStyle={{ backgroundColor: '#0b0f0c', border: '1px solid #13ec5b20', borderRadius: '10px' }} itemStyle={{ fontSize: '10px', fontWeight: 'bold' }} />
-                                      <Bar dataKey="s_contribution" fill="#13ec5b" radius={[3, 3, 0, 0]} name="Smart Buy ($)" />
-                                      <Bar dataKey="b_contribution" fill="#94a3b8" radius={[3, 3, 0, 0]} name="Baseline Buy ($)" opacity={0.2} />
-                                      <Brush dataKey="date" height={25} stroke="#13ec5b30" fill="#0b0f0c" travellerWidth={10} gap={1} />
+                                      <Bar dataKey="s_contribution" fill="#13ec5b" radius={[3, 3, 0, 0]} name="Smart Buy ($)" isAnimationActive={false} />
+                                      <Bar dataKey="b_contribution" fill="#94a3b8" radius={[3, 3, 0, 0]} name="Baseline Buy ($)" opacity={0.2} isAnimationActive={false} />
                                     </BarChart>
                                   </ResponsiveContainer>
                                 </div>
@@ -1625,5 +1637,13 @@ export default function PortfolioSimulationPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function PortfolioSimulationPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background-dark text-white"><div className="animate-pulse text-text-secondary">Loading...</div></div>}>
+      <PortfolioSimulationPage />
+    </Suspense>
   );
 }

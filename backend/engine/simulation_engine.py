@@ -225,15 +225,32 @@ class SimulationEngine:
         s_reserve = 0.0 # Reserve for sizing logic
         s_pending_amount = 0.0 # Amount to buy from timing logic
         s_next_idx = 0
+
+        def get_trade_close(index: int) -> float:
+            if indicator_df.empty:
+                return 0.01
+            safe_index = max(0, min(index, len(indicator_df) - 1))
+            close_val = float(indicator_df.iloc[safe_index]["close"])
+            if close_val > 0:
+                return close_val
+            historical_slice = indicator_df.iloc[: safe_index + 1]
+            historical_valid = historical_slice[historical_slice["close"] > 0]["close"]
+            if not historical_valid.empty:
+                return float(historical_valid.iloc[-1])
+            overall_valid = indicator_df[indicator_df["close"] > 0]["close"]
+            if not overall_valid.empty:
+                return float(overall_valid.iloc[0])
+            return 0.01
         
         # Initial Capital (applied to both)
         if initial_capital > 0 and not indicator_df.empty:
             fee = max(initial_capital * (commission_percent / 100.0), minimum_fee_per_trade)
-            b_assets += (initial_capital - fee) / indicator_df.iloc[0]['close']
+            trade_close = get_trade_close(0)
+            b_assets += (initial_capital - fee) / trade_close
             b_invested += initial_capital
             b_fees += fee
             
-            s_assets += (initial_capital - fee) / indicator_df.iloc[0]['close']
+            s_assets += (initial_capital - fee) / trade_close
             s_invested += initial_capital
             s_fees += fee
 
@@ -311,7 +328,7 @@ class SimulationEngine:
                 if annual_budget_remaining > 0:
                     fee = max(annual_budget_remaining * (commission_percent / 100.0), minimum_fee_per_trade)
                     if annual_budget_remaining > fee:
-                        s_assets += (annual_budget_remaining - fee) / indicator_df.iloc[i-1]['close']
+                        s_assets += (annual_budget_remaining - fee) / get_trade_close(i - 1)
                         s_fees += fee
                         s_invested += annual_budget_remaining
                         s_contribution += annual_budget_remaining
@@ -331,7 +348,7 @@ class SimulationEngine:
             # --- BASELINE BUY LOGIC ---
             if b_next_idx < len(baseline_dates) and date >= baseline_dates[b_next_idx]:
                 fee = max(periodic_amount * (commission_percent / 100.0), minimum_fee_per_trade)
-                b_assets += (periodic_amount - fee) / row['close']
+                b_assets += (periodic_amount - fee) / get_trade_close(i)
                 b_invested += periodic_amount
                 b_fees += fee
                 b_next_idx += 1
@@ -427,7 +444,7 @@ class SimulationEngine:
                 if actual_buy_amount > 0:
                     fee = max(actual_buy_amount * (commission_percent / 100.0), minimum_fee_per_trade)
                     if actual_buy_amount > fee:
-                        s_assets += (actual_buy_amount - fee) / row['close']
+                        s_assets += (actual_buy_amount - fee) / get_trade_close(i)
                         s_invested += actual_buy_amount
                         s_fees += fee
                         annual_budget_remaining -= actual_buy_amount

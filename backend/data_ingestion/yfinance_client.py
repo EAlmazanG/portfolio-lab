@@ -95,7 +95,7 @@ class YahooFinanceClient:
             List[dict]: List of matching assets with ticker and name.
         """
         try:
-            search = yf.Search(query, max_results=10)
+            search = yf.Search(query, max_results=20)
             return search.quotes
         except Exception as e:
             logger.error(f"Error searching for {query}: {str(e)}")

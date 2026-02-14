@@ -1,14 +1,22 @@
-.PHONY: help venv-setup dev-up dev-down prod-up prod-down backend-cli backend-test dev-logs shell
+.PHONY: help venv-setup dev-up dev-down prod-up prod-down backend-cli backend-test dev-logs shell frontend-test backend-unit-test test-all
 
 # --- High Level Commands ---
 start: venv-setup prod-up
 	@echo "Opening Portfolio Lab in your browser..."
-	@sleep 5 && (open http://localhost:3000 || xdg-open http://localhost:3000 || echo "Please open http://localhost:3000 manually.")
+	@sleep 5 && ( \
+		if curl -s http://localhost:3001 >/dev/null 2>&1; then \
+			open http://localhost:3001 || xdg-open http://localhost:3001; \
+		elif curl -s http://localhost:3000 >/dev/null 2>&1; then \
+			open http://localhost:3000 || xdg-open http://localhost:3000; \
+		else \
+			echo "Please open http://localhost:3001 or http://localhost:3000 manually."; \
+		fi \
+	)
 
 portfolio-lab:
 	@:
 
-close: dev-down prod-down
+stop: dev-down prod-down
 	@echo "All environments have been shut down."
 
 # --- Variables ---
@@ -26,7 +34,7 @@ help:
 	@echo "-------------------------------------------"
 	@echo "Quick Start:"
 	@echo "  make start        : The 'magic' command. Sets up everything and opens the browser"
-	@echo "  make close        : Stop everything (dev and prod)"
+	@echo "  make stop        : Stop everything (dev and prod)"
 	@echo ""
 	@echo "Environment:"
 	@echo "  make venv-setup   : Create/update virtual environment and install dependencies"
@@ -44,6 +52,9 @@ help:
 	@echo "Backend Tools:"
 	@echo "  make backend-cli  : Run the interactive Python CLI tool"
 	@echo "  make backend-test : Run backend integration tests"
+	@echo "  make backend-unit-test : Run backend unit tests"
+	@echo "  make frontend-test : Run frontend Jest tests"
+	@echo "  make test-all : Run backend unit + integration + frontend tests"
 	@echo ""
 	@echo "Manual Activation: source $(VENV)/bin/activate"
 
@@ -94,9 +105,22 @@ backend-cli:
 
 backend-test:
 	@echo "Running Integration Tests..."
-	@export PYTHONPATH=$${PYTHONPATH}:$(shell pwd) && \
-	 export DATABASE_URL=$(DB_URL_DEV) && \
-	 $(PYTHON) tests/integration/test_infrastructure.py
+	@docker-compose -f docker-compose.dev.yml build backend
+	@docker-compose -f docker-compose.dev.yml run --rm \
+	 -e BACKEND_URL=http://backend:8000/api/v1/health \
+	 -e FRONTEND_URL=http://frontend:3000 \
+	 backend python tests/integration/test_infrastructure.py
+
+backend-unit-test:
+	@echo "Running Backend Unit Tests..."
+	@docker-compose -f docker-compose.dev.yml build backend
+	@docker-compose -f docker-compose.dev.yml run --rm backend pytest tests/unit
+
+frontend-test:
+	@echo "Running Frontend Jest Tests..."
+	@docker-compose -f docker-compose.dev.yml run --rm frontend sh -c "npm ci && npm test"
+
+test-all: frontend-test backend-unit-test backend-test
 
 # --- Interactive Shell ---
 shell:

@@ -15,6 +15,7 @@ export default function Header() {
   const pathname = usePathname();
 
   const tabs = [
+    { name: "Asset Management", href: "/assets-manager" },
     { name: "Asset Simulation", href: "/" },
     { name: "Portfolio Management", href: "/portfolios" },
     { name: "Portfolio Simulation", href: "/portfolio-analysis" },

@@ -1,3 +1,4 @@
+import os
 import urllib.request
 import urllib.error
 import time
@@ -25,10 +26,13 @@ def main():
     print("Starting Infrastructure Health Check...")
     
     # Check Backend Health (API)
-    backend_ok = check_service("Backend API", "http://localhost:8000/api/v1/health")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000/api/v1/health")
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3001")
+
+    backend_ok = check_service("Backend API", backend_url)
     
     # Check Frontend (Main Page)
-    frontend_ok = check_service("Frontend App", "http://localhost:3001")
+    frontend_ok = check_service("Frontend App", frontend_url)
     
     if backend_ok and frontend_ok:
         print("\n🎉 All systems operational!")
